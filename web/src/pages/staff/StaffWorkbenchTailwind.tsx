@@ -544,7 +544,7 @@ export function StaffWorkbenchTailwind({
             </span>
             <span className="text-[10px] font-medium">Approvals</span>
           </button>
-          <button type="button" onClick={() => { if (selectedStudentId && selectedRequestId) { const found = queueItems.find(q => q.studentId === selectedStudentId); setFineModal({ studentId: selectedStudentId, studentName: found?.studentName ?? displayName, requestId: selectedRequestId, checkId: relevantCheck?.id ?? "" }); } else { setActiveTab("approvals"); } }} className="flex flex-1 flex-col items-center gap-1 py-1 text-error">
+          <button type="button" onClick={() => navigate(`/campus/${campusSlug}/staff/record-liability`)} className="flex flex-1 flex-col items-center gap-1 py-1 text-error">
             <span className="material-symbols-outlined text-[24px]">receipt_long</span>
             <span className="text-[10px] font-medium">Fine</span>
           </button>
