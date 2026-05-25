@@ -1,6 +1,8 @@
 import React, { useState, useEffect, useMemo, useRef } from "react";
 import { useNavigate } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { SessionControls } from "../components/SessionControls";
+import { LanguageToggle } from "../components/LanguageToggle";
 import { useToast } from "../components/ToastContext";
 import { api, toApiUrl } from "../lib/api";
 import { useAuth } from "../modules/auth/AuthContext";
@@ -46,6 +48,7 @@ export function AdminDashboardPage() {
   const [loading, setLoading] = useState(true);
 
   const navigate = useNavigate();
+  const { t } = useTranslation();
   const [mainTab, setMainTab] = useState<MainTab>("DASHBOARD");
 
   /* ── Students tab state ───────────────────────────────────── */
@@ -275,8 +278,8 @@ export function AdminDashboardPage() {
     try {
       if (selectedUser.type === "STUDENT") await api.setStudentActive(token, selectedUser.data.studentId, nextActive);
       else await api.setStaffUserActive(token, selectedUser.data.id, nextActive);
-      showToast(`User ${nextActive ? "activated" : "deactivated"} successfully.`, "success"); loadData(reselect);
-    } catch (err: any) { showToast("Status change failed: " + err.message, "error"); }
+      showToast(nextActive ? t("userActivated") : t("userDeactivated"), "success"); loadData(reselect);
+    } catch (err: any) { showToast(t("statusChangeFailed", { message: err.message }), "error"); }
   };
 
   const handleResetPassword = async () => {
@@ -300,10 +303,10 @@ export function AdminDashboardPage() {
         if (!s) return Promise.resolve();
         return api.setStudentActive(token, s.studentId, true);
       }));
-      showToast(`${ids.length} student${ids.length !== 1 ? "s" : ""} activated.`, "success");
+      showToast(t("studentsActivated", { count: ids.length }), "success");
       setSelectedStudentIds(new Set());
       loadData();
-    } catch (err: any) { showToast("Bulk activate failed: " + err.message, "error"); }
+    } catch (err: any) { showToast(t("bulkActivateFailed", { message: err.message }), "error"); }
     finally { setBulkActionLoading(false); }
   };
 
@@ -316,16 +319,16 @@ export function AdminDashboardPage() {
         if (!s) return Promise.resolve();
         return api.setStudentActive(token, s.studentId, false);
       }));
-      showToast(`${ids.length} student${ids.length !== 1 ? "s" : ""} deactivated.`, "success");
+      showToast(t("studentsDeactivated", { count: ids.length }), "success");
       setSelectedStudentIds(new Set());
       loadData();
-    } catch (err: any) { showToast("Bulk deactivate failed: " + err.message, "error"); }
+    } catch (err: any) { showToast(t("bulkDeactivateFailed", { message: err.message }), "error"); }
     finally { setBulkActionLoading(false); }
   };
 
   const handleBulkDelete = async (ids: string[]) => {
     if (!token) return;
-    if (!window.confirm(`Permanently delete ${ids.length} student${ids.length !== 1 ? "s" : ""}? This cannot be undone.`)) return;
+    if (!window.confirm(t("deleteConfirm", { count: ids.length }))) return;
     setBulkActionLoading(true);
     try {
       await Promise.all(ids.map(id => {
@@ -336,7 +339,7 @@ export function AdminDashboardPage() {
       showToast(`${ids.length} student${ids.length !== 1 ? "s" : ""} deleted.`, "success");
       setSelectedStudentIds(new Set());
       loadData();
-    } catch (err: any) { showToast("Bulk delete failed: " + err.message, "error"); }
+    } catch (err: any) { showToast(t("bulkDeleteFailed", { message: err.message }), "error"); }
     finally { setBulkActionLoading(false); }
   };
 
@@ -453,10 +456,10 @@ export function AdminDashboardPage() {
   const inputCls = "w-full bg-surface-container-high border-none rounded-lg px-3 py-2.5 text-sm font-medium focus:ring-2 focus:ring-primary/40 transition-shadow";
 
   const sidebarItems: { tab: MainTab; icon: string; label: string }[] = [
-    { tab: "DASHBOARD", icon: "dashboard", label: "Dashboard" },
-    { tab: "STUDENTS", icon: "school", label: "Students" },
-    { tab: "STUDENT_BATCHES", icon: "upload_file", label: "Student Batches" },
-    { tab: "DEPARTMENTS", icon: "corporate_fare", label: "Departments" },
+    { tab: "DASHBOARD", icon: "dashboard", label: t("dashboard") },
+    { tab: "STUDENTS", icon: "school", label: t("students") },
+    { tab: "STUDENT_BATCHES", icon: "upload_file", label: t("studentBatches") },
+    { tab: "DEPARTMENTS", icon: "corporate_fare", label: t("departments") },
   ];
 
   /* ═══════════════════════════════════════════════════════════ */
@@ -470,6 +473,7 @@ export function AdminDashboardPage() {
           <h1 className="text-xl font-black text-[#001e40] tracking-tight">Registrar Management</h1>
         </div>
         <div className="flex items-center gap-4 sm:gap-6">
+          <LanguageToggle />
           <SessionControls density="full" className="shrink-0" />
           <div className="w-10 h-10 shrink-0 rounded-full bg-primary-fixed flex items-center justify-center">
             <span className="material-symbols-outlined text-primary">admin_panel_settings</span>
@@ -485,7 +489,7 @@ export function AdminDashboardPage() {
           </div>
           <div>
             <p className="text-lg font-bold text-on-primary-fixed-variant leading-tight">Gondar Registry</p>
-            <p className="text-[10px] font-medium uppercase tracking-[0.05em] text-on-surface-variant">Admin Control Panel</p>
+            <p className="text-[10px] font-medium uppercase tracking-[0.05em] text-on-surface-variant">{t("adminControlPanel")}</p>
           </div>
         </div>
 
@@ -548,7 +552,7 @@ export function AdminDashboardPage() {
             <div className="bg-surface-container-lowest p-6 rounded-2xl flex flex-col justify-between shadow-sm border border-surface-container">
               <span className="material-symbols-outlined text-primary text-3xl">groups</span>
               <div>
-                <p className="text-[10px] font-bold uppercase tracking-widest text-on-surface-variant">Total Students</p>
+                <p className="text-[10px] font-bold uppercase tracking-widest text-on-surface-variant">{t("totalStudents")}</p>
                 <p className="text-4xl font-black text-primary">{students.length.toLocaleString()}</p>
               </div>
               <div className="flex items-center gap-1 text-xs text-green-600 font-bold">
@@ -559,11 +563,11 @@ export function AdminDashboardPage() {
             <div className="bg-surface-container-lowest p-6 rounded-2xl flex flex-col justify-between shadow-sm border border-surface-container">
               <span className="material-symbols-outlined text-secondary text-3xl">badge</span>
               <div>
-                <p className="text-[10px] font-bold uppercase tracking-widest text-on-surface-variant">Total Staff</p>
+                <p className="text-[10px] font-bold uppercase tracking-widest text-on-surface-variant">{t("totalStaff")}</p>
                 <p className="text-4xl font-black text-primary">{staffUsers.length.toLocaleString()}</p>
               </div>
               <div className="flex items-center gap-1 text-xs text-on-surface-variant">
-                <span className="material-symbols-outlined text-sm">check_circle</span><span>All records verified</span>
+                <span className="material-symbols-outlined text-sm">check_circle</span><span>{t("allRecordsVerified")}</span>
               </div>
             </div>
 
@@ -574,7 +578,7 @@ export function AdminDashboardPage() {
                 <p className="text-4xl font-black text-primary">{departments.length.toLocaleString()}</p>
               </div>
               <div className="flex items-center gap-1 text-xs text-on-surface-variant">
-                <span className="material-symbols-outlined text-sm">check_circle</span><span>Offices & Colleges</span>
+                <span className="material-symbols-outlined text-sm">check_circle</span><span>{t("officesAndColleges")}</span>
               </div>
             </div>
 
@@ -584,11 +588,11 @@ export function AdminDashboardPage() {
             >
               <span className="material-symbols-outlined text-error text-3xl">domain_disabled</span>
               <div>
-                <p className="text-[10px] font-bold uppercase tracking-widest text-on-surface-variant">Inactive Users</p>
+                <p className="text-[10px] font-bold uppercase tracking-widest text-on-surface-variant">{t("inactiveUsers")}</p>
                 <p className="text-4xl font-black text-error">{[...students.filter(s => s.status !== "ACTIVE"), ...staffUsers.filter(s => !s.active)].length.toLocaleString()}</p>
               </div>
               <div className="flex items-center gap-1 text-xs text-on-surface-variant">
-                <span className="material-symbols-outlined text-sm">warning</span><span>Requires attention</span>
+                <span className="material-symbols-outlined text-sm">warning</span><span>{t("requiresAttention")}</span>
               </div>
             </button>
           </section>
@@ -631,15 +635,15 @@ export function AdminDashboardPage() {
               {/* Header */}
               <section className="flex items-center justify-between">
                 <div>
-                  <h2 className="text-2xl font-bold text-primary tracking-tight">Student Management</h2>
-                  <p className="text-sm text-on-surface-variant mt-1">View and manage all registered students across campuses.</p>
+                  <h2 className="text-2xl font-bold text-primary tracking-tight">{t("studentManagement")}</h2>
+                  <p className="text-sm text-on-surface-variant mt-1">{t("viewAndManageStudents")}</p>
                 </div>
                 <div className="flex items-center gap-3">
                   <button onClick={() => { setImportResult(null); setShowStudentImportModal(true); }} className="bg-surface-container-lowest border border-outline-variant/30 text-on-surface px-5 py-3 rounded-xl font-bold text-sm flex items-center gap-2 shadow-sm hover:bg-surface-container transition-all">
-                    <span className="material-symbols-outlined text-base">upload_file</span> Import CSV
+                    <span className="material-symbols-outlined text-base">upload_file</span> {t("importCSV")}
                   </button>
                   <button onClick={() => { setCreateUserType("STUDENT"); setCreateData({ ...BLANK_CREATE }); setShowStudentAddModal(true); }} className="bg-primary text-white px-5 py-3 rounded-xl font-bold text-sm flex items-center gap-2 shadow-md hover:bg-primary-container hover:text-on-primary-container transition-all">
-                    <span className="material-symbols-outlined text-base">person_add</span> Add Student
+                    <span className="material-symbols-outlined text-base">person_add</span> {t("addStudent")}
                   </button>
                 </div>
               </section>
@@ -649,7 +653,7 @@ export function AdminDashboardPage() {
                 <div className="flex gap-4 items-center">
                   <div className="relative flex-grow">
                     <span className="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-on-surface-variant">search</span>
-                    <input value={studentSearch} onChange={e => setStudentSearch(e.target.value)} type="text" placeholder="Search by Name, ID, or Email..." className="w-full pl-12 pr-4 py-3 bg-white border-none rounded-xl focus:ring-2 focus:ring-primary/40 text-sm shadow-sm transition-shadow" />
+                    <input value={studentSearch} onChange={e => setStudentSearch(e.target.value)} type="text" placeholder={t("searchByNameIdEmail")} className="w-full pl-12 pr-4 py-3 bg-white border-none rounded-xl focus:ring-2 focus:ring-primary/40 text-sm shadow-sm transition-shadow" />
                   </div>
                 </div>
                 <div className="flex gap-2 flex-wrap">
@@ -663,7 +667,7 @@ export function AdminDashboardPage() {
                           : "bg-white text-on-surface-variant hover:bg-surface-container border border-outline-variant/30"
                       }`}
                     >
-                      {status === "ALL" ? "All Students" : status === "ACTIVE" ? "Active" : "Inactive"}
+                      {status === "ALL" ? t("allStudents") : status === "ACTIVE" ? t("active") : t("inactive")}
                     </button>
                   ))}
                   {studentStatusFilter !== "ALL" && (
@@ -671,7 +675,7 @@ export function AdminDashboardPage() {
                       onClick={() => setStudentStatusFilter("ALL")}
                       className="px-3 py-1.5 rounded-full text-xs font-bold bg-white text-on-surface-variant hover:bg-surface-container border border-outline-variant/30 transition-all"
                     >
-                      Clear Filter
+                      {t("clearFilter")}
                     </button>
                   )}
                 </div>
@@ -693,14 +697,14 @@ export function AdminDashboardPage() {
                       disabled={bulkActionLoading}
                       className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold bg-green-100 text-green-800 hover:bg-green-200 transition-colors disabled:opacity-50"
                     >
-                      <span className="material-symbols-outlined text-base">check_circle</span> Activate
+                      <span className="material-symbols-outlined text-base">check_circle</span> {t("activate")}
                     </button>
                     <button
                       onClick={() => handleBulkDeactivate(selectedIds)}
                       disabled={bulkActionLoading}
                       className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold bg-surface-container text-on-surface-variant hover:bg-surface-container-high transition-colors disabled:opacity-50"
                     >
-                      <span className="material-symbols-outlined text-base">block</span> Deactivate
+                      <span className="material-symbols-outlined text-base">block</span> {t("deactivate")}
                     </button>
                     <button
                       onClick={() => handleBulkDelete(selectedIds)}
@@ -749,7 +753,7 @@ export function AdminDashboardPage() {
                         const active = s.status === "ACTIVE";
                         const isChecked = selectedStudentIds.has(s.id);
                         return (
-                          <tr key={s.id} className={`transition-colors ${isChecked ? "bg-primary/5" : "hover:bg-primary-fixed/10"}`}>
+                          <tr key={s.id} className={`transition-colors ${isChecked ? "bg-primary/5" : active ? "hover:bg-primary-fixed/10" : "bg-error-container/30 hover:bg-error-container/50"}`}>
                             <td className="px-4 py-3">
                               <input
                                 type="checkbox"
@@ -783,7 +787,7 @@ export function AdminDashboardPage() {
                                 <button onClick={() => { setSelectedUser({ type: "STUDENT", data: s }); setShowStudentEditModal(true); }} className="rounded-lg p-1.5 text-primary hover:bg-primary-fixed/20 transition-colors" title="Edit">
                                   <span className="material-symbols-outlined text-[18px]">edit</span>
                                 </button>
-                                <button onClick={async () => { setSelectedUser({ type: "STUDENT", data: s }); await new Promise(r => setTimeout(r, 0)); handleToggleActive(); }} className={`rounded-lg p-1.5 transition-colors ${active ? "text-error hover:bg-error-container" : "text-green-700 hover:bg-green-50"}`} title={active ? "Deactivate" : "Activate"}>
+                                <button onClick={async () => { setSelectedUser({ type: "STUDENT", data: s }); await new Promise(r => setTimeout(r, 0)); handleToggleActive(); }} className={`rounded-lg p-1.5 transition-colors ${active ? "text-error hover:bg-error-container" : "text-green-700 hover:bg-green-50"}`} title={active ? t("deactivate") : t("activate")}>
                                   <span className="material-symbols-outlined text-[18px]">{active ? "block" : "check_circle"}</span>
                                 </button>
                                 <button onClick={async () => { setSelectedUser({ type: "STUDENT", data: s }); await new Promise(r => setTimeout(r, 0)); handleDeleteUser(); }} className="rounded-lg p-1.5 text-error hover:bg-error-container transition-colors" title="Delete">
@@ -797,7 +801,7 @@ export function AdminDashboardPage() {
                     </tbody>
                   </table>
                   {filteredStudents.length === 0 && !loading && (
-                    <div className="p-8 text-center text-on-surface-variant text-sm">No students found.</div>
+                    <div className="p-8 text-center text-on-surface-variant text-sm">{t("noStudentsFound")}</div>
                   )}
                 </div>
               </div>

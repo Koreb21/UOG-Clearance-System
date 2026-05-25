@@ -1497,9 +1497,12 @@ async function dispatch(method: string, path: string, headers: Headers, bodyText
     }
     if (method === "PATCH" && /^\/admin\/students\/[^/]+\/activate$/.test(pathOnly)) {
       const studentId = decodeURIComponent(pathOnly.split("/")[3]);
+      const student = db.students.find((s) => s.studentId === studentId);
       const user = db.users.find((u) => u.studentId === studentId);
-      if (user) { user.active = body.active; writeDb(db); }
-      return { status: 200, body: db.students.find((s) => s.studentId === studentId) };
+      if (student) { student.status = body.active ? "ACTIVE" : "INACTIVE"; }
+      if (user) { user.active = body.active; }
+      if (student || user) { writeDb(db); }
+      return { status: 200, body: student ?? null };
     }
     if (method === "PATCH" && /^\/admin\/students\/[^/]+\/reset-password$/.test(pathOnly)) {
       const studentId = decodeURIComponent(pathOnly.split("/")[3]);

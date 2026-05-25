@@ -1,38 +1,40 @@
 import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { SessionControls } from "../components/SessionControls";
+import { LanguageToggle } from "../components/LanguageToggle";
 import { useToast } from "../components/ToastContext";
 import { useAuth } from "../modules/auth/AuthContext";
 import { api } from "../lib/api";
 
 type CampusOption = {
   id: string;
-  label: string;
+  labelKey: string;
   title: string;
-  description: string;
+  descriptionKey: string;
   accentClass: string;
 };
 
 const campuses: CampusOption[] = [
   {
     id: "TEWODROS",
-    label: "Campus Alpha",
+    labelKey: "campusAlpha",
     title: "Atse Tewodros",
-    description: "Applied Sciences & Agriculture.",
+    descriptionKey: "appliedSciencesAgriculture",
     accentClass: "portal-login-campus-accent-primary"
   },
   {
     id: "MARAKI",
-    label: "Campus Beta",
+    labelKey: "campusBeta",
     title: "Maraki",
-    description: "Social Sciences & Humanities.",
+    descriptionKey: "socialSciencesHumanities",
     accentClass: "portal-login-campus-accent-secondary"
   },
   {
     id: "FASIL",
-    label: "Campus Gamma",
+    labelKey: "campusGamma",
     title: "Atse Fasil",
-    description: "Main Admin & Technical Hub.",
+    descriptionKey: "mainAdminTechnicalHub",
     accentClass: "portal-login-campus-accent-primary"
   }
 ];
@@ -149,8 +151,9 @@ type ResetStep = "email" | "code" | "newpassword" | "done";
 
 export function LoginPage() {
   const navigate = useNavigate();
+  const { t } = useTranslation();
   const { showToast } = useToast();
-  const { login, user, loading: authLoading } = useAuth();
+  const { login, logout, user, loading: authLoading } = useAuth();
   const sessionReady = !authLoading;
   const [selectedCampus, setSelectedCampus] = useState<CampusOption | null>(null);
   const [adminTapCount, setAdminTapCount] = useState(0);
@@ -340,6 +343,7 @@ export function LoginPage() {
             <span className="font-black tracking-tight">UGClear</span>
           </button>
           <div className="flex items-center gap-2 sm:gap-3">
+            <LanguageToggle />
             {user && sessionReady ? (
               <>
                 <button
@@ -347,7 +351,7 @@ export function LoginPage() {
                   className="portal-login-inline-link rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-bold uppercase tracking-wide text-slate-700 shadow-sm"
                   onClick={() => navigate("/", { replace: true })}
                 >
-                  Portal home
+                  {t("dashboard")}
                 </button>
                 <SessionControls density="compact" />
               </>
@@ -369,12 +373,10 @@ export function LoginPage() {
 
             <div className="portal-login-left-copy">
               <div>
-                <p className="portal-login-eyebrow">Digital Portal</p>
-                <h1>Institutional Clearance.</h1>
+                <p className="portal-login-eyebrow">{t("digitalPortal")}</p>
+                <h1>{t("institutionalClearance")}</h1>
               </div>
-              <p>
-                Official administrative clearance portal for University of Gondar students and staff.
-              </p>
+              <p>{t("officialPortalDescription")}</p>
             </div>
 
             <div className="portal-login-security">
@@ -382,8 +384,8 @@ export function LoginPage() {
                 <ShieldIcon />
               </div>
               <div>
-                <strong>Secure Gateway</strong>
-                <span>Authenticated access only</span>
+                <strong>{t("secureGateway")}</strong>
+                <span>{t("authenticatedAccessOnly")}</span>
               </div>
             </div>
           </div>
@@ -402,12 +404,12 @@ export function LoginPage() {
                     <ArrowBackIcon />
                   </button>
                   <div>
-                    <h2>Reset Password</h2>
+                    <h2>{t("resetPassword")}</h2>
                     <p>
-                      {resetStep === "email" && "Enter your email to receive a verification code."}
-                      {resetStep === "code" && "Enter the 6-digit code sent to your email."}
-                      {resetStep === "newpassword" && "Choose a strong new password."}
-                      {resetStep === "done" && "Password reset complete."}
+                      {resetStep === "email" && t("enterYourEmail")}
+                      {resetStep === "code" && t("enter6DigitCode")}
+                      {resetStep === "newpassword" && t("chooseStrongPassword")}
+                      {resetStep === "done" && t("passwordResetComplete")}
                     </p>
                   </div>
                 </div>
@@ -448,7 +450,7 @@ export function LoginPage() {
                       onClick={closeForgot}
                       className="portal-login-submit"
                     >
-                      <span>Back to Sign In</span>
+                      <span>{t("backToLogin")}</span>
                       <LoginArrowIcon />
                     </button>
                   </div>
@@ -457,7 +459,7 @@ export function LoginPage() {
                     <label className="portal-login-field">
                       <span className="portal-login-field-label">
                         <BadgeIcon />
-                        University Email Address
+                        {t("universityEmail")}
                       </span>
                       <input
                         type="email"
@@ -469,14 +471,14 @@ export function LoginPage() {
                       />
                     </label>
                     <p className="text-xs text-slate-500 -mt-2">
-                      Enter the email address associated with your UGClear account. We'll send you a one-time verification code.
+                      {t("enterEmailForCode")}
                     </p>
                     <button
                       type="submit"
                       className="portal-login-submit"
                       disabled={resetLoading || !resetEmail}
                     >
-                      <span>{resetLoading ? "Sending code…" : "Send Verification Code"}</span>
+                      <span>{resetLoading ? t("sendCode") + "…" : t("sendCode")}</span>
                       <LoginArrowIcon />
                     </button>
                   </form>
@@ -517,7 +519,7 @@ export function LoginPage() {
                       className="portal-login-submit"
                       disabled={resetLoading || resetCode.length !== 6}
                     >
-                      <span>{resetLoading ? "Verifying…" : "Verify Code"}</span>
+                      <span>{resetLoading ? t("verifyCode") + "…" : t("verifyCode")}</span>
                       <LoginArrowIcon />
                     </button>
                     <div className="flex gap-2">
@@ -527,14 +529,14 @@ export function LoginPage() {
                         disabled={resendCountdown > 0 || resetLoading}
                         className="portal-login-inline-link flex-1 rounded-lg border border-slate-200 py-2.5 text-center text-xs font-bold disabled:opacity-50"
                       >
-                        {resendCountdown > 0 ? `Resend in ${resendCountdown}s` : "Resend Code"}
+                        {resendCountdown > 0 ? `${t("resendCode")} ${resendCountdown}s` : t("resendCode")}
                       </button>
                       <button
                         type="button"
                         onClick={() => setResetStep("email")}
                         className="flex-1 rounded-lg border border-slate-200 py-2.5 text-center text-xs font-bold text-slate-500 hover:border-slate-400"
                       >
-                        Change Email
+                        {t("changeEmail")}
                       </button>
                     </div>
                   </form>
@@ -543,7 +545,7 @@ export function LoginPage() {
                     <label className="portal-login-field">
                       <span className="portal-login-field-label">
                         <LockIcon />
-                        New Password
+                        {t("newPassword")}
                       </span>
                       <div style={{ position: "relative" }}>
                         <input
@@ -568,7 +570,7 @@ export function LoginPage() {
                     <label className="portal-login-field">
                       <span className="portal-login-field-label">
                         <LockIcon />
-                        Confirm New Password
+                        {t("confirmPassword")}
                       </span>
                       <input
                         type={resetPwVisible ? "text" : "password"}
@@ -583,7 +585,7 @@ export function LoginPage() {
                       className="portal-login-submit"
                       disabled={resetLoading || !resetNewPw || !resetConfirmPw}
                     >
-                      <span>{resetLoading ? "Resetting password…" : "Reset Password"}</span>
+                      <span>{resetLoading ? t("resetPassword") + "…" : t("resetPassword")}</span>
                       <LoginArrowIcon />
                     </button>
                   </form>
@@ -592,8 +594,8 @@ export function LoginPage() {
             ) : !selectedCampus ? (
               <>
                 <div className="portal-login-selection-head">
-                  <h2>Select Your Campus</h2>
-                  <p>Choose your primary location to begin the clearance process.</p>
+                  <h2>{t("selectCampus")}</h2>
+                  <p>{t("choosePrimaryLocation")}</p>
                 </div>
 
                 <div className="portal-login-campus-grid">
@@ -605,9 +607,9 @@ export function LoginPage() {
                       onClick={() => setSelectedCampus(campus)}
                       disabled={!sessionReady}
                     >
-                      <span className="portal-login-campus-label">{campus.label}</span>
+                      <span className="portal-login-campus-label">{t(campus.labelKey)}</span>
                       <strong>{campus.title}</strong>
-                      <p>{campus.description}</p>
+                      <p>{t(campus.descriptionKey)}</p>
                     </button>
                   ))}
                 </div>
@@ -647,7 +649,7 @@ export function LoginPage() {
                     <span className="portal-login-field-row">
                       <span className="portal-login-field-label">
                         <LockIcon />
-                        Password
+                        {t("password")}
                       </span>
                     </span>
                     <div style={{ position: "relative" }}>
@@ -736,14 +738,14 @@ export function LoginPage() {
       <footer className="portal-login-footer">
         <div className="portal-login-footer-inner">
           <div className="portal-login-footer-copy">
-            <p>&copy; 2026 UGClear · University of Gondar.</p>
-            <span>Excellence Through Digital Transformation</span>
+            <p>{t("copyright")}</p>
+            <span>{t("experienceDigital")}</span>
           </div>
           <div className="portal-login-footer-links">
-            <button type="button" onClick={() => setInfoModal("privacy")} className="portal-login-footer-link">Privacy</button>
-            <button type="button" onClick={() => setInfoModal("terms")} className="portal-login-footer-link">Terms</button>
-            <button type="button" onClick={() => setInfoModal("support")} className="portal-login-footer-link">Support</button>
-            <button type="button" onClick={() => setInfoModal("faq")} className="portal-login-footer-link">FAQs</button>
+            <button type="button" onClick={() => setInfoModal("privacy")} className="portal-login-footer-link">{t("privacy")}</button>
+            <button type="button" onClick={() => setInfoModal("terms")} className="portal-login-footer-link">{t("terms")}</button>
+            <button type="button" onClick={() => setInfoModal("support")} className="portal-login-footer-link">{t("support")}</button>
+            <button type="button" onClick={() => setInfoModal("faq")} className="portal-login-footer-link">{t("faqs")}</button>
           </div>
         </div>
       </footer>
@@ -849,7 +851,7 @@ export function LoginPage() {
                   {infoModal === "privacy" ? "privacy_tip" : infoModal === "terms" ? "gavel" : infoModal === "support" ? "support_agent" : "quiz"}
                 </span>
                 <h3 style={{ margin: 0, color: "#fff", fontWeight: 800, fontSize: "1rem" }}>
-                  {infoModal === "privacy" ? "Privacy Policy" : infoModal === "terms" ? "Terms & Conditions" : infoModal === "support" ? "Support & Contact" : "Frequently Asked Questions"}
+                  {infoModal === "privacy" ? t("privacy") : infoModal === "terms" ? t("terms") : infoModal === "support" ? t("support") : t("faqs")}
                 </h3>
               </div>
               <button type="button" onClick={() => setInfoModal(null)} style={{ background: "rgba(255,255,255,0.1)", border: "none", cursor: "pointer", padding: "6px", color: "#fff", borderRadius: "8px", display: "flex", alignItems: "center" }} aria-label="Close">

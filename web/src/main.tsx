@@ -6,6 +6,7 @@ import { AuthProvider } from "./modules/auth/AuthContext";
 import { CampusProvider } from "./modules/campus/CampusContext";
 import { ToastProvider } from "./components/ToastContext";
 import { installMockBackend } from "./lib/mockBackend";
+import "./i18n";
 import "./styles.css";
 
 installMockBackend();
