@@ -203,7 +203,7 @@ export function StaffWorkbenchTailwind({
         </div>
       </header>
 
-      <main className="mx-auto w-full max-w-7xl flex-1 space-y-6 p-4 pb-24 md:p-8">
+      <main className="mx-auto w-full max-w-7xl flex-1 space-y-6 p-4 pb-40 md:p-8 md:pb-40">
         {/* Hero */}
         <div
           className="relative overflow-hidden rounded-xl p-6 text-white shadow-xl md:p-8"
