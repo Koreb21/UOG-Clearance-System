@@ -232,3 +232,30 @@ export type Inquiry = {
   respondedAt: string | null;
   createdAt: string;
 };
+
+export type ProspectiveStudent = {
+  id: string;
+  batchId: string;
+  firstName: string;
+  middleName: string | null;
+  lastName: string;
+  gender: string | null;
+  age: number | null;
+  email: string | null;
+  department: string | null;
+  academicYear: number | null;
+  campusId: string;
+};
+
+export type StudentBatch = {
+  id: string;
+  name: string;
+  campusId: string;
+  submittedBy: string;
+  submittedAt: string;
+  status: "PENDING" | "IMPORTED" | "REJECTED";
+  importedAt: string | null;
+  importedBy: string | null;
+  importedCount: number;
+  studentCount: number;
+};

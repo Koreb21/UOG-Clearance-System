@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { BackButton } from "../components/BackButton";
 import { api } from "../lib/api";
@@ -36,6 +36,12 @@ export function RegistrarDashboardPage() {
   const [loadingStats, setLoadingStats] = useState(true);
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
 
+  const [batchFile, setBatchFile] = useState<File | null>(null);
+  const [batchUploading, setBatchUploading] = useState(false);
+  const [batchResult, setBatchResult] = useState<{ batchId: string; studentCount: number; message: string } | null>(null);
+  const [batchError, setBatchError] = useState<string | null>(null);
+  const batchFileInputRef = useRef<HTMLInputElement>(null);
+
   useEffect(() => {
     if (!token) return;
     setLoadingStats(true);
@@ -51,6 +57,18 @@ export function RegistrarDashboardPage() {
     setShowLogoutConfirm(false);
     logout();
     void navigate("/login", { replace: true });
+  }
+
+  async function handleBatchUpload() {
+    if (!token || !batchFile) return;
+    setBatchUploading(true); setBatchResult(null); setBatchError(null);
+    try {
+      const res = await api.uploadProspectiveBatch(token, batchFile);
+      setBatchResult({ batchId: res.batchId, studentCount: res.studentCount, message: res.message });
+      setBatchFile(null);
+      if (batchFileInputRef.current) batchFileInputRef.current.value = "";
+    } catch (err: any) { setBatchError(err.message ?? "Upload failed"); }
+    finally { setBatchUploading(false); }
   }
 
   const navCards = [
@@ -184,6 +202,38 @@ export function RegistrarDashboardPage() {
               <span className="material-symbols-outlined text-[#c3c6d1] group-hover:text-[#001e40] transition-colors mt-1">chevron_right</span>
             </button>
           ))}
+        </div>
+
+        <div className="mt-10 bg-white rounded-2xl shadow-[0_12px_32px_-4px_rgba(0,30,64,0.08)] p-6">
+          <div className="flex items-center gap-3 mb-5 pb-4 border-b border-[#e6e8eb]">
+            <div className="w-10 h-10 rounded-xl bg-[#2d6a4f] flex items-center justify-center"><span className="material-symbols-outlined text-white">upload_file</span></div>
+            <div>
+              <h3 className="text-lg font-black text-[#001e40]">Submit Prospective Students</h3>
+              <p className="text-xs text-[#43474f]">Upload a CSV of new students to send to the admin for ID generation.</p>
+            </div>
+          </div>
+          <div className="bg-[#e8f5e9] rounded-lg p-4 mb-5 text-xs text-[#1b5e20] space-y-1.5">
+            <p className="font-bold text-sm mb-2 flex items-center gap-1.5"><span className="material-symbols-outlined text-base">info</span>Required CSV Columns</p>
+            {[["A","firstName",""],["B","middleName","(optional)"],["C","lastName",""],["D","gender","MALE or FEMALE (optional)"],["E","age","(optional)"],["F","department","(optional)"],["G","email","(optional)"],["H","academicYear","e.g. 2015"],["I","campus","TEWODROS / MARAKI / FASIL"]].map(([col,field,hint]) => (
+              <div key={col} className="flex gap-2"><span className="w-5 font-black shrink-0">{col}</span><span className="font-semibold w-36 shrink-0">{field}</span><span className="opacity-70">{hint}</span></div>
+            ))}
+            <p className="text-[10px] opacity-70 pt-1">Row 1 must be the header. The admin will auto-generate UGR/00001/YY student IDs and 6-character passwords.</p>
+          </div>
+          <div className="border-2 border-dashed border-[#c3c6d1] rounded-xl p-6 text-center cursor-pointer hover:border-[#2d6a4f] hover:bg-[#e8f5e9]/30 transition-colors mb-4" onClick={() => batchFileInputRef.current?.click()}>
+            <span className="material-symbols-outlined text-4xl text-[#43474f] mb-2 block">folder_open</span>
+            {batchFile ? <p className="text-sm font-bold text-[#2d6a4f]">{batchFile.name}</p> : <><p className="text-sm font-medium text-[#43474f]">Click to select file</p><p className="text-xs text-[#43474f] opacity-70 mt-1">Supports .csv only</p></>}
+            <input ref={batchFileInputRef} type="file" accept=".csv" className="hidden" onChange={e => { const f = e.target.files?.[0] ?? null; setBatchFile(f); setBatchResult(null); setBatchError(null); }} />
+          </div>
+          <button onClick={handleBatchUpload} disabled={!batchFile || batchUploading} className="w-full py-3 text-sm font-bold bg-[#2d6a4f] text-white rounded-lg hover:bg-[#1b4332] shadow-md transition-colors disabled:opacity-50 flex items-center justify-center gap-2">
+            {batchUploading ? <><span className="material-symbols-outlined text-base animate-spin">progress_activity</span> Uploading…</> : <><span className="material-symbols-outlined text-base">cloud_upload</span> Submit to Admin</>}
+          </button>
+          {batchResult && (
+            <div className="mt-5 bg-[#e8f5e9] border border-green-200 rounded-lg p-4 text-center">
+              <p className="text-sm font-bold text-[#1b5e20] flex items-center justify-center gap-1"><span className="material-symbols-outlined text-base">check_circle</span> {batchResult.studentCount} students submitted to admin.</p>
+              <p className="text-[10px] text-[#43474f] mt-1">Batch ID: {batchResult.batchId}</p>
+            </div>
+          )}
+          {batchError && <div className="mt-4 bg-red-50 border border-red-200 rounded-lg p-3 text-xs font-bold text-red-700 flex items-center gap-1"><span className="material-symbols-outlined text-base">error</span>{batchError}</div>}
         </div>
       </main>
 

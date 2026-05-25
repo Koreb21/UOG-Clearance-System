@@ -623,6 +623,36 @@ export const api = {
       { method: "POST" },
       token
     ),
+  uploadProspectiveBatch: (token: string, file: File) => {
+    const formData = new FormData();
+    formData.append("file", file);
+    return fetch(`${API_BASE_URL}/registrar/student-batches`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${token}` },
+      body: formData
+    }).then(async (response) => {
+      if (!response.ok) {
+        if (response.status === 401) notifySessionInvalid();
+        const payload = (await response.json().catch(() => ({}))) as { message?: string };
+        throw new Error(payload.message ?? "Unable to upload batch");
+      }
+      return (await response.json()) as { status: string; batchId: string; studentCount: number; message: string };
+    });
+  },
+  listStudentBatches: (token: string) =>
+    request<Array<{
+      id: string; name: string; campusId: string; submittedBy: string; submittedAt: string;
+      status: string; studentCount: number; importedAt: string | null; importedBy: string | null; importedCount: number;
+    }>>("/admin/student-batches", { method: "GET" }, token),
+  getBatchDetail: (token: string, batchId: string) =>
+    request<{
+      batch: { id: string; name: string; campusId: string; submittedBy: string; submittedAt: string; status: string; studentCount: number; importedAt: string | null; importedBy: string | null; importedCount: number };
+      students: Array<{ id: string; firstName: string; middleName: string | null; lastName: string; gender: string | null; age: number | null; email: string | null; department: string | null; academicYear: number | null; campusId: string }>;
+    }>(`/admin/student-batches/${encodeURIComponent(batchId)}`, { method: "GET" }, token),
+  importBatch: (token: string, batchId: string) =>
+    request<{
+      batchId: string; totalRows: number; importedCount: number; failedCount: number; errors: string[];
+    }>(`/admin/student-batches/${encodeURIComponent(batchId)}/import`, { method: "POST" }, token),
   changePassword: (token: string, currentPassword: string, newPassword: string) =>
     request<void>(
       "/auth/change-password",

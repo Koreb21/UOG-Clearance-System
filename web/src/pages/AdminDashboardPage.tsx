@@ -31,7 +31,7 @@ const BLANK_CREATE = {
   academicYear: new Date().getFullYear()
 };
 
-type MainTab = "DASHBOARD" | "USER_REGISTRY" | "DEPARTMENTS";
+type MainTab = "DASHBOARD" | "USER_REGISTRY" | "DEPARTMENTS" | "STUDENT_BATCHES";
 type RightTab = "EDIT" | "REGISTER_STUDENT" | "REGISTER_STAFF" | "IMPORT";
 
 export function AdminDashboardPage() {
@@ -76,6 +76,14 @@ export function AdminDashboardPage() {
     totalRows: number; importedCount: number; failedCount: number; errors: string[];
   } | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  /* ── Student Batches state ────────────────────────────────── */
+  const [batches, setBatches] = useState<Array<{ id: string; name: string; campusId: string; submittedBy: string; submittedAt: string; status: string; studentCount: number; importedAt: string | null; importedBy: string | null; importedCount: number }>>([]);
+  const [selectedBatchId, setSelectedBatchId] = useState<string | null>(null);
+  const [batchDetail, setBatchDetail] = useState<{ batch: typeof batches[0]; students: Array<{ id: string; firstName: string; middleName: string | null; lastName: string; gender: string | null; age: number | null; email: string | null; department: string | null; academicYear: number | null; campusId: string }> } | null>(null);
+  const [batchLoading, setBatchLoading] = useState(false);
+  const [batchImporting, setBatchImporting] = useState(false);
+  const [batchImportResult, setBatchImportResult] = useState<{ totalRows: number; importedCount: number; failedCount: number; errors: string[] } | null>(null);
 
   /* ── Department Management state ──────────────────────────── */
   const [deptSearch, setDeptSearch] = useState("");
@@ -135,6 +143,49 @@ export function AdminDashboardPage() {
   };
 
   useEffect(() => { loadData(); }, [token]);
+
+  /* ── batch data loading ─────────────────────────────────── */
+  const loadBatches = async () => {
+    if (!token) return;
+    try { const list = await api.listStudentBatches(token); setBatches(list); } catch (err) { console.error(err); }
+  };
+  useEffect(() => { if (mainTab === "STUDENT_BATCHES") { loadBatches(); setSelectedBatchId(null); setBatchDetail(null); setBatchImportResult(null); } }, [mainTab]);
+
+  const handleViewBatch = async (batchId: string) => {
+    if (!token) return;
+    setSelectedBatchId(batchId);
+    setBatchImportResult(null);
+    try { const detail = await api.getBatchDetail(token, batchId); setBatchDetail(detail); } catch (err: any) { showToast(err.message ?? "Failed to load batch", "error"); }
+  };
+
+  const handleBatchImport = async () => {
+    if (!token || !selectedBatchId || !batchDetail) return;
+    setBatchImporting(true); setBatchImportResult(null);
+    try {
+      const result = await api.importBatch(token, selectedBatchId);
+      setBatchImportResult(result);
+      showToast(`${result.importedCount} students imported with auto-generated IDs.`, "success");
+      loadBatches();
+      const updated = await api.getBatchDetail(token, selectedBatchId);
+      setBatchDetail(updated);
+      loadData();
+    } catch (err: any) { showToast(err.message ?? "Import failed", "error"); }
+    finally { setBatchImporting(false); }
+  };
+
+  const handleDownloadBatchCsv = () => {
+    if (!batchDetail) return;
+    const header = "firstName,middleName,lastName,gender,age,department,email,academicYear,campus";
+    const rows = batchDetail.students.map(s =>
+      [s.firstName, s.middleName ?? "", s.lastName, s.gender ?? "", s.age ?? "", s.department ?? "", s.email ?? "", s.academicYear ?? "", s.campusId].map(v => `"${String(v).replace(/"/g, '""')}"`).join(",")
+    );
+    const csv = [header, ...rows].join("\n");
+    const blob = new Blob([csv], { type: "text/csv" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url; a.download = `${batchDetail.batch.name}_students.csv`; a.click();
+    URL.revokeObjectURL(url);
+  };
 
   /* ── department data loading ──────────────────────────────── */
   const loadAssignedStaff = async (deptId: string) => {
@@ -347,6 +398,7 @@ export function AdminDashboardPage() {
   const sidebarItems: { tab: MainTab; icon: string; label: string }[] = [
     { tab: "DASHBOARD", icon: "dashboard", label: "Dashboard" },
     { tab: "USER_REGISTRY", icon: "group", label: "User Registry" },
+    { tab: "STUDENT_BATCHES", icon: "upload_file", label: "Student Batches" },
     { tab: "DEPARTMENTS", icon: "corporate_fare", label: "Departments" },
   ];
 
@@ -736,6 +788,120 @@ export function AdminDashboardPage() {
               </div>
             </div>
           </>
+        )}
+
+        {/* ════════════════════════ STUDENT BATCHES TAB ════════════════════════ */}
+        {mainTab === "STUDENT_BATCHES" && (
+          <div className="space-y-6">
+            <section className="flex items-center justify-between">
+              <div>
+                <h2 className="text-2xl font-bold text-primary tracking-tight">Student Batches</h2>
+                <p className="text-sm text-on-surface-variant mt-1">Review prospective student lists submitted by registrars, download or import them into the registry.</p>
+              </div>
+              <span className="text-xs font-bold text-on-surface-variant bg-surface-container px-3 py-1 rounded-full">{batches.length} batch{batches.length !== 1 ? "es" : ""}</span>
+            </section>
+
+            <div className="bg-surface-container-lowest rounded-2xl overflow-hidden shadow-sm border border-surface-container">
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-sm">
+                  <thead className="bg-surface-container-low">
+                    <tr>
+                      <th className="px-4 py-3 text-xs font-bold uppercase tracking-wider text-on-surface-variant">Batch</th>
+                      <th className="px-4 py-3 text-xs font-bold uppercase tracking-wider text-on-surface-variant">Campus</th>
+                      <th className="px-4 py-3 text-xs font-bold uppercase tracking-wider text-on-surface-variant">Submitted By</th>
+                      <th className="px-4 py-3 text-xs font-bold uppercase tracking-wider text-on-surface-variant">Students</th>
+                      <th className="px-4 py-3 text-xs font-bold uppercase tracking-wider text-on-surface-variant">Status</th>
+                      <th className="px-4 py-3 text-xs font-bold uppercase tracking-wider text-on-surface-variant">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-surface-container">
+                    {batches.map(b => (
+                      <tr key={b.id} className="hover:bg-primary-fixed/10">
+                        <td className="px-4 py-3">
+                          <p className="font-bold text-on-surface">{b.name}</p>
+                          <p className="text-[10px] text-on-surface-variant">{new Date(b.submittedAt).toLocaleDateString()}</p>
+                        </td>
+                        <td className="px-4 py-3 text-on-surface-variant">{b.campusId}</td>
+                        <td className="px-4 py-3 text-on-surface-variant">{b.submittedBy}</td>
+                        <td className="px-4 py-3">
+                          <span className="inline-flex rounded-full bg-primary-fixed/40 px-2 py-0.5 text-[11px] font-bold text-primary">{b.studentCount} students</span>
+                        </td>
+                        <td className="px-4 py-3">
+                          <span className={`inline-flex rounded-full px-2 py-0.5 text-[10px] font-bold ${b.status === "IMPORTED" ? "bg-green-100 text-green-800" : b.status === "REJECTED" ? "bg-red-100 text-red-800" : "bg-yellow-100 text-yellow-800"}`}>{b.status === "IMPORTED" ? "Imported" : b.status === "REJECTED" ? "Rejected" : "Pending"}</span>
+                        </td>
+                        <td className="px-4 py-3">
+                          <button onClick={() => handleViewBatch(b.id)} className="rounded-lg px-3 py-1.5 text-sm font-bold text-primary hover:bg-primary-fixed/20 transition-colors">
+                            {b.status === "IMPORTED" ? "View" : "Review & Import"}
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+                {batches.length === 0 && <div className="p-8 text-center text-on-surface-variant text-sm">No batches submitted yet.</div>}
+              </div>
+            </div>
+
+            {batchDetail && (
+              <div className="bg-surface-container-lowest rounded-2xl overflow-hidden shadow-sm border border-surface-container">
+                <div className="px-6 py-4 border-b border-surface-container flex flex-col md:flex-row justify-between items-start md:items-center gap-3 bg-surface-container-low/30">
+                  <div>
+                    <h3 className="text-sm font-bold text-on-primary-fixed-variant uppercase tracking-wider">{batchDetail.batch.name}</h3>
+                    <p className="text-[10px] text-on-surface-variant">{batchDetail.batch.campusId} · Submitted by {batchDetail.batch.submittedBy} · {batchDetail.students.length} students</p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    {batchDetail.batch.status !== "IMPORTED" && (
+                      <button onClick={handleBatchImport} disabled={batchImporting} className="bg-primary text-white px-4 py-2 rounded-lg font-bold text-sm flex items-center gap-2 shadow-md hover:bg-primary-container hover:text-on-primary-container transition-all disabled:opacity-50">
+                        <span className="material-symbols-outlined text-lg">person_add</span>{batchImporting ? "Importing…" : "Generate IDs & Import"}
+                      </button>
+                    )}
+                    <button onClick={handleDownloadBatchCsv} className="rounded-lg px-3 py-2 text-sm font-bold text-primary border border-primary/30 hover:border-primary hover:bg-primary-fixed/20 transition-colors flex items-center gap-1.5">
+                      <span className="material-symbols-outlined text-base">download</span> Download CSV
+                    </button>
+                  </div>
+                </div>
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left text-sm">
+                    <thead className="bg-surface-container-low">
+                      <tr>
+                        <th className="px-4 py-2 text-xs font-bold uppercase tracking-wider text-on-surface-variant">Name</th>
+                        <th className="px-4 py-2 text-xs font-bold uppercase tracking-wider text-on-surface-variant">Gender</th>
+                        <th className="px-4 py-2 text-xs font-bold uppercase tracking-wider text-on-surface-variant">Age</th>
+                        <th className="px-4 py-2 text-xs font-bold uppercase tracking-wider text-on-surface-variant">Department</th>
+                        <th className="px-4 py-2 text-xs font-bold uppercase tracking-wider text-on-surface-variant">Email</th>
+                        <th className="px-4 py-2 text-xs font-bold uppercase tracking-wider text-on-surface-variant">Year</th>
+                        <th className="px-4 py-2 text-xs font-bold uppercase tracking-wider text-on-surface-variant">Campus</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-surface-container">
+                      {batchDetail.students.map(s => (
+                        <tr key={s.id} className="hover:bg-primary-fixed/5">
+                          <td className="px-4 py-2 font-medium text-on-surface">{s.firstName} {s.middleName ? s.middleName + " " : ""}{s.lastName}</td>
+                          <td className="px-4 py-2 text-on-surface-variant">{s.gender ?? "—"}</td>
+                          <td className="px-4 py-2 text-on-surface-variant">{s.age ?? "—"}</td>
+                          <td className="px-4 py-2 text-on-surface-variant">{s.department ?? "—"}</td>
+                          <td className="px-4 py-2 text-on-surface-variant">{s.email ?? "—"}</td>
+                          <td className="px-4 py-2 text-on-surface-variant">{s.academicYear ?? "—"}</td>
+                          <td className="px-4 py-2 text-on-surface-variant">{s.campusId}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+                {batchImportResult && (
+                  <div className="p-4 border-t border-surface-container bg-surface-container-low/30">
+                    <div className="grid grid-cols-3 gap-3 mb-3">
+                      <div className="bg-surface-container p-3 rounded-lg text-center"><p className="text-2xl font-black text-on-surface">{batchImportResult.totalRows}</p><p className="text-[10px] text-on-surface-variant font-bold uppercase">Total</p></div>
+                      <div className="bg-green-50 p-3 rounded-lg text-center"><p className="text-2xl font-black text-green-700">{batchImportResult.importedCount}</p><p className="text-[10px] text-green-600 font-bold uppercase">Imported</p></div>
+                      <div className={`p-3 rounded-lg text-center ${batchImportResult.failedCount > 0 ? "bg-red-50" : "bg-surface-container"}`}><p className={`text-2xl font-black ${batchImportResult.failedCount > 0 ? "text-red-700" : "text-on-surface"}`}>{batchImportResult.failedCount}</p><p className={`text-[10px] font-bold uppercase ${batchImportResult.failedCount > 0 ? "text-red-600" : "text-on-surface-variant"}`}>Failed</p></div>
+                    </div>
+                    {batchImportResult.errors.length > 0 && <div className="bg-red-50 border border-red-200 rounded-lg p-3 max-h-40 overflow-y-auto"><p className="text-xs font-bold text-red-700 mb-2">Errors:</p>{batchImportResult.errors.map((e, i) => <p key={i} className="text-[11px] text-red-600 leading-relaxed">{e}</p>)}</div>}
+                    {batchImportResult.importedCount > 0 && <p className="text-xs text-green-700 font-medium text-center flex items-center justify-center gap-1"><span className="material-symbols-outlined text-base">check_circle</span>{batchImportResult.importedCount} students added with UGR/NNNNN/YY IDs.</p>}
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
         )}
 
         {/* ════════════════════════ DEPARTMENTS TAB ════════════════════════ */}

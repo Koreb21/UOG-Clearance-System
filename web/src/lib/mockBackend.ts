@@ -5,7 +5,7 @@
 // ─────────────────────────────────────────────────────────────────────────────
 import QRCode from "qrcode";
 
-const DB_KEY = "ugc_mock_db_v5";
+const DB_KEY = "ugc_mock_db_v6";
 const CHECK_CODES = ["LIBRARY", "PROCTOR", "CAFE", "DEPARTMENT_HEAD", "STUDENT_DEAN"] as const;
 type CheckCode = typeof CHECK_CODES[number];
 
@@ -159,6 +159,33 @@ interface DbDepartment {
   active: boolean;
 }
 
+interface DbProspectiveStudent {
+  id: string;
+  batchId: string;
+  firstName: string;
+  middleName: string | null;
+  lastName: string;
+  gender: string | null;
+  age: number | null;
+  email: string | null;
+  department: string | null;
+  academicYear: number | null;
+  campusId: string;
+}
+
+interface DbStudentBatch {
+  id: string;
+  name: string;
+  campusId: string;
+  submittedBy: string;
+  submittedAt: string;
+  status: "PENDING" | "IMPORTED" | "REJECTED";
+  importedAt: string | null;
+  importedBy: string | null;
+  importedCount: number;
+  studentCount: number;
+}
+
 interface Db {
   users: DbUser[];
   students: DbStudent[];
@@ -170,6 +197,8 @@ interface Db {
   payments: DbPayment[];
   messages: DbMessage[];
   departments: DbDepartment[];
+  batches: DbStudentBatch[];
+  prospectiveStudents: DbProspectiveStudent[];
   initialized: boolean;
 }
 
@@ -184,7 +213,7 @@ function readDb(): Db {
       return parsed;
     }
   } catch {/* */}
-  return { users: [], students: [], requests: [], checks: [], liabilities: [], certificates: [], inquiries: [], payments: [], messages: [], departments: [], initialized: false };
+  return { users: [], students: [], requests: [], checks: [], liabilities: [], certificates: [], inquiries: [], payments: [], messages: [], departments: [], batches: [], prospectiveStudents: [], initialized: false };
 }
 
 function writeDb(db: Db) {
@@ -987,6 +1016,157 @@ function handleImportStudentsCsv(token: string | null, file: { name: string; tex
   return { totalRows: dataRows.length, importedCount: imported, failedCount: failed, errors };
 }
 
+// ── Batch / Prospective Student endpoints ──────────────────────────────────
+
+function generateStudentId(index: number, year: number): string {
+  const seq = String(index).padStart(5, "0");
+  const yy = String(year).slice(-2);
+  return `UGR/${seq}/${yy}`;
+}
+
+function randomPassword(length = 6): string {
+  const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+  let out = "";
+  for (let i = 0; i < length; i++) out += chars.charAt(Math.floor(Math.random() * chars.length));
+  return out;
+}
+
+function handleRegistrarUploadBatch(token: string | null, file: { name: string; text: string } | null, db: Db) {
+  const user = requireAuth(token, db);
+  if (!file) return { status: "error", message: "No file uploaded." };
+  const rows = file.text.split(/\r?\n/).map((r) => r.trim()).filter((r) => r.length > 0);
+  if (rows.length < 2) return { status: "error", message: "CSV is empty or missing data rows." };
+  const headerCols = rows[0].split(",").map((c) => c.trim().toLowerCase());
+  const idx = (name: string) => {
+    const normalized = name.toLowerCase();
+    const i = headerCols.findIndex((h) => h === normalized || h.replace(/_/g, "") === normalized.replace(/_/g, ""));
+    return i >= 0 ? i : -1;
+  };
+  const idxFirst = idx("firstname");
+  const idxMiddle = idx("middlename");
+  const idxLast = idx("lastname");
+  const idxGender = idx("gender");
+  const idxAge = idx("age");
+  const idxDept = idx("department");
+  const idxEmail = idx("email");
+  const idxYear = idx("academicyear");
+  const idxCampus = idx("campus");
+  if (idxFirst === -1 || idxLast === -1 || idxCampus === -1 || idxYear === -1) {
+    return { status: "error", message: "CSV header must include firstName, lastName, academicYear, and campus. Optional: middleName, gender, age, department, email." };
+  }
+  const dataRows = rows.slice(1);
+  const batchId = uid();
+  const batch: DbStudentBatch = {
+    id: batchId,
+    name: file.name.replace(/\.csv$/i, ""),
+    campusId: user.campusId ?? "TEWODROS",
+    submittedBy: user.username,
+    submittedAt: isoNow(),
+    status: "PENDING",
+    importedAt: null,
+    importedBy: null,
+    importedCount: 0,
+    studentCount: dataRows.length,
+  };
+  const prospective: DbProspectiveStudent[] = [];
+  for (let i = 0; i < dataRows.length; i++) {
+    const cols = dataRows[i].split(",").map((c) => c.trim());
+    const firstName = cols[idxFirst] ?? "";
+    const lastName = cols[idxLast] ?? "";
+    if (!firstName || !lastName) continue;
+    const academicYear = cols[idxYear] ? parseInt(cols[idxYear], 10) || null : null;
+    const campusId = (cols[idxCampus] ?? "").toUpperCase().replace(/\s+/g, "_");
+    const normalizedCampus = ["TEWODROS", "MARAKI", "FASIL"].includes(campusId) ? campusId : (user.campusId ?? "TEWODROS");
+    prospective.push({
+      id: uid(), batchId,
+      firstName,
+      middleName: idxMiddle >= 0 ? (cols[idxMiddle] || null) : null,
+      lastName,
+      gender: idxGender >= 0 ? (cols[idxGender] || null) : null,
+      age: idxAge >= 0 ? (parseInt(cols[idxAge], 10) || null) : null,
+      email: idxEmail >= 0 ? (cols[idxEmail] || null) : null,
+      department: idxDept >= 0 ? (cols[idxDept] || null) : null,
+      academicYear,
+      campusId: normalizedCampus,
+    });
+  }
+  batch.studentCount = prospective.length;
+  db.batches.push(batch);
+  db.prospectiveStudents.push(...prospective);
+  writeDb(db);
+  return { status: "ok", batchId, studentCount: prospective.length, message: `${prospective.length} prospective students submitted.` };
+}
+
+function handleAdminGetBatches(token: string | null, _params: URLSearchParams, db: Db) {
+  requireAuth(token, db);
+  return db.batches
+    .slice()
+    .sort((a, b) => b.submittedAt.localeCompare(a.submittedAt))
+    .map((b) => ({
+      id: b.id, name: b.name, campusId: b.campusId, submittedBy: b.submittedBy,
+      submittedAt: b.submittedAt, status: b.status, studentCount: b.studentCount,
+      importedAt: b.importedAt, importedBy: b.importedBy, importedCount: b.importedCount,
+    }));
+}
+
+function handleAdminGetBatchDetail(token: string | null, batchId: string, db: Db) {
+  requireAuth(token, db);
+  const batch = db.batches.find((b) => b.id === batchId);
+  if (!batch) throw { status: 404, message: "Batch not found." };
+  const students = db.prospectiveStudents.filter((s) => s.batchId === batchId).map((s) => ({
+    id: s.id, firstName: s.firstName, middleName: s.middleName, lastName: s.lastName,
+    gender: s.gender, age: s.age, email: s.email, department: s.department,
+    academicYear: s.academicYear, campusId: s.campusId,
+  }));
+  return {
+    batch: {
+      id: batch.id, name: batch.name, campusId: batch.campusId, submittedBy: batch.submittedBy,
+      submittedAt: batch.submittedAt, status: batch.status, studentCount: batch.studentCount,
+      importedAt: batch.importedAt, importedBy: batch.importedBy, importedCount: batch.importedCount,
+    },
+    students,
+  };
+}
+
+function handleAdminImportBatch(token: string | null, batchId: string, db: Db) {
+  const user = requireAuth(token, db);
+  const batch = db.batches.find((b) => b.id === batchId);
+  if (!batch) throw { status: 404, message: "Batch not found." };
+  if (batch.status === "IMPORTED") throw { status: 400, message: "Batch already imported." };
+  const prospectives = db.prospectiveStudents.filter((s) => s.batchId === batchId);
+  let imported = 0;
+  let failed = 0;
+  const errors: string[] = [];
+  const nextIndex = db.students.length + 1;
+  for (let i = 0; i < prospectives.length; i++) {
+    const p = prospectives[i];
+    if (!p.firstName || !p.lastName) { failed++; errors.push(`Row ${i + 1}: missing first or last name`); continue; }
+    const year = p.academicYear ?? new Date().getFullYear();
+    const studentId = generateStudentId(nextIndex + i, year);
+    if (db.students.find((s) => s.studentId === studentId)) { failed++; errors.push(`Row ${i + 1}: generated ID ${studentId} already exists`); continue; }
+    const password = randomPassword(6);
+    const student: DbStudent = {
+      id: uid(), studentId, firstName: p.firstName, middleName: p.middleName, lastName: p.lastName,
+      gender: p.gender, phone: null, email: p.email, campusId: p.campusId,
+      academicDepartmentId: p.department, program: null, academicYear: year,
+      graduationYear: year + 4, profileImageUrl: null, hasProfileImage: false, status: "ACTIVE",
+    };
+    db.students.push(student);
+    db.users.push({
+      id: uid(), username: studentId, password,
+      email: p.email, role: "STUDENT", campusId: p.campusId,
+      departmentId: null, studentId, active: true, mustChangePassword: true,
+    });
+    imported++;
+  }
+  batch.status = "IMPORTED";
+  batch.importedAt = isoNow();
+  batch.importedBy = user.username;
+  batch.importedCount = imported;
+  writeDb(db);
+  return { batchId, totalRows: prospectives.length, importedCount: imported, failedCount: failed, errors };
+}
+
 function handleAdminStudents(token: string | null, db: Db) {
   requireAuth(token, db);
   return db.students.map((s) => ({ id: s.id, studentId: s.studentId, firstName: s.firstName, middleName: s.middleName, lastName: s.lastName, gender: s.gender, phone: s.phone, email: s.email, campusId: s.campusId, academicDepartmentId: s.academicDepartmentId, program: s.program, academicYear: s.academicYear, graduationYear: s.graduationYear, profileImageUrl: null, idCardImageUrl: null, status: s.status }));
@@ -1180,6 +1360,7 @@ async function dispatch(method: string, path: string, headers: Headers, bodyText
       return { status: 200, body: handleCloseRequest(token, requestId, db) };
     }
     if (method === "POST" && pathOnly === "/registrar/qr/verify") return { status: 200, body: handleVerifyQr(token, body, db) };
+    if (method === "POST" && pathOnly === "/registrar/student-batches") return { status: 200, body: handleRegistrarUploadBatch(token, formDataFile ?? null, db) };
 
     // ── Messaging
     if (method === "GET" && pathOnly === "/messages/contacts") return { status: 200, body: handleGetContacts(token, db) };
@@ -1250,6 +1431,15 @@ async function dispatch(method: string, path: string, headers: Headers, bodyText
       writeDb(db); return { status: 204, body: null };
     }
     if (method === "POST" && pathOnly === "/admin/students/import") return { status: 200, body: handleImportStudentsCsv(token, formDataFile ?? null, db) };
+    if (method === "GET" && pathOnly === "/admin/student-batches") return { status: 200, body: handleAdminGetBatches(token, params, db) };
+    if (method === "GET" && /^\/admin\/student-batches\//.test(pathOnly) && !pathOnly.endsWith("/import")) {
+      const batchId = pathOnly.split("/")[3];
+      return { status: 200, body: handleAdminGetBatchDetail(token, batchId, db) };
+    }
+    if (method === "POST" && /^\/admin\/student-batches\/[^/]+\/import$/.test(pathOnly)) {
+      const batchId = pathOnly.split("/")[3];
+      return { status: 200, body: handleAdminImportBatch(token, batchId, db) };
+    }
 
     // ── Campus / Departments
     if (method === "GET" && pathOnly === "/campuses") return { status: 200, body: [{ id: "TEWODROS", code: "TEWODROS", name: "Atse Tewodros Campus", active: true }, { id: "MARAKI", code: "MARAKI", name: "Maraki Campus", active: true }, { id: "FASIL", code: "FASIL", name: "Atse Fasil Campus", active: true }] };
