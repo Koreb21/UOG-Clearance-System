@@ -52,6 +52,8 @@ export function AdminDashboardPage() {
   const [showStudentEditModal, setShowStudentEditModal] = useState(false);
   const [showStudentAddModal, setShowStudentAddModal] = useState(false);
   const [showStudentImportModal, setShowStudentImportModal] = useState(false);
+  const [selectedStudentIds, setSelectedStudentIds] = useState<Set<string>>(new Set());
+  const [bulkActionLoading, setBulkActionLoading] = useState(false);
 
   /* ── User Registry state ──────────────────────────────────── */
   const [searchQuery, setSearchQuery] = useState("");
@@ -287,6 +289,56 @@ export function AdminDashboardPage() {
       setNewPassword(""); setShowResetPw(false); showToast("Password reset successfully.", "success");
     } catch (err: any) { showToast("Password reset failed: " + err.message, "error"); }
     finally { setPwSaving(false); }
+  };
+
+  /* ── Bulk student actions ─────────────────────────────────── */
+  const handleBulkActivate = async (ids: string[]) => {
+    if (!token) return;
+    setBulkActionLoading(true);
+    try {
+      await Promise.all(ids.map(id => {
+        const s = students.find(st => st.id === id);
+        if (!s) return Promise.resolve();
+        return api.setStudentActive(token, s.studentId, true);
+      }));
+      showToast(`${ids.length} student${ids.length !== 1 ? "s" : ""} activated.`, "success");
+      setSelectedStudentIds(new Set());
+      loadData();
+    } catch (err: any) { showToast("Bulk activate failed: " + err.message, "error"); }
+    finally { setBulkActionLoading(false); }
+  };
+
+  const handleBulkDeactivate = async (ids: string[]) => {
+    if (!token) return;
+    setBulkActionLoading(true);
+    try {
+      await Promise.all(ids.map(id => {
+        const s = students.find(st => st.id === id);
+        if (!s) return Promise.resolve();
+        return api.setStudentActive(token, s.studentId, false);
+      }));
+      showToast(`${ids.length} student${ids.length !== 1 ? "s" : ""} deactivated.`, "success");
+      setSelectedStudentIds(new Set());
+      loadData();
+    } catch (err: any) { showToast("Bulk deactivate failed: " + err.message, "error"); }
+    finally { setBulkActionLoading(false); }
+  };
+
+  const handleBulkDelete = async (ids: string[]) => {
+    if (!token) return;
+    if (!window.confirm(`Permanently delete ${ids.length} student${ids.length !== 1 ? "s" : ""}? This cannot be undone.`)) return;
+    setBulkActionLoading(true);
+    try {
+      await Promise.all(ids.map(id => {
+        const s = students.find(st => st.id === id);
+        if (!s) return Promise.resolve();
+        return api.deleteStudent(token, s.studentId);
+      }));
+      showToast(`${ids.length} student${ids.length !== 1 ? "s" : ""} deleted.`, "success");
+      setSelectedStudentIds(new Set());
+      loadData();
+    } catch (err: any) { showToast("Bulk delete failed: " + err.message, "error"); }
+    finally { setBulkActionLoading(false); }
   };
 
   const handleDeleteUser = async () => {
@@ -538,6 +590,27 @@ export function AdminDashboardPage() {
             const q = studentSearch.toLowerCase();
             return `${s.firstName} ${s.lastName}`.toLowerCase().includes(q) || s.studentId.toLowerCase().includes(q) || (s.email ?? "").toLowerCase().includes(q);
           });
+          const allFilteredIds = filteredStudents.map(s => s.id);
+          const allSelected = allFilteredIds.length > 0 && allFilteredIds.every(id => selectedStudentIds.has(id));
+          const someSelected = allFilteredIds.some(id => selectedStudentIds.has(id));
+          const selectionCount = allFilteredIds.filter(id => selectedStudentIds.has(id)).length;
+          const selectedIds = allFilteredIds.filter(id => selectedStudentIds.has(id));
+
+          const toggleOne = (id: string) => {
+            setSelectedStudentIds(prev => {
+              const next = new Set(prev);
+              next.has(id) ? next.delete(id) : next.add(id);
+              return next;
+            });
+          };
+          const toggleAll = () => {
+            if (allSelected) {
+              setSelectedStudentIds(prev => { const next = new Set(prev); allFilteredIds.forEach(id => next.delete(id)); return next; });
+            } else {
+              setSelectedStudentIds(prev => { const next = new Set(prev); allFilteredIds.forEach(id => next.add(id)); return next; });
+            }
+          };
+
           return (
             <div className="space-y-6">
               {/* Header */}
@@ -564,6 +637,42 @@ export function AdminDashboardPage() {
                 </div>
               </div>
 
+              {/* Bulk Action Bar */}
+              {selectionCount > 0 && (
+                <div className="flex items-center gap-4 bg-primary/5 border border-primary/20 rounded-2xl px-5 py-3 shadow-sm">
+                  <div className="flex items-center gap-2 flex-grow">
+                    <div className="w-7 h-7 rounded-full bg-primary flex items-center justify-center shrink-0">
+                      <span className="text-white text-xs font-black">{selectionCount}</span>
+                    </div>
+                    <span className="text-sm font-bold text-primary">{selectionCount} student{selectionCount !== 1 ? "s" : ""} selected</span>
+                    <button onClick={() => setSelectedStudentIds(new Set())} className="text-xs text-on-surface-variant hover:text-on-surface ml-1 underline underline-offset-2 transition-colors">Clear</button>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => handleBulkActivate(selectedIds)}
+                      disabled={bulkActionLoading}
+                      className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold bg-green-100 text-green-800 hover:bg-green-200 transition-colors disabled:opacity-50"
+                    >
+                      <span className="material-symbols-outlined text-base">check_circle</span> Activate
+                    </button>
+                    <button
+                      onClick={() => handleBulkDeactivate(selectedIds)}
+                      disabled={bulkActionLoading}
+                      className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold bg-surface-container text-on-surface-variant hover:bg-surface-container-high transition-colors disabled:opacity-50"
+                    >
+                      <span className="material-symbols-outlined text-base">block</span> Deactivate
+                    </button>
+                    <button
+                      onClick={() => handleBulkDelete(selectedIds)}
+                      disabled={bulkActionLoading}
+                      className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold bg-error-container text-error hover:bg-error hover:text-white transition-colors disabled:opacity-50"
+                    >
+                      <span className="material-symbols-outlined text-base">delete</span> Delete
+                    </button>
+                  </div>
+                </div>
+              )}
+
               {/* Students Table */}
               <div className="bg-surface-container-lowest rounded-2xl overflow-hidden shadow-sm border border-surface-container">
                 <div className="px-6 py-4 border-b border-surface-container flex justify-between items-center bg-surface-container-low/30">
@@ -574,6 +683,15 @@ export function AdminDashboardPage() {
                   <table className="w-full text-left text-sm">
                     <thead className="bg-surface-container-low">
                       <tr>
+                        <th className="px-4 py-3 w-10">
+                          <input
+                            type="checkbox"
+                            checked={allSelected}
+                            ref={el => { if (el) el.indeterminate = someSelected && !allSelected; }}
+                            onChange={toggleAll}
+                            className="w-4 h-4 rounded accent-primary cursor-pointer"
+                          />
+                        </th>
                         <th className="px-4 py-3 text-xs font-bold uppercase tracking-wider text-on-surface-variant">Student</th>
                         <th className="px-4 py-3 text-xs font-bold uppercase tracking-wider text-on-surface-variant">Role</th>
                         <th className="px-4 py-3 text-xs font-bold uppercase tracking-wider text-on-surface-variant">Campus</th>
@@ -589,8 +707,17 @@ export function AdminDashboardPage() {
                         const deptInfo = departments.find(d => d.id === s.academicDepartmentId);
                         const imgUrl = s.profileImageUrl;
                         const active = s.status === "ACTIVE";
+                        const isChecked = selectedStudentIds.has(s.id);
                         return (
-                          <tr key={s.id} className="hover:bg-primary-fixed/10">
+                          <tr key={s.id} className={`transition-colors ${isChecked ? "bg-primary/5" : "hover:bg-primary-fixed/10"}`}>
+                            <td className="px-4 py-3">
+                              <input
+                                type="checkbox"
+                                checked={isChecked}
+                                onChange={() => toggleOne(s.id)}
+                                className="w-4 h-4 rounded accent-primary cursor-pointer"
+                              />
+                            </td>
                             <td className="px-4 py-3">
                               <div className="flex items-center gap-3">
                                 <div className="w-10 h-10 rounded-lg bg-surface-container-high flex items-center justify-center overflow-hidden border border-outline-variant/10 shrink-0">
