@@ -109,7 +109,7 @@ export function MessagingPage() {
       } else if (isFromMe) {
         key = msg.toUserId ?? `sent-${msg.id}`;
         const c = contacts.find(x => x.id === msg.toUserId);
-        name = c?.username ?? msg.toUsername ?? "Unknown";
+        name = c?.username ?? msg.toUsername ?? (msg.toUserId ? "Unknown" : "Draft / Self");
         role = c?.role ?? "";
       } else {
         key = msg.fromUserId;
@@ -222,22 +222,30 @@ export function MessagingPage() {
     c.lastMessage.body.toLowerCase().includes(search.toLowerCase())
   );
 
-  const isMobile = typeof window !== "undefined" && window.innerWidth < 768;
+  function getDashboardPath() {
+    if (!user) return `/campus/${campusSlug}`;
+    switch (user.role) {
+      case "STUDENT": return `/campus/${campusSlug}/student`;
+      case "FINANCE_OFFICER": return `/campus/${campusSlug}/finance`;
+      case "MAIN_REGISTRAR": return `/campus/${campusSlug}/registrar`;
+      case "SYSTEM_ADMIN": return `/admin`;
+      default: return `/campus/${campusSlug}/staff`;
+    }
+  }
 
   return (
     <div className="flex h-screen flex-col bg-[#f2f4f7] font-['Inter',sans-serif]">
       {/* Header */}
       <header className="sticky top-0 z-50 flex h-14 items-center justify-between border-b border-[#c3c6d1]/30 bg-[#003366] px-4 text-white shadow-md sm:px-6">
         <div className="flex items-center gap-3">
-          {!selectedConv ? (
-            <button type="button" onClick={() => navigate(`/campus/${campusSlug}/staff`)} className="flex items-center gap-1 rounded-lg p-1 hover:bg-white/10 transition-colors" title="Back to dashboard">
-              <span className="material-symbols-outlined text-[20px]">arrow_back</span>
-            </button>
-          ) : (
-            <button type="button" onClick={() => setSelectedConv(null)} className="flex items-center gap-1 rounded-lg p-1 hover:bg-white/10 md:hidden transition-colors">
-              <span className="material-symbols-outlined text-[20px]">arrow_back</span>
-            </button>
-          )}
+          <button
+            type="button"
+            onClick={() => selectedConv ? setSelectedConv(null) : navigate(getDashboardPath())}
+            className="flex items-center gap-1 rounded-lg p-1 hover:bg-white/10 transition-colors"
+            title={selectedConv ? "Back to conversations" : "Back to dashboard"}
+          >
+            <span className="material-symbols-outlined text-[20px]">arrow_back</span>
+          </button>
           <span className="material-symbols-outlined text-[22px]">chat</span>
           <div>
             <h1 className="text-sm font-bold">{selectedConv ? selectedConv.contactName : "Messages"}</h1>
