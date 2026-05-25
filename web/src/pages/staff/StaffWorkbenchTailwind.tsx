@@ -90,6 +90,7 @@ export function StaffWorkbenchTailwind({
   const [unreadMessages, setUnreadMessages] = useState(0);
   const [approving, setApproving] = useState<string | null>(null);
   const [queueSearch, setQueueSearch] = useState("");
+  const [queueTab, setQueueTab] = useState<"PENDING" | "APPROVED" | "FLAGGED">("PENDING");
 
   const fetchClearanceQueue = useCallback(async () => {
     if (!token) return;
@@ -134,18 +135,29 @@ export function StaffWorkbenchTailwind({
     }
   }
 
+  const isFlagged = (status: string) => ["FLAGGED", "FAILED", "AWAITING_FINANCE"].includes(status);
+  const isApproved = (status: string) => status === "CLEARED";
+  const isPending = (status: string) => !isApproved(status) && !isFlagged(status);
+
+  const pendingCount = clearanceQueue.filter(i => isPending(i.checkStatus)).length;
+  const clearedCount = clearanceQueue.filter(i => isApproved(i.checkStatus)).length;
+  const flaggedCount = clearanceQueue.filter(i => isFlagged(i.checkStatus)).length;
+
   const filteredClearanceQueue = useMemo(() => {
+    const tabFiltered = clearanceQueue.filter(item => {
+      if (queueTab === "PENDING") return isPending(item.checkStatus);
+      if (queueTab === "APPROVED") return isApproved(item.checkStatus);
+      if (queueTab === "FLAGGED") return isFlagged(item.checkStatus);
+      return true;
+    });
     const q = queueSearch.trim().toLowerCase();
-    if (!q) return clearanceQueue;
-    return clearanceQueue.filter(item =>
+    if (!q) return tabFiltered;
+    return tabFiltered.filter(item =>
       item.studentName.toLowerCase().includes(q) ||
       item.studentId.toLowerCase().includes(q) ||
       (item.program ?? "").toLowerCase().includes(q)
     );
-  }, [clearanceQueue, queueSearch]);
-
-  const pendingCount = clearanceQueue.filter(i => i.checkStatus !== "CLEARED").length;
-  const clearedCount = clearanceQueue.filter(i => i.checkStatus === "CLEARED").length;
+  }, [clearanceQueue, queueSearch, queueTab]);
 
   const statCards = useMemo(() => {
     const pending = queueItems.length;
@@ -257,14 +269,35 @@ export function StaffWorkbenchTailwind({
                   All students requesting clearance through your office — approve or review.
                 </p>
               </div>
-              <div className="flex items-center gap-2">
-                <span className="rounded-full bg-primary-fixed px-2.5 py-0.5 text-[10px] font-bold text-on-primary-fixed-variant">
-                  {pendingCount} pending
-                </span>
-                <span className="rounded-full bg-surface-container-high px-2.5 py-0.5 text-[10px] font-bold text-on-surface-variant">
-                  {clearedCount} cleared
-                </span>
-              </div>
+              <span className="text-xs text-on-surface-variant hidden sm:block">
+                {clearanceQueue.length} total request{clearanceQueue.length !== 1 ? "s" : ""}
+              </span>
+            </div>
+
+            {/* Tabs */}
+            <div className="flex gap-1 rounded-2xl bg-surface-container-low p-1.5">
+              {([
+                { key: "PENDING" as const, label: "Pending", count: pendingCount, icon: "pending_actions", activeClass: "bg-white text-yellow-700 shadow-sm", dotClass: "bg-yellow-500" },
+                { key: "APPROVED" as const, label: "Approved", count: clearedCount, icon: "verified", activeClass: "bg-white text-green-700 shadow-sm", dotClass: "bg-green-500" },
+                { key: "FLAGGED" as const, label: "Flagged", count: flaggedCount, icon: "flag", activeClass: "bg-white text-error shadow-sm", dotClass: "bg-error" },
+              ]).map(({ key, label, count, icon, activeClass, dotClass }) => (
+                <button
+                  key={key}
+                  type="button"
+                  onClick={() => setQueueTab(key)}
+                  className={`flex flex-1 items-center justify-center gap-2 rounded-xl px-3 py-2.5 text-xs font-bold transition-all ${
+                    queueTab === key ? activeClass : "text-on-surface-variant hover:bg-surface-container hover:text-on-surface"
+                  }`}
+                >
+                  <span className="material-symbols-outlined text-[16px]">{icon}</span>
+                  <span className="hidden sm:inline">{label}</span>
+                  {count > 0 && (
+                    <span className={`flex h-4 min-w-4 items-center justify-center rounded-full px-1 text-[9px] font-black text-white ${dotClass}`}>
+                      {count}
+                    </span>
+                  )}
+                </button>
+              ))}
             </div>
 
             {/* Search */}
@@ -285,10 +318,14 @@ export function StaffWorkbenchTailwind({
               </div>
             ) : filteredClearanceQueue.length === 0 ? (
               <div className="flex flex-col items-center gap-3 rounded-xl bg-surface-container-low py-16 text-center">
-                <span className="material-symbols-outlined text-5xl text-on-surface-variant">done_all</span>
-                <p className="font-bold text-on-surface">No students in queue</p>
+                <span className="material-symbols-outlined text-5xl text-on-surface-variant">
+                  {queueTab === "APPROVED" ? "verified" : queueTab === "FLAGGED" ? "flag" : "done_all"}
+                </span>
+                <p className="font-bold text-on-surface">
+                  {queueTab === "APPROVED" ? "No approved requests" : queueTab === "FLAGGED" ? "No flagged requests" : "No pending requests"}
+                </p>
                 <p className="text-sm text-on-surface-variant">
-                  {queueSearch ? "No results match your search." : "All clearance requests have been processed."}
+                  {queueSearch ? "No results match your search." : queueTab === "APPROVED" ? "No students have been cleared yet." : queueTab === "FLAGGED" ? "No students are currently flagged." : "All clearance requests have been processed."}
                 </p>
               </div>
             ) : (
