@@ -226,6 +226,14 @@ export default function App() {
         }
       />
 
+      {/* ── Admin Messages ── */}
+      <Route
+        path="/admin/messages"
+        element={
+          user?.role === "SYSTEM_ADMIN" ? <MessagingPage /> : <Navigate to="/login" replace />
+        }
+      />
+
       {/* ── Admin ── */}
       <Route
         path="/admin"

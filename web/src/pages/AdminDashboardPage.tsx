@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo, useRef } from "react";
+import { useNavigate } from "react-router-dom";
 import { SessionControls } from "../components/SessionControls";
 import { useToast } from "../components/ToastContext";
 import { api, toApiUrl } from "../lib/api";
@@ -44,6 +45,7 @@ export function AdminDashboardPage() {
   const [staffUsers, setStaffUsers] = useState<StaffUser[]>([]);
   const [loading, setLoading] = useState(true);
 
+  const navigate = useNavigate();
   const [mainTab, setMainTab] = useState<MainTab>("DASHBOARD");
 
   /* ── Students tab state ───────────────────────────────────── */
@@ -505,6 +507,17 @@ export function AdminDashboardPage() {
             </button>
           ))}
         </nav>
+
+        <div className="mt-4 border-t border-outline-variant/20 pt-4">
+          <p className="mb-2 px-3 text-[10px] font-bold uppercase tracking-widest text-on-surface-variant/50">Communication</p>
+          <button
+            onClick={() => navigate("/admin/messages")}
+            className="flex w-full items-center gap-4 rounded-lg p-3 text-left text-on-surface-variant shadow-sm transition-all hover:bg-white/60 hover:text-on-surface"
+          >
+            <span className="material-symbols-outlined">chat</span>
+            <span className="text-sm font-medium uppercase tracking-[0.05em]">Messages</span>
+          </button>
+        </div>
 
         <div className="mt-auto pt-6 border-t border-outline-variant/20">
           <p className="text-[10px] text-on-surface-variant text-center">V2.1.0 • SECURE SESSION</p>
