@@ -237,7 +237,7 @@ export type ProspectiveStudent = {
   id: string;
   batchId: string;
   firstName: string;
-  middleName: string | null;
+  fatherName: string | null;
   lastName: string;
   gender: string | null;
   age: number | null;

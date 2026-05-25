@@ -208,28 +208,93 @@ export function RegistrarDashboardPage() {
           <div className="flex items-center gap-3 mb-5 pb-4 border-b border-[#e6e8eb]">
             <div className="w-10 h-10 rounded-xl bg-[#2d6a4f] flex items-center justify-center"><span className="material-symbols-outlined text-white">upload_file</span></div>
             <div>
-              <h3 className="text-lg font-black text-[#001e40]">Submit Prospective Students</h3>
-              <p className="text-xs text-[#43474f]">Upload a CSV of new students to send to the admin for ID generation.</p>
+              <h3 className="text-lg font-black text-[#001e40]">Bulk Student Import</h3>
+              <p className="text-xs text-[#43474f]">Upload a CSV of new students to send to the admin for ID and password generation.</p>
             </div>
           </div>
+
+          {/* Download template */}
+          <div className="flex items-center gap-3 mb-5 p-3 bg-[#e8f5e9] rounded-lg">
+            <span className="material-symbols-outlined text-[#1b5e20] text-2xl">description</span>
+            <div className="flex-1">
+              <p className="text-sm font-bold text-[#1b5e20]">CSV Template</p>
+              <p className="text-[10px] text-[#43474f]">Download the template, fill in student data, then upload.</p>
+            </div>
+            <button onClick={() => {
+              const header = "firstName,fatherName,lastName,gender,age,department,email,academicYear,campus";
+              const example = "Abebe,Kebede,Tadesse,MALE,22,Computer Science,abebe@uog.edu.et,2024,TEWODROS";
+              const csv = [header, example].join("\n");
+              const blob = new Blob([csv], { type: "text/csv" });
+              const url = URL.createObjectURL(blob);
+              const a = document.createElement("a");
+              a.href = url; a.download = "student_import_template.csv"; a.click();
+              URL.revokeObjectURL(url);
+            }} className="rounded-lg px-3 py-2 text-xs font-bold text-[#1b5e20] border border-[#1b5e20]/30 hover:border-[#1b5e20] hover:bg-[#1b5e20]/10 transition-colors flex items-center gap-1.5">
+              <span className="material-symbols-outlined text-base">download</span> Template
+            </button>
+          </div>
+
           <div className="bg-[#e8f5e9] rounded-lg p-4 mb-5 text-xs text-[#1b5e20] space-y-1.5">
             <p className="font-bold text-sm mb-2 flex items-center gap-1.5"><span className="material-symbols-outlined text-base">info</span>Required CSV Columns</p>
-            {[["A","firstName",""],["B","middleName","(optional)"],["C","lastName",""],["D","gender","MALE or FEMALE (optional)"],["E","age","(optional)"],["F","department","(optional)"],["G","email","(optional)"],["H","academicYear","e.g. 2015"],["I","campus","TEWODROS / MARAKI / FASIL"]].map(([col,field,hint]) => (
+            {[["A","firstName",""],["B","fatherName",""],["C","lastName",""],["D","gender","MALE or FEMALE (optional)"],["E","age","(optional)"],["F","department","(optional)"],["G","email","(optional)"],["H","academicYear","e.g. 2015"],["I","campus","TEWODROS / MARAKI / FASIL"]].map(([col,field,hint]) => (
               <div key={col} className="flex gap-2"><span className="w-5 font-black shrink-0">{col}</span><span className="font-semibold w-36 shrink-0">{field}</span><span className="opacity-70">{hint}</span></div>
             ))}
-            <p className="text-[10px] opacity-70 pt-1">Row 1 must be the header. The admin will auto-generate UGR/00001/YY student IDs and 6-character passwords.</p>
+            <p className="text-[10px] opacity-70 pt-1">Row 1 must be the header. The admin will auto-generate UGR/NNNNN/YY student IDs and year-based passwords.</p>
           </div>
+
+          {/* File upload area */}
           <div className="border-2 border-dashed border-[#c3c6d1] rounded-xl p-6 text-center cursor-pointer hover:border-[#2d6a4f] hover:bg-[#e8f5e9]/30 transition-colors mb-4" onClick={() => batchFileInputRef.current?.click()}>
             <span className="material-symbols-outlined text-4xl text-[#43474f] mb-2 block">folder_open</span>
             {batchFile ? <p className="text-sm font-bold text-[#2d6a4f]">{batchFile.name}</p> : <><p className="text-sm font-medium text-[#43474f]">Click to select file</p><p className="text-xs text-[#43474f] opacity-70 mt-1">Supports .csv only</p></>}
             <input ref={batchFileInputRef} type="file" accept=".csv" className="hidden" onChange={e => { const f = e.target.files?.[0] ?? null; setBatchFile(f); setBatchResult(null); setBatchError(null); }} />
           </div>
+
+          {/* File preview if selected */}
+          {batchFile && (
+            <div className="mb-4 p-4 bg-[#f2f4f7] rounded-lg">
+              <div className="flex items-center justify-between mb-2">
+                <p className="text-sm font-bold text-[#001e40] flex items-center gap-1.5">
+                  <span className="material-symbols-outlined text-[#001e40]">description</span>
+                  {batchFile.name}
+                </p>
+                <span className="text-[10px] text-[#43474f]">{(batchFile.size / 1024).toFixed(1)} KB</span>
+              </div>
+              <button onClick={() => {
+                const reader = new FileReader();
+                reader.onload = (ev) => {
+                  const text = String(ev.target?.result ?? "");
+                  const lines = text.split(/\r?\n/).filter(l => l.trim());
+                  const header = lines[0];
+                  const rows = lines.slice(1, Math.min(lines.length, 6));
+                  let msg = `Header: ${header}\n\n`;
+                  msg += `Preview (${Math.min(lines.length - 1, 5)} of ${lines.length - 1} rows):\n`;
+                  rows.forEach((r, i) => msg += `Row ${i + 1}: ${r.substring(0, 80)}${r.length > 80 ? '...' : ''}\n`);
+                  if (lines.length > 6) msg += `\n... and ${lines.length - 6} more rows`;
+                  alert(msg);
+                };
+                reader.readAsText(batchFile);
+              }} className="text-xs text-[#003366] font-bold flex items-center gap-1 hover:underline">
+                <span className="material-symbols-outlined text-sm">visibility</span> View file preview
+              </button>
+              <button onClick={() => {
+                const url = URL.createObjectURL(batchFile);
+                const a = document.createElement("a");
+                a.href = url; a.download = batchFile.name; a.click();
+                URL.revokeObjectURL(url);
+              }} className="text-xs text-[#003366] font-bold flex items-center gap-1 hover:underline mt-1">
+                <span className="material-symbols-outlined text-sm">download</span> Download original file
+              </button>
+            </div>
+          )}
+
+          {/* Send to Admin button */}
           <button onClick={handleBatchUpload} disabled={!batchFile || batchUploading} className="w-full py-3 text-sm font-bold bg-[#2d6a4f] text-white rounded-lg hover:bg-[#1b4332] shadow-md transition-colors disabled:opacity-50 flex items-center justify-center gap-2">
-            {batchUploading ? <><span className="material-symbols-outlined text-base animate-spin">progress_activity</span> Uploading…</> : <><span className="material-symbols-outlined text-base">cloud_upload</span> Submit to Admin</>}
+            {batchUploading ? <><span className="material-symbols-outlined text-base animate-spin">progress_activity</span> Sending…</> : <><span className="material-symbols-outlined text-base">send</span> Send to Admin</>}
           </button>
+
           {batchResult && (
             <div className="mt-5 bg-[#e8f5e9] border border-green-200 rounded-lg p-4 text-center">
-              <p className="text-sm font-bold text-[#1b5e20] flex items-center justify-center gap-1"><span className="material-symbols-outlined text-base">check_circle</span> {batchResult.studentCount} students submitted to admin.</p>
+              <p className="text-sm font-bold text-[#1b5e20] flex items-center justify-center gap-1"><span className="material-symbols-outlined text-base">check_circle</span> {batchResult.studentCount} students sent to admin.</p>
               <p className="text-[10px] text-[#43474f] mt-1">Batch ID: {batchResult.batchId}</p>
             </div>
           )}

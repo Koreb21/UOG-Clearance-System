@@ -1,0 +1,2 @@
+- [Campus-department cascading dropdowns](campus-dept-dropdowns.md) — always use inline JSX with all 3 campuses and their departments; avoid dynamic `departments.filter()` which breaks when department list is loaded dynamically.
+- [fatherName vs middleName type mismatch](field-name-types.md) — when renaming fields in types, update both `api.ts` and `mockBackend.ts` return shapes, or TypeScript `tsc -b` will fail with "Two different types with this name exist."

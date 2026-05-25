@@ -647,7 +647,7 @@ export const api = {
   getBatchDetail: (token: string, batchId: string) =>
     request<{
       batch: { id: string; name: string; campusId: string; submittedBy: string; submittedAt: string; status: string; studentCount: number; importedAt: string | null; importedBy: string | null; importedCount: number };
-      students: Array<{ id: string; firstName: string; middleName: string | null; lastName: string; gender: string | null; age: number | null; email: string | null; department: string | null; academicYear: number | null; campusId: string }>;
+      students: Array<{ id: string; firstName: string; fatherName: string | null; lastName: string; gender: string | null; age: number | null; email: string | null; department: string | null; academicYear: number | null; campusId: string }>;
     }>(`/admin/student-batches/${encodeURIComponent(batchId)}`, { method: "GET" }, token),
   importBatch: (token: string, batchId: string) =>
     request<{

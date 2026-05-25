@@ -165,28 +165,32 @@ export function StaffRecordLiabilityPage() {
           </div>
 
           <div>
-            <label className="mb-1 block text-[10px] font-bold uppercase tracking-wider text-[#43474f]">Department / Program *</label>
-            <input
-              value={form.department}
-              onChange={(e) => updateField("department", e.target.value)}
-              required
-              placeholder="e.g. Electrical Engineering"
-              className="w-full rounded-xl border border-[#c3c6d1]/40 bg-[#f2f4f7] px-4 py-2.5 text-sm focus:border-[#003366] focus:ring-2 focus:ring-[#003366]/20 outline-none"
-            />
-          </div>
-
-          <div>
             <label className="mb-1 block text-[10px] font-bold uppercase tracking-wider text-[#43474f]">Campus *</label>
             <select
               value={form.campus}
-              onChange={(e) => updateField("campus", e.target.value)}
+              onChange={(e) => { updateField("campus", e.target.value); updateField("department", ""); }}
               required
               className="w-full rounded-xl border border-[#c3c6d1]/40 bg-[#f2f4f7] px-4 py-2.5 text-sm focus:border-[#003366] focus:ring-2 focus:ring-[#003366]/20 outline-none"
             >
               <option value="">Select campus…</option>
+              <option value="Atse Tewodros Campus">Atse Tewodros</option>
+              <option value="Atse Fasil Campus">Atse Fasil</option>
               <option value="Maraki Campus">Maraki</option>
-              <option value="Atse Tewodros Campus">Tewodros</option>
-              <option value="Atse Fasil Campus">Fasil</option>
+            </select>
+          </div>
+
+          <div>
+            <label className="mb-1 block text-[10px] font-bold uppercase tracking-wider text-[#43474f]">Department / Program *</label>
+            <select
+              value={form.department}
+              onChange={(e) => updateField("department", e.target.value)}
+              required
+              className="w-full rounded-xl border border-[#c3c6d1]/40 bg-[#f2f4f7] px-4 py-2.5 text-sm focus:border-[#003366] focus:ring-2 focus:ring-[#003366]/20 outline-none"
+            >
+              <option value="">{form.campus ? "Select department…" : "Select campus first"}</option>
+              {form.campus === "Atse Tewodros Campus" && <><option value="Computer Science">Computer Science</option><option value="Information Systems">Information Systems</option><option value="Information Technology">Information Technology</option><option value="Information Science">Information Science</option><option value="Software Engineering">Software Engineering</option><option value="Bio Technology">Bio Technology</option><option value="Veterinary">Veterinary</option><option value="Economics">Economics</option><option value="Sport Science">Sport Science</option><option value="Agriculture">Agriculture</option></>}
+              {form.campus === "Atse Fasil Campus" && <><option value="Architecture">Architecture</option><option value="Electrical">Electrical</option><option value="Textile (Cotum)">Textile (Cotum)</option><option value="Mechanical">Mechanical</option><option value="Civil">Civil</option><option value="Food Engineering">Food Engineering</option></>}
+              {form.campus === "Maraki Campus" && <><option value="Law">Law</option><option value="Marketing">Marketing</option><option value="Management">Management</option><option value="Journalism">Journalism</option><option value="Psychology">Psychology</option><option value="Accounting">Accounting</option></>}
             </select>
           </div>
 

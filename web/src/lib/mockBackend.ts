@@ -163,7 +163,7 @@ interface DbProspectiveStudent {
   id: string;
   batchId: string;
   firstName: string;
-  middleName: string | null;
+  fatherName: string | null;
   lastName: string;
   gender: string | null;
   age: number | null;
@@ -1031,6 +1031,13 @@ function randomPassword(length = 6): string {
   return out;
 }
 
+function generatePassword(year: number): string {
+  // Generate a password based on the academic year + random characters
+  const yy = String(year).slice(-2);
+  const random = randomPassword(4);
+  return `${yy}${random}`;
+}
+
 function handleRegistrarUploadBatch(token: string | null, file: { name: string; text: string } | null, db: Db) {
   const user = requireAuth(token, db);
   if (!file) return { status: "error", message: "No file uploaded." };
@@ -1039,11 +1046,11 @@ function handleRegistrarUploadBatch(token: string | null, file: { name: string; 
   const headerCols = rows[0].split(",").map((c) => c.trim().toLowerCase());
   const idx = (name: string) => {
     const normalized = name.toLowerCase();
-    const i = headerCols.findIndex((h) => h === normalized || h.replace(/_/g, "") === normalized.replace(/_/g, ""));
+    const i = headerCols.findIndex((h) => h === normalized || h.replace(/_/g, "").replace(/\s+/g, "") === normalized.replace(/_/g, "").replace(/\s+/g, ""));
     return i >= 0 ? i : -1;
   };
   const idxFirst = idx("firstname");
-  const idxMiddle = idx("middlename");
+  const idxFather = idx("fathername");
   const idxLast = idx("lastname");
   const idxGender = idx("gender");
   const idxAge = idx("age");
@@ -1052,7 +1059,7 @@ function handleRegistrarUploadBatch(token: string | null, file: { name: string; 
   const idxYear = idx("academicyear");
   const idxCampus = idx("campus");
   if (idxFirst === -1 || idxLast === -1 || idxCampus === -1 || idxYear === -1) {
-    return { status: "error", message: "CSV header must include firstName, lastName, academicYear, and campus. Optional: middleName, gender, age, department, email." };
+    return { status: "error", message: "CSV header must include firstName, lastName, academicYear, and campus. Optional: fatherName, gender, age, department, email." };
   }
   const dataRows = rows.slice(1);
   const batchId = uid();
@@ -1075,12 +1082,12 @@ function handleRegistrarUploadBatch(token: string | null, file: { name: string; 
     const lastName = cols[idxLast] ?? "";
     if (!firstName || !lastName) continue;
     const academicYear = cols[idxYear] ? parseInt(cols[idxYear], 10) || null : null;
-    const campusId = (cols[idxCampus] ?? "").toUpperCase().replace(/\s+/g, "_");
+    const campusId = (cols[idxCampus] ?? "").toUpperCase().replace(/\s+/g, "").replace(/CAMPUS/g, "");
     const normalizedCampus = ["TEWODROS", "MARAKI", "FASIL"].includes(campusId) ? campusId : (user.campusId ?? "TEWODROS");
     prospective.push({
       id: uid(), batchId,
       firstName,
-      middleName: idxMiddle >= 0 ? (cols[idxMiddle] || null) : null,
+      fatherName: idxFather >= 0 ? (cols[idxFather] || null) : null,
       lastName,
       gender: idxGender >= 0 ? (cols[idxGender] || null) : null,
       age: idxAge >= 0 ? (parseInt(cols[idxAge], 10) || null) : null,
@@ -1114,7 +1121,7 @@ function handleAdminGetBatchDetail(token: string | null, batchId: string, db: Db
   const batch = db.batches.find((b) => b.id === batchId);
   if (!batch) throw { status: 404, message: "Batch not found." };
   const students = db.prospectiveStudents.filter((s) => s.batchId === batchId).map((s) => ({
-    id: s.id, firstName: s.firstName, middleName: s.middleName, lastName: s.lastName,
+    id: s.id, firstName: s.firstName, fatherName: s.fatherName, lastName: s.lastName,
     gender: s.gender, age: s.age, email: s.email, department: s.department,
     academicYear: s.academicYear, campusId: s.campusId,
   }));
@@ -1144,9 +1151,9 @@ function handleAdminImportBatch(token: string | null, batchId: string, db: Db) {
     const year = p.academicYear ?? new Date().getFullYear();
     const studentId = generateStudentId(nextIndex + i, year);
     if (db.students.find((s) => s.studentId === studentId)) { failed++; errors.push(`Row ${i + 1}: generated ID ${studentId} already exists`); continue; }
-    const password = randomPassword(6);
+    const password = generatePassword(year);
     const student: DbStudent = {
-      id: uid(), studentId, firstName: p.firstName, middleName: p.middleName, lastName: p.lastName,
+      id: uid(), studentId, firstName: p.firstName, middleName: p.fatherName, lastName: p.lastName,
       gender: p.gender, phone: null, email: p.email, campusId: p.campusId,
       academicDepartmentId: p.department, program: null, academicYear: year,
       graduationYear: year + 4, profileImageUrl: null, hasProfileImage: false, status: "ACTIVE",

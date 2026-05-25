@@ -89,7 +89,7 @@ export function AdminDashboardPage() {
   /* ── Student Batches state ────────────────────────────────── */
   const [batches, setBatches] = useState<Array<{ id: string; name: string; campusId: string; submittedBy: string; submittedAt: string; status: string; studentCount: number; importedAt: string | null; importedBy: string | null; importedCount: number }>>([]);
   const [selectedBatchId, setSelectedBatchId] = useState<string | null>(null);
-  const [batchDetail, setBatchDetail] = useState<{ batch: typeof batches[0]; students: Array<{ id: string; firstName: string; middleName: string | null; lastName: string; gender: string | null; age: number | null; email: string | null; department: string | null; academicYear: number | null; campusId: string }> } | null>(null);
+  const [batchDetail, setBatchDetail] = useState<{ batch: typeof batches[0]; students: Array<{ id: string; firstName: string; fatherName: string | null; lastName: string; gender: string | null; age: number | null; email: string | null; department: string | null; academicYear: number | null; campusId: string }> } | null>(null);
   const [batchLoading, setBatchLoading] = useState(false);
   const [batchImporting, setBatchImporting] = useState(false);
   const [batchImportResult, setBatchImportResult] = useState<{ totalRows: number; importedCount: number; failedCount: number; errors: string[] } | null>(null);
@@ -115,14 +115,6 @@ export function AdminDashboardPage() {
   }
   function getProfileImageUrl(u: UnifiedUser) { return u.type === "STUDENT" ? u.data.profileImageUrl : null; }
   function isActive(u: UnifiedUser) { return u.type === "STUDENT" ? u.data.status === "ACTIVE" : u.data.active; }
-
-  function departmentOptionsFor(userType: "STUDENT" | "STAFF", campusId: string) {
-    const expected = userType === "STUDENT" ? "ACADEMIC" : "CLEARANCE";
-    return departments.filter(d => d.type === expected).filter(d => !campusId || d.campusId === campusId).filter(d => d.active).sort((a, b) => a.name.localeCompare(b.name));
-  }
-
-  const editDeptOptions = selectedUser ? departmentOptionsFor(selectedUser.type, editCampusId) : [];
-  const createDeptOptions = departmentOptionsFor(createUserType, createData.campusId);
 
   /* ── data loading ─────────────────────────────────────────── */
   const loadData = async (reselect?: { id: string; type: "STUDENT" | "STAFF" }) => {
@@ -184,9 +176,9 @@ export function AdminDashboardPage() {
 
   const handleDownloadBatchCsv = () => {
     if (!batchDetail) return;
-    const header = "firstName,middleName,lastName,gender,age,department,email,academicYear,campus";
+    const header = "firstName,fatherName,lastName,gender,age,department,email,academicYear,campus";
     const rows = batchDetail.students.map(s =>
-      [s.firstName, s.middleName ?? "", s.lastName, s.gender ?? "", s.age ?? "", s.department ?? "", s.email ?? "", s.academicYear ?? "", s.campusId].map(v => `"${String(v).replace(/"/g, '""')}"`).join(",")
+      [s.firstName, s.fatherName ?? "", s.lastName, s.gender ?? "", s.age ?? "", s.department ?? "", s.email ?? "", s.academicYear ?? "", s.campusId].map(v => `"${String(v).replace(/"/g, '""')}"`).join(",")
     );
     const csv = [header, ...rows].join("\n");
     const blob = new Blob([csv], { type: "text/csv" });
@@ -798,7 +790,10 @@ export function AdminDashboardPage() {
                         <div className="grid grid-cols-2 gap-3">
                           <div><label className="text-[10px] font-bold uppercase tracking-widest text-on-surface-variant mb-1 block">Campus</label>
                             <select value={editCampusId} onChange={e => { setEditCampusId(e.target.value); setEditDepartmentId(""); }} className={inputCls}>
-                              <option value="">Select Campus</option>{campuses.map(c => <option key={c.id} value={c.code}>{c.name}</option>)}
+                              <option value="">Select campus...</option>
+                              <option value="TEWODROS">Atse Tewodros Campus</option>
+                              <option value="FASIL">Atse Fasil Campus</option>
+                              <option value="MARAKI">Maraki Campus</option>
                             </select>
                           </div>
                           <div><label className="text-[10px] font-bold uppercase tracking-widest text-on-surface-variant mb-1 block">Academic Year</label>
@@ -808,7 +803,10 @@ export function AdminDashboardPage() {
                         <div><label className="text-[10px] font-bold uppercase tracking-widest text-on-surface-variant mb-1 block">Email</label><input type="email" value={editEmail} onChange={e => setEditEmail(e.target.value)} className={inputCls} placeholder="student@uog.edu.et" /></div>
                         <div><label className="text-[10px] font-bold uppercase tracking-widest text-on-surface-variant mb-1 block">Academic Department</label>
                           <select value={editDepartmentId} onChange={e => setEditDepartmentId(e.target.value)} className={inputCls}>
-                            <option value="">Select Department</option>{editDeptOptions.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
+                            <option value="">{editCampusId ? "Select department..." : "Select campus first"}</option>
+                            {editCampusId === "TEWODROS" && <><option value="CS">Computer Science</option><option value="IS">Information Systems</option><option value="IT">Information Technology</option><option value="INSC">Information Science</option><option value="SWE">Software Engineering</option><option value="BIO">Bio Technology</option><option value="VET">Veterinary</option><option value="ECON">Economics</option><option value="SPORT">Sport Science</option><option value="AGRI">Agriculture</option></>}
+                            {editCampusId === "FASIL" && <><option value="ARCH">Architecture</option><option value="ELEC">Electrical</option><option value="TEXT">Textile (Cotum)</option><option value="MECH">Mechanical</option><option value="CIVIL">Civil</option><option value="FOOD">Food Engineering</option></>}
+                            {editCampusId === "MARAKI" && <><option value="LAW">Law</option><option value="MKT">Marketing</option><option value="MGT">Management</option><option value="JOUR">Journalism</option><option value="PSY">Psychology</option><option value="ACC">Accounting</option></>}
                           </select>
                         </div>
                         <div className="border-t border-surface-container pt-4">
@@ -850,7 +848,7 @@ export function AdminDashboardPage() {
                     <div className="space-y-4">
                       <div className="grid grid-cols-3 gap-2">
                         <div><label className="text-[10px] font-bold uppercase tracking-widest text-on-surface-variant mb-1 block">First</label><input type="text" value={createData.firstName} onChange={e => setCreateData({ ...createData, firstName: e.target.value })} className={inputCls} placeholder="First" /></div>
-                        <div><label className="text-[10px] font-bold uppercase tracking-widest text-on-surface-variant mb-1 block">Middle</label><input type="text" value={createData.middleName} onChange={e => setCreateData({ ...createData, middleName: e.target.value })} className={inputCls} placeholder="(opt)" /></div>
+                        <div><label className="text-[10px] font-bold uppercase tracking-widest text-on-surface-variant mb-1 block">Father</label><input type="text" value={createData.middleName} onChange={e => setCreateData({ ...createData, middleName: e.target.value })} className={inputCls} placeholder="Father's name" /></div>
                         <div><label className="text-[10px] font-bold uppercase tracking-widest text-on-surface-variant mb-1 block">Last</label><input type="text" value={createData.lastName} onChange={e => setCreateData({ ...createData, lastName: e.target.value })} className={inputCls} placeholder="Last" /></div>
                       </div>
                       <div><label className="text-[10px] font-bold uppercase tracking-widest text-on-surface-variant mb-1 block">Student ID</label>
@@ -863,12 +861,18 @@ export function AdminDashboardPage() {
                       <div className="grid grid-cols-2 gap-3">
                         <div><label className="text-[10px] font-bold uppercase tracking-widest text-on-surface-variant mb-1 block">Campus</label>
                           <select value={createData.campusId} onChange={e => setCreateData({ ...createData, campusId: e.target.value, departmentId: "" })} className={inputCls}>
-                            <option value="">Select...</option>{campuses.map(c => <option key={c.id} value={c.code}>{c.name}</option>)}
+                            <option value="">Select campus...</option>
+                            <option value="TEWODROS">Atse Tewodros Campus</option>
+                            <option value="FASIL">Atse Fasil Campus</option>
+                            <option value="MARAKI">Maraki Campus</option>
                           </select>
                         </div>
                         <div><label className="text-[10px] font-bold uppercase tracking-widest text-on-surface-variant mb-1 block">Department</label>
                           <select value={createData.departmentId} onChange={e => setCreateData({ ...createData, departmentId: e.target.value })} className={inputCls}>
-                            <option value="">{createData.campusId ? "Select..." : "Campus first"}</option>{createDeptOptions.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
+                            <option value="">{createData.campusId ? "Select department..." : "Select campus first"}</option>
+                            {createData.campusId === "TEWODROS" && <><option value="CS">Computer Science</option><option value="IS">Information Systems</option><option value="IT">Information Technology</option><option value="INSC">Information Science</option><option value="SWE">Software Engineering</option><option value="BIO">Bio Technology</option><option value="VET">Veterinary</option><option value="ECON">Economics</option><option value="SPORT">Sport Science</option><option value="AGRI">Agriculture</option></>}
+                            {createData.campusId === "FASIL" && <><option value="ARCH">Architecture</option><option value="ELEC">Electrical</option><option value="TEXT">Textile (Cotum)</option><option value="MECH">Mechanical</option><option value="CIVIL">Civil</option><option value="FOOD">Food Engineering</option></>}
+                            {createData.campusId === "MARAKI" && <><option value="LAW">Law</option><option value="MKT">Marketing</option><option value="MGT">Management</option><option value="JOUR">Journalism</option><option value="PSY">Psychology</option><option value="ACC">Accounting</option></>}
                           </select>
                         </div>
                       </div>
@@ -1020,7 +1024,7 @@ export function AdminDashboardPage() {
                     <tbody className="divide-y divide-surface-container">
                       {batchDetail.students.map(s => (
                         <tr key={s.id} className="hover:bg-primary-fixed/5">
-                          <td className="px-4 py-2 font-medium text-on-surface">{s.firstName} {s.middleName ? s.middleName + " " : ""}{s.lastName}</td>
+                          <td className="px-4 py-2 font-medium text-on-surface">{s.firstName} {s.fatherName ? "s/o " + s.fatherName + " " : ""}{s.lastName}</td>
                           <td className="px-4 py-2 text-on-surface-variant">{s.gender ?? "—"}</td>
                           <td className="px-4 py-2 text-on-surface-variant">{s.age ?? "—"}</td>
                           <td className="px-4 py-2 text-on-surface-variant">{s.department ?? "—"}</td>
