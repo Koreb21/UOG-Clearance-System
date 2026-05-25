@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { api } from "../../lib/api";
 import { useAuth } from "../../modules/auth/AuthContext";
+import { useToast } from "../../components/ToastContext";
 import type { ClearanceCheck, ClearanceRequest, ClearanceStatus, Inquiry, StaffQueueItem, StudentSummary } from "../../types";
 import { roleConfigs } from "./staffRoleConfig";
 
@@ -27,6 +28,7 @@ export function getStatusLabel(status: string) {
 
 export function useStaffWorkspace(roleConfig: RoleConfig) {
   const { token, user } = useAuth();
+  const { showToast } = useToast();
 
   const [students, setStudents] = useState<StudentSummary[]>([]);
   const [queueItems, setQueueItems] = useState<StaffQueueItem[]>([]);
@@ -36,7 +38,6 @@ export function useStaffWorkspace(roleConfig: RoleConfig) {
   const [status, setStatus] = useState<ClearanceStatus | null>(null);
   const [inquiries, setInquiries] = useState<Inquiry[]>([]);
   const [search, setSearch] = useState("");
-  const [error, setError] = useState<string | null>(null);
   const [submittingLiability, setSubmittingLiability] = useState(false);
   const [submittingDecision, setSubmittingDecision] = useState(false);
   const [respondingInquiryId, setRespondingInquiryId] = useState("");
@@ -84,7 +85,7 @@ export function useStaffWorkspace(roleConfig: RoleConfig) {
         setSelectedStudentId((current) => current || studentItems[0]?.studentId || "");
       })
       .catch((requestError) =>
-        setError(requestError instanceof Error ? requestError.message : "Unable to load staff data")
+        showToast(requestError instanceof Error ? requestError.message : "Unable to load staff data", "error")
       );
   }, [token]);
 
@@ -135,7 +136,7 @@ export function useStaffWorkspace(roleConfig: RoleConfig) {
         });
       })
       .catch((requestError) =>
-        setError(requestError instanceof Error ? requestError.message : "Unable to load student requests")
+        showToast(requestError instanceof Error ? requestError.message : "Unable to load student requests", "error")
       );
   }, [selectedStudentId, token]);
 
@@ -152,7 +153,7 @@ export function useStaffWorkspace(roleConfig: RoleConfig) {
         setReplyDraft("");
       })
       .catch((requestError) =>
-        setError(requestError instanceof Error ? requestError.message : "Unable to load clearance detail")
+        showToast(requestError instanceof Error ? requestError.message : "Unable to load clearance detail", "error")
       );
   }, [selectedRequestId, selectedStudentId, token]);
 
@@ -186,7 +187,6 @@ export function useStaffWorkspace(roleConfig: RoleConfig) {
   async function handleCreateLiability() {
     if (!token || !status) return;
     setSubmittingLiability(true);
-    setError(null);
     try {
       await api.createLiability(token, {
         studentId: status.student.studentId,
@@ -208,7 +208,7 @@ export function useStaffWorkspace(roleConfig: RoleConfig) {
       setLiabilityCategoryPreset("");
       await refreshStatus();
     } catch (requestError) {
-      setError(requestError instanceof Error ? requestError.message : "Unable to create liability");
+      showToast(requestError instanceof Error ? requestError.message : "Unable to create liability", "error");
     } finally {
       setSubmittingLiability(false);
     }
@@ -217,7 +217,6 @@ export function useStaffWorkspace(roleConfig: RoleConfig) {
   async function handleSubmitDecision(overrideStatus?: ClearanceCheck["status"]) {
     if (!token || !relevantCheck) return;
     setSubmittingDecision(true);
-    setError(null);
     try {
       await api.reviewCheck(token, relevantCheck.id, {
         status: overrideStatus ?? decisionState.status,
@@ -225,7 +224,7 @@ export function useStaffWorkspace(roleConfig: RoleConfig) {
       });
       await refreshStatus();
     } catch (requestError) {
-      setError(requestError instanceof Error ? requestError.message : "Unable to submit staff decision");
+      showToast(requestError instanceof Error ? requestError.message : "Unable to submit staff decision", "error");
     } finally {
       setSubmittingDecision(false);
     }
@@ -234,7 +233,6 @@ export function useStaffWorkspace(roleConfig: RoleConfig) {
   async function handleReplyInquiry() {
     if (!token || !latestInquiry || !replyDraft.trim()) return;
     setRespondingInquiryId(latestInquiry.id);
-    setError(null);
     try {
       await api.respondToInquiry(token, latestInquiry.id, {
         response: replyDraft.trim(),
@@ -243,7 +241,7 @@ export function useStaffWorkspace(roleConfig: RoleConfig) {
       setReplyDraft("");
       await refreshStatus();
     } catch (requestError) {
-      setError(requestError instanceof Error ? requestError.message : "Unable to send reply");
+      showToast(requestError instanceof Error ? requestError.message : "Unable to send reply", "error");
     } finally {
       setRespondingInquiryId("");
     }

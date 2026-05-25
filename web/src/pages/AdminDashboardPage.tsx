@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo, useRef } from "react";
 import { SessionControls } from "../components/SessionControls";
 import { BackButton } from "../components/BackButton";
+import { useToast } from "../components/ToastContext";
 import { api, toApiUrl } from "../lib/api";
 import { useAuth } from "../modules/auth/AuthContext";
 import type {
@@ -32,6 +33,7 @@ const BLANK_CREATE = {
 
 export function AdminDashboardPage() {
   const { token } = useAuth();
+  const { showToast } = useToast();
 
   const [campuses, setCampuses] = useState<Campus[]>([]);
   const [departments, setDepartments] = useState<Department[]>([]);
@@ -62,10 +64,6 @@ export function AdminDashboardPage() {
   const [createUserType, setCreateUserType] = useState<"STUDENT" | "STAFF">("STUDENT");
   const [createData, setCreateData] = useState({ ...BLANK_CREATE });
 
-  // Inline feedback
-  const [feedback, setFeedback] = useState<{ ok: boolean; msg: string } | null>(null);
-  const feedbackTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-
   // Bulk import
   const [importFile, setImportFile] = useState<File | null>(null);
   const [importing, setImporting] = useState(false);
@@ -78,12 +76,6 @@ export function AdminDashboardPage() {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   /* ── helpers ──────────────────────────────────────────────── */
-  function flash(ok: boolean, msg: string) {
-    if (feedbackTimer.current) clearTimeout(feedbackTimer.current);
-    setFeedback({ ok, msg });
-    feedbackTimer.current = setTimeout(() => setFeedback(null), 5000);
-  }
-
   function getDisplayName(u: UnifiedUser) {
     return u.type === "STUDENT"
       ? `${u.data.firstName} ${u.data.lastName}`.trim()
@@ -233,10 +225,10 @@ export function AdminDashboardPage() {
           campusId: editCampusId || selectedUser.data.campusId
         });
       }
-      flash(true, "Profile updated successfully.");
+      showToast("Profile updated successfully.", "success");
       loadData(reselect);
     } catch (err: any) {
-      flash(false, "Update failed: " + err.message);
+      showToast("Update failed: " + err.message, "error");
     }
   };
 
@@ -250,10 +242,10 @@ export function AdminDashboardPage() {
       } else {
         await api.setStaffUserActive(token, selectedUser.data.id, nextActive);
       }
-      flash(true, `User ${nextActive ? "activated" : "deactivated"} successfully.`);
-      loadData(reselect); // keeps user selected — no more blank panel
+      showToast(`User ${nextActive ? "activated" : "deactivated"} successfully.`, "success");
+      loadData(reselect);
     } catch (err: any) {
-      flash(false, "Status change failed: " + err.message);
+      showToast("Status change failed: " + err.message, "error");
     }
   };
 
@@ -268,9 +260,9 @@ export function AdminDashboardPage() {
       }
       setNewPassword("");
       setShowResetPw(false);
-      flash(true, "Password reset successfully.");
+      showToast("Password reset successfully.", "success");
     } catch (err: any) {
-      flash(false, "Password reset failed: " + err.message);
+      showToast("Password reset failed: " + err.message, "error");
     } finally {
       setPwSaving(false);
     }
@@ -288,11 +280,11 @@ export function AdminDashboardPage() {
       } else {
         await api.deleteStaffUser(token, selectedUser.data.id);
       }
-      flash(true, `${selectedUser.type === "STUDENT" ? "Student" : "Staff member"} deleted successfully.`);
+      showToast(`${selectedUser.type === "STUDENT" ? "Student" : "Staff member"} deleted successfully.`, "success");
       setSelectedUser(null);
       loadData();
     } catch (err: any) {
-      flash(false, "Delete failed: " + err.message);
+      showToast("Delete failed: " + err.message, "error");
     } finally {
       setDeletingUser(false);
     }
@@ -325,10 +317,10 @@ export function AdminDashboardPage() {
         });
       }
       setCreateData({ ...BLANK_CREATE });
-      flash(true, `${createUserType === "STUDENT" ? "Student" : "Staff"} registered successfully.`);
+      showToast(`${createUserType === "STUDENT" ? "Student" : "Staff"} registered successfully.`, "success");
       loadData();
     } catch (err: any) {
-      flash(false, "Registration failed: " + err.message);
+      showToast("Registration failed: " + err.message, "error");
     }
   };
 
@@ -343,7 +335,7 @@ export function AdminDashboardPage() {
       setImportFile(null);
       if (fileInputRef.current) fileInputRef.current.value = "";
     } catch (err: any) {
-      flash(false, "Import failed: " + err.message);
+      showToast("Import failed: " + err.message, "error");
     } finally {
       setImporting(false);
     }
@@ -417,22 +409,6 @@ export function AdminDashboardPage() {
 
       {/* ── Main ── */}
       <main className="ml-72 px-8 pb-12 min-h-screen bg-surface" style={{ paddingTop: 'calc(5rem + 2rem)' }}>
-
-        {/* Inline feedback banner */}
-        {feedback && (
-          <div
-            className={`mb-6 flex items-center gap-3 px-5 py-3 rounded-xl font-medium text-sm shadow-sm ${
-              feedback.ok
-                ? "bg-green-50 text-green-800 border border-green-200"
-                : "bg-red-50 text-red-800 border border-red-200"
-            }`}
-          >
-            <span className="material-symbols-outlined text-lg">
-              {feedback.ok ? "check_circle" : "error"}
-            </span>
-            {feedback.msg}
-          </div>
-        )}
 
         {/* Stats bento */}
         <section className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-10">

@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useParams } from "react-router-dom";
 import { api } from "../lib/api";
 import { useAuth } from "../modules/auth/AuthContext";
+import { useToast } from "../components/ToastContext";
 import { getCampusByCode, getCampusBySlug } from "../modules/campus/catalog";
 import { StaffWorkbenchTailwind } from "./staff/StaffWorkbenchTailwind";
 import { roleConfigs } from "./staff/staffRoleConfig";
@@ -9,6 +10,7 @@ import { useStaffWorkspace } from "./staff/useStaffWorkspace";
 
 export function StaffDashboardPage() {
   const { user, token } = useAuth();
+  const { showToast } = useToast();
   const { campusSlug } = useParams();
   const routeCampus = getCampusBySlug(campusSlug);
   const campus = routeCampus ?? getCampusByCode(user?.campusId ?? null);
@@ -22,27 +24,25 @@ export function StaffDashboardPage() {
   const [showProfileModal, setShowProfileModal] = useState(false);
   const [profileForm, setProfileForm] = useState({ email: user?.email ?? "" });
   const [profileSubmitting, setProfileSubmitting] = useState(false);
-  const [profileFeedback, setProfileFeedback] = useState<{ ok: boolean; msg: string } | null>(null);
 
   async function handleUpdateProfile(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     if (!token) return;
     if (!profileForm.email || !profileForm.email.trim()) {
-      setProfileFeedback({ ok: false, msg: "Email is required." });
+      showToast("Email is required.", "error");
       return;
     }
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(profileForm.email)) {
-      setProfileFeedback({ ok: false, msg: "Please enter a valid email address." });
+      showToast("Please enter a valid email address.", "error");
       return;
     }
     setProfileSubmitting(true);
-    setProfileFeedback(null);
     try {
       await api.updateMyProfile(token, { email: profileForm.email.trim() });
-      setProfileFeedback({ ok: true, msg: "Email updated successfully." });
-      setTimeout(() => setShowProfileModal(false), 1500);
+      showToast("Email updated successfully.", "success");
+      setTimeout(() => setShowProfileModal(false), 1200);
     } catch (e) {
-      setProfileFeedback({ ok: false, msg: e instanceof Error ? e.message : "Failed to update email." });
+      showToast(e instanceof Error ? e.message : "Failed to update email.", "error");
     } finally {
       setProfileSubmitting(false);
     }
@@ -59,7 +59,6 @@ export function StaffDashboardPage() {
       profileForm={profileForm}
       setProfileForm={setProfileForm}
       profileSubmitting={profileSubmitting}
-      profileFeedback={profileFeedback}
       handleUpdateProfile={handleUpdateProfile}
     />
   );

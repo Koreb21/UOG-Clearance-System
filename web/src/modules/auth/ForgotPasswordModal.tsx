@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useToast } from "../../components/ToastContext";
 import { api } from "../../lib/api";
 
 interface ForgotPasswordModalProps {
@@ -79,15 +80,14 @@ function ProgressBar({ currentStep }: { currentStep: number }) {
 }
 
 export function ForgotPasswordModal({ isOpen, onClose }: ForgotPasswordModalProps) {
+  const { showToast } = useToast();
   const [step, setStep] = useState<Step>("email");
   const [email, setEmail] = useState("");
   const [verificationCode, setVerificationCode] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
-  const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
-  const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [resendCountdown, setResendCountdown] = useState(0);
 
   if (!isOpen) return null;
@@ -98,22 +98,20 @@ export function ForgotPasswordModal({ isOpen, onClose }: ForgotPasswordModalProp
     setVerificationCode("");
     setNewPassword("");
     setConfirmPassword("");
-    setError(null);
-    setSuccessMessage(null);
     setResendCountdown(0);
     onClose();
   }
 
   async function handleRequestCode(e: React.FormEvent) {
     e.preventDefault();
-    setError(null);
     setLoading(true);
 
     try {
       await api.requestPasswordReset(email);
       setStep("code");
-      setSuccessMessage(
-        `We've sent a verification code to ${email}. Check your inbox and spam folder.`
+      showToast(
+        `We've sent a verification code to ${email}. Check your inbox and spam folder.`,
+        "success"
       );
       setResendCountdown(60);
       const countdown = setInterval(() => {
@@ -128,7 +126,7 @@ export function ForgotPasswordModal({ isOpen, onClose }: ForgotPasswordModalProp
     } catch (err) {
       const errorMessage =
         err instanceof Error ? err.message : "Failed to send verification code";
-      setError(errorMessage);
+      showToast(errorMessage, "error");
     } finally {
       setLoading(false);
     }
@@ -136,17 +134,16 @@ export function ForgotPasswordModal({ isOpen, onClose }: ForgotPasswordModalProp
 
   async function handleVerifyCode(e: React.FormEvent) {
     e.preventDefault();
-    setError(null);
     setLoading(true);
 
     try {
       await api.verifyResetCode(email, verificationCode);
       setStep("password");
-      setSuccessMessage("Code verified successfully. Now set your new password.");
+      showToast("Code verified successfully. Now set your new password.", "success");
     } catch (err) {
       const errorMessage =
         err instanceof Error ? err.message : "Invalid or expired verification code";
-      setError(errorMessage);
+      showToast(errorMessage, "error");
     } finally {
       setLoading(false);
     }
@@ -154,15 +151,14 @@ export function ForgotPasswordModal({ isOpen, onClose }: ForgotPasswordModalProp
 
   async function handleResetPassword(e: React.FormEvent) {
     e.preventDefault();
-    setError(null);
 
     if (newPassword !== confirmPassword) {
-      setError("Passwords do not match");
+      showToast("Passwords do not match", "error");
       return;
     }
 
     if (newPassword.length < 6) {
-      setError("Password must be at least 6 characters");
+      showToast("Password must be at least 6 characters", "error");
       return;
     }
 
@@ -170,24 +166,23 @@ export function ForgotPasswordModal({ isOpen, onClose }: ForgotPasswordModalProp
 
     try {
       await api.resetPassword(email, verificationCode, newPassword);
-      setSuccessMessage("Password reset successfully! Redirecting to login...");
+      showToast("Password reset successfully! Redirecting to login...", "success");
       setTimeout(() => handleReset(), 2000);
     } catch (err) {
       const errorMessage =
         err instanceof Error ? err.message : "Failed to reset password";
-      setError(errorMessage);
+      showToast(errorMessage, "error");
     } finally {
       setLoading(false);
     }
   }
 
   async function handleResendCode() {
-    setError(null);
     setLoading(true);
 
     try {
       await api.requestPasswordReset(email);
-      setSuccessMessage("Verification code resent to your email");
+      showToast("Verification code resent to your email", "success");
       setResendCountdown(60);
       const countdown = setInterval(() => {
         setResendCountdown((prev) => {
@@ -201,7 +196,7 @@ export function ForgotPasswordModal({ isOpen, onClose }: ForgotPasswordModalProp
     } catch (err) {
       const errorMessage =
         err instanceof Error ? err.message : "Failed to resend code";
-      setError(errorMessage);
+      showToast(errorMessage, "error");
     } finally {
       setLoading(false);
     }
@@ -223,19 +218,6 @@ export function ForgotPasswordModal({ isOpen, onClose }: ForgotPasswordModalProp
 
         {/* Content */}
         <div className="px-6 py-8">
-          {successMessage && (
-            <div className="mb-6 p-4 bg-green-50 border border-green-200 rounded-lg flex gap-3">
-              <CheckCircleIcon />
-              <p className="text-sm text-green-700">{successMessage}</p>
-            </div>
-          )}
-
-          {error && (
-            <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg flex gap-3">
-              <AlertCircleIcon />
-              <p className="text-sm text-red-700">{error}</p>
-            </div>
-          )}
 
           {/* Step 1: Email */}
           {step === "email" && (

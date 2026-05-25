@@ -28,7 +28,6 @@ export function StudentHelpPage() {
   const [status, setStatus] = useState<ClearanceStatus | null>(null);
   const [inquiries, setInquiries] = useState<Inquiry[]>([]);
   const [selectedRequestId, setSelectedRequestId] = useState<string>("");
-  const [error, setError] = useState<string | null>(null);
   const [submittingInquiry, setSubmittingInquiry] = useState(false);
   const [inquiryForm, setInquiryForm] = useState({ targetCheckCode: "LIBRARY", subject: "", message: "" });
 
@@ -62,7 +61,6 @@ export function StudentHelpPage() {
     event.preventDefault();
     if (!token || !status) return;
     setSubmittingInquiry(true);
-    setError(null);
     const body = inquiryForm.subject.trim()
       ? `${inquiryForm.subject.trim()}\n\n${inquiryForm.message.trim()}`
       : inquiryForm.message.trim();
@@ -74,8 +72,9 @@ export function StudentHelpPage() {
       });
       setInquiries((cur) => [created, ...cur]);
       setInquiryForm((cur) => ({ ...cur, subject: "", message: "" }));
+      showToast("Inquiry sent successfully.", "success");
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Unable to send inquiry");
+      showToast(e instanceof Error ? e.message : "Unable to send inquiry", "error");
     } finally {
       setSubmittingInquiry(false);
     }
@@ -93,10 +92,6 @@ export function StudentHelpPage() {
       </header>
 
       <main className="mx-auto max-w-3xl px-4 py-6 sm:px-8">
-        {error && (
-          <div className="mb-4 rounded-lg border border-error/30 bg-error-container/40 px-4 py-3 text-sm text-on-error-container">{error}</div>
-        )}
-
         <div className="rounded-2xl bg-surface-container-lowest p-6 shadow-sm sm:p-8">
           <div className="mb-6 flex items-center justify-between">
             <h3 className="text-lg font-black tracking-tight text-on-surface">Inquiry Center</h3>

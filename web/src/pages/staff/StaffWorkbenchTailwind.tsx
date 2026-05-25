@@ -5,6 +5,7 @@ import { BackButton } from "../../components/BackButton";
 import { toApiUrl, api } from "../../lib/api";
 import { campusCatalog } from "../../modules/campus/catalog";
 import { useAuth } from "../../modules/auth/AuthContext";
+import { useToast } from "../../components/ToastContext";
 import type { AuthUser, ClearanceCheck } from "../../types";
 import { roleConfigs } from "./staffRoleConfig";
 import { getStatusLabel, useStaffWorkspace } from "./useStaffWorkspace";
@@ -83,11 +84,10 @@ export function StaffWorkbenchTailwind({
   const { campusSlug } = useParams();
   const headerSubtitle = `${roleConfig.officeName} · ${roleConfig.roleBadge}`;
 
+  const { showToast } = useToast();
   const [clearanceQueue, setClearanceQueue] = useState<ClearanceQueueItem[]>([]);
   const [loadingQueue, setLoadingQueue] = useState(true);
   const [approving, setApproving] = useState<string | null>(null);
-  const [approveError, setApproveError] = useState<string | null>(null);
-  const [approveSuccess, setApproveSuccess] = useState<string | null>(null);
   const [queueSearch, setQueueSearch] = useState("");
 
   const fetchClearanceQueue = useCallback(async () => {
@@ -107,16 +107,12 @@ export function StaffWorkbenchTailwind({
   async function handleQuickApprove(checkId: string, studentName: string) {
     if (!token) return;
     setApproving(checkId);
-    setApproveError(null);
-    setApproveSuccess(null);
     try {
       await api.quickApproveCheck(token, checkId);
-      setApproveSuccess("APPROVED");
+      showToast("Approved successfully.", "success");
       await fetchClearanceQueue();
-      setTimeout(() => setApproveSuccess(null), 3000);
     } catch (err) {
-      setApproveError(err instanceof Error ? err.message : "Failed to approve.");
-      setTimeout(() => setApproveError(null), 4000);
+      showToast(err instanceof Error ? err.message : "Failed to approve.", "error");
     } finally {
       setApproving(null);
     }
@@ -231,26 +227,7 @@ export function StaffWorkbenchTailwind({
           <div className="absolute -right-16 -top-16 size-64 rounded-full bg-secondary-container/10 blur-3xl" aria-hidden />
         </div>
 
-        {error ? (
-          <div className="rounded-lg border border-error/30 bg-error-container/40 px-4 py-3 text-sm text-on-error-container">
-            {error}
-            <button type="button" className="ml-2 font-bold underline" onClick={() => setError(null)}>Dismiss</button>
-          </div>
-        ) : null}
-
-        {/* Approve / Dismiss banners */}
-        {approveSuccess && (
-          <div className="flex items-center gap-3 rounded-xl border border-green-200 bg-green-50 px-4 py-3 text-sm font-medium text-green-800">
-            <span className="material-symbols-outlined text-green-600" style={{ fontVariationSettings: "'FILL' 1" }}>check_circle</span>
-            {approveSuccess}
-          </div>
-        )}
-        {approveError && (
-          <div className="flex items-center gap-3 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-medium text-red-800">
-            <span className="material-symbols-outlined">error</span>
-            {approveError}
-          </div>
-        )}
+        {/* Inline banners removed — toasts shown in bottom-right corner */}
 
         {/* ══════════════════════════════════════════════════════════════ */}
         {/* APPROVAL QUEUE                                                  */}
@@ -453,12 +430,6 @@ export function StaffWorkbenchTailwind({
                 <p className="text-xs text-on-surface-variant">Update your email address</p>
               </div>
             </div>
-            {profileFeedback && (
-              <div className={`mb-4 flex items-center gap-2 rounded-lg px-4 py-3 text-sm font-medium ${profileFeedback.ok ? "bg-green-50 text-green-800 border border-green-200" : "bg-red-50 text-red-800 border border-red-200"}`}>
-                <span className="material-symbols-outlined text-base">{profileFeedback.ok ? "check_circle" : "error"}</span>
-                {profileFeedback.msg}
-              </div>
-            )}
             <form onSubmit={handleUpdateProfile} className="space-y-4">
               <div>
                 <label className="block text-xs font-bold uppercase tracking-widest text-on-surface-variant mb-1">Email Address</label>

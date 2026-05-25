@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { BackButton } from "../components/BackButton";
 import { SessionControls } from "../components/SessionControls";
+import { useToast } from "../components/ToastContext";
 import { api } from "../lib/api";
 import { useAuth } from "../modules/auth/AuthContext";
 import { getCampusByCode, getCampusBySlug } from "../modules/campus/catalog";
@@ -78,10 +79,6 @@ export function RegistrarQueuePage() {
   const [loadingQueue, setLoadingQueue] = useState(true);
   const [loadingDetail, setLoadingDetail] = useState(false);
   const [actionBusy, setActionBusy] = useState<string | null>(null);
-  const [toast, setToast] = useState<{ message: string; type: "success" | "error" } | null>(null);
-  const [error, setError] = useState<string | null>(null);
-
-  function showToast(message: string, type: "success" | "error") { setToast({ message, type }); }
 
   useEffect(() => {
     if (!token) return;
@@ -144,7 +141,6 @@ export function RegistrarQueuePage() {
   async function handleCreateCertificate() {
     if (!token) return;
     setActionBusy("create");
-    setError(null);
     try {
       await api.generateCertificate(token, selectedRequestId);
       await reloadDetail();
@@ -152,7 +148,6 @@ export function RegistrarQueuePage() {
       showToast("Certificate generated successfully!", "success");
     } catch (err) {
       const msg = err instanceof Error ? err.message : "Unable to create certificate";
-      setError(msg);
       showToast(msg, "error");
     } finally {
       setActionBusy(null);
@@ -281,13 +276,6 @@ export function RegistrarQueuePage() {
           </section>
 
           <section className="col-span-12 lg:col-span-8 bg-white rounded-3xl p-8 flex flex-col shadow-sm border border-[#c3c6d1]/20">
-            {error && (
-              <div className="mb-4 flex items-center gap-3 rounded-xl border border-red-300 bg-red-50 px-4 py-3 text-sm text-red-800">
-                <span className="material-symbols-outlined text-base">error</span>
-                <span className="flex-1">{error}</span>
-                <button type="button" onClick={() => setError(null)}><span className="material-symbols-outlined text-base">close</span></button>
-              </div>
-            )}
             {loadingDetail ? (
               <div className="space-y-6">
                 <div className="flex gap-6 items-start"><Skeleton className="w-24 h-24 rounded-2xl" /><div className="space-y-2 flex-1"><Skeleton className="h-8 w-48" /><Skeleton className="h-4 w-64" /></div></div>
@@ -425,7 +413,6 @@ export function RegistrarQueuePage() {
         </div>
       </main>
 
-      {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
     </div>
   );
 }

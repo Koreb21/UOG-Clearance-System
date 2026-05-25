@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useParams, useSearchParams } from "react-router-dom";
 import { SessionControls } from "../components/SessionControls";
 import { BackButton } from "../components/BackButton";
+import { useToast } from "../components/ToastContext";
 import { api } from "../lib/api";
 import { useAuth } from "../modules/auth/AuthContext";
 import { getCampusBySlug } from "../modules/campus/catalog";
@@ -19,11 +20,11 @@ export function StudentFinancePage() {
   const { campusSlug } = useParams();
   const [searchParams, setSearchParams] = useSearchParams();
   const campus = getCampusBySlug(campusSlug);
+  const { showToast } = useToast();
 
   const [requests, setRequests] = useState<ClearanceRequest[]>([]);
   const [selectedRequestId, setSelectedRequestId] = useState<string>("");
   const [status, setStatus] = useState<ClearanceStatus | null>(null);
-  const [error, setError] = useState<string | null>(null);
   const [paymentLoading, setPaymentLoading] = useState(false);
 
   const loadRequests = useCallback(() => {
@@ -36,8 +37,8 @@ export function StudentFinancePage() {
           return items[0]?.id ?? "";
         });
       })
-      .catch((e) => setError(e instanceof Error ? e.message : "Unable to load requests"));
-  }, [token]);
+      .catch((e) => showToast(e instanceof Error ? e.message : "Unable to load requests", "error"));
+  }, [token, showToast]);
 
   useEffect(() => { loadRequests(); }, [loadRequests]);
 
@@ -65,7 +66,6 @@ export function StudentFinancePage() {
   async function handlePayNow() {
     if (!token || !status || payableLiabilities.length === 0) return;
     setPaymentLoading(true);
-    setError(null);
     try {
       const response = await api.initiateChapaPayment(token, {
         clearanceRequestId: status.request.id,
@@ -73,7 +73,7 @@ export function StudentFinancePage() {
       });
       window.location.assign(response.checkoutUrl);
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Unable to start payment");
+      showToast(e instanceof Error ? e.message : "Unable to start payment", "error");
       setPaymentLoading(false);
     }
   }
@@ -90,10 +90,6 @@ export function StudentFinancePage() {
       </header>
 
       <main className="mx-auto max-w-4xl px-4 py-6 sm:px-8">
-        {error && (
-          <div className="mb-4 rounded-lg border border-error/30 bg-error-container/40 px-4 py-3 text-sm text-on-error-container">{error}</div>
-        )}
-
         {requests.length > 1 && (
           <div className="mb-6">
             <label className="block text-xs font-bold uppercase tracking-widest text-on-surface-variant mb-2">Select Request</label>

@@ -1,32 +1,31 @@
 import { useState } from "react";
 import { SessionControls } from "../components/SessionControls";
 import { BackButton } from "../components/BackButton";
+import { useToast } from "../components/ToastContext";
 import { api } from "../lib/api";
 import { useAuth } from "../modules/auth/AuthContext";
 
 export function StudentSettingsPage() {
   const { token, user } = useAuth();
+  const { showToast } = useToast();
 
   const [profileForm, setProfileForm] = useState({ email: user?.email ?? "" });
   const [profileSubmitting, setProfileSubmitting] = useState(false);
-  const [profileFeedback, setProfileFeedback] = useState<{ ok: boolean; msg: string } | null>(null);
 
   const [pwForm, setPwForm] = useState({ current: "", next: "", confirm: "" });
   const [pwSubmitting, setPwSubmitting] = useState(false);
-  const [pwFeedback, setPwFeedback] = useState<{ ok: boolean; msg: string } | null>(null);
 
   async function handleUpdateProfile(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     if (!token) return;
-    if (!profileForm.email.trim()) { setProfileFeedback({ ok: false, msg: "Email is required." }); return; }
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(profileForm.email)) { setProfileFeedback({ ok: false, msg: "Please enter a valid email address." }); return; }
+    if (!profileForm.email.trim()) { showToast("Email is required.", "error"); return; }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(profileForm.email)) { showToast("Please enter a valid email address.", "error"); return; }
     setProfileSubmitting(true);
-    setProfileFeedback(null);
     try {
       await api.updateMyProfile(token, { email: profileForm.email.trim() });
-      setProfileFeedback({ ok: true, msg: "Email updated successfully." });
+      showToast("Email updated successfully.", "success");
     } catch (e) {
-      setProfileFeedback({ ok: false, msg: e instanceof Error ? e.message : "Failed to update email." });
+      showToast(e instanceof Error ? e.message : "Failed to update email.", "error");
     } finally {
       setProfileSubmitting(false);
     }
@@ -35,16 +34,15 @@ export function StudentSettingsPage() {
   async function handleChangePassword(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     if (!token) return;
-    if (pwForm.next.length < 8) { setPwFeedback({ ok: false, msg: "New password must be at least 8 characters." }); return; }
-    if (pwForm.next !== pwForm.confirm) { setPwFeedback({ ok: false, msg: "New passwords do not match." }); return; }
+    if (pwForm.next.length < 8) { showToast("New password must be at least 8 characters.", "error"); return; }
+    if (pwForm.next !== pwForm.confirm) { showToast("New passwords do not match.", "error"); return; }
     setPwSubmitting(true);
-    setPwFeedback(null);
     try {
       await api.changePassword(token, pwForm.current, pwForm.next);
       setPwForm({ current: "", next: "", confirm: "" });
-      setPwFeedback({ ok: true, msg: "Password changed successfully." });
+      showToast("Password changed successfully.", "success");
     } catch (e) {
-      setPwFeedback({ ok: false, msg: e instanceof Error ? e.message : "Failed to change password." });
+      showToast(e instanceof Error ? e.message : "Failed to change password.", "error");
     } finally {
       setPwSubmitting(false);
     }
@@ -72,13 +70,6 @@ export function StudentSettingsPage() {
               <p className="text-xs text-on-surface-variant">Update your email address and profile information.</p>
             </div>
           </div>
-
-          {profileFeedback && (
-            <div className={`mb-4 flex items-center gap-2 rounded-lg px-4 py-3 text-sm font-medium ${profileFeedback.ok ? "bg-green-50 text-green-800 border border-green-200" : "bg-red-50 text-red-800 border border-red-200"}`}>
-              <span className="material-symbols-outlined text-base">{profileFeedback.ok ? "check_circle" : "error"}</span>
-              {profileFeedback.msg}
-            </div>
-          )}
 
           <form onSubmit={handleUpdateProfile} className="space-y-4 max-w-md">
             <div>
@@ -112,13 +103,6 @@ export function StudentSettingsPage() {
               <p className="text-xs text-on-surface-variant">Update your login password. Minimum 8 characters required.</p>
             </div>
           </div>
-
-          {pwFeedback && (
-            <div className={`mb-4 flex items-center gap-2 rounded-lg px-4 py-3 text-sm font-medium ${pwFeedback.ok ? "bg-green-50 text-green-800 border border-green-200" : "bg-red-50 text-red-800 border border-red-200"}`}>
-              <span className="material-symbols-outlined text-base">{pwFeedback.ok ? "check_circle" : "error"}</span>
-              {pwFeedback.msg}
-            </div>
-          )}
 
           <form onSubmit={handleChangePassword} className="space-y-4 max-w-md">
             <div>

@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { SessionControls } from "../components/SessionControls";
+import { useToast } from "../components/ToastContext";
 import { api, toApiUrl } from "../lib/api";
 import { useAuth } from "../modules/auth/AuthContext";
 import { getCampusBySlug } from "../modules/campus/catalog";
@@ -48,9 +49,9 @@ export function ClearanceCertificatePage() {
   const { campusSlug, requestId } = useParams();
   const navigate = useNavigate();
   const campus = getCampusBySlug(campusSlug);
+  const { showToast } = useToast();
 
   const [status, setStatus] = useState<ClearanceStatus | null>(null);
-  const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
   const load = useCallback(async () => {
@@ -60,7 +61,7 @@ export function ClearanceCertificatePage() {
       const result = await api.getStudentStatus(token, requestId);
       setStatus(result);
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Unable to load clearance status");
+      showToast(e instanceof Error ? e.message : "Unable to load clearance status", "error");
     } finally {
       setLoading(false);
     }
@@ -128,12 +129,6 @@ export function ClearanceCertificatePage() {
       </header>
 
       <main className="mx-auto max-w-4xl px-4 py-8 sm:px-8 sm:py-12">
-        {error && (
-          <div className="mb-6 rounded-xl border border-error/30 bg-error-container/40 px-5 py-4 text-sm text-on-error-container">
-            {error}
-          </div>
-        )}
-
         {/* Certificate Card */}
         <div
           id="clearance-certificate"

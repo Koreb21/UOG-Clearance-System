@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { SessionControls } from "../components/SessionControls";
 import { BackButton } from "../components/BackButton";
+import { useToast } from "../components/ToastContext";
 import { api, toApiUrl } from "../lib/api";
 import { useAuth } from "../modules/auth/AuthContext";
 import { getCampusBySlug } from "../modules/campus/catalog";
@@ -80,11 +81,11 @@ export function StudentClearancePage() {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const campus = getCampusBySlug(campusSlug);
+  const { showToast } = useToast();
 
   const [requests, setRequests] = useState<ClearanceRequest[]>([]);
   const [selectedRequestId, setSelectedRequestId] = useState<string>("");
   const [status, setStatus] = useState<ClearanceStatus | null>(null);
-  const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [showCreatePanel, setShowCreatePanel] = useState(false);
   const [form, setForm] = useState({
@@ -95,7 +96,6 @@ export function StudentClearancePage() {
 
   const loadRequests = useCallback(() => {
     if (!token) return;
-    setError(null);
     api.listStudentRequests(token)
       .then((items) => {
         setRequests(items);
@@ -104,8 +104,8 @@ export function StudentClearancePage() {
           return items[0]?.id ?? "";
         });
       })
-      .catch((e) => setError(e instanceof Error ? e.message : "Unable to load requests"));
-  }, [token]);
+      .catch((e) => showToast(e instanceof Error ? e.message : "Unable to load requests", "error"));
+  }, [token, showToast]);
 
   useEffect(() => { loadRequests(); }, [loadRequests]);
 
@@ -122,7 +122,7 @@ export function StudentClearancePage() {
     if (!token || !selectedRequestId) { setStatus(null); return; }
     api.getStudentStatus(token, selectedRequestId)
       .then(setStatus)
-      .catch((e) => setError(e instanceof Error ? e.message : "Unable to load clearance status"));
+      .catch((e) => showToast(e instanceof Error ? e.message : "Unable to load clearance status", "error"));
   }, [selectedRequestId, token]);
 
   const clearedChecks = status?.checks.filter((c) => c.status === "CLEARED").length ?? 0;
@@ -140,14 +140,14 @@ export function StudentClearancePage() {
     event.preventDefault();
     if (!token) return;
     setSubmitting(true);
-    setError(null);
     try {
       const created = await api.createStudentRequest(token, form);
       setRequests((cur) => [created, ...cur]);
       setSelectedRequestId(created.id);
       setShowCreatePanel(false);
+      showToast("Clearance request created successfully.", "success");
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Unable to create clearance request");
+      showToast(e instanceof Error ? e.message : "Unable to create clearance request", "error");
     } finally {
       setSubmitting(false);
     }
@@ -173,10 +173,6 @@ export function StudentClearancePage() {
       </header>
 
       <main className="mx-auto max-w-6xl px-4 py-6 sm:px-8">
-        {error && (
-          <div className="mb-4 rounded-lg border border-error/30 bg-error-container/40 px-4 py-3 text-sm text-on-error-container">{error}</div>
-        )}
-
         <div className="mb-6 grid grid-cols-3 gap-4">
           <div className="rounded-xl bg-surface-container-lowest p-4 shadow-sm">
             <span className="text-xs font-bold uppercase tracking-wider text-outline">Request</span>
@@ -366,12 +362,6 @@ export function StudentClearancePage() {
               </div>
             </div>
             <form onSubmit={handleCreateRequest} className="p-6 space-y-5 max-h-[80vh] overflow-y-auto">
-              {error && (
-                <div className="rounded-lg border border-error/30 bg-error-container/40 px-4 py-3 text-sm text-on-error-container flex items-center gap-2">
-                  <span className="material-symbols-outlined text-base text-error">error</span>
-                  {error}
-                </div>
-              )}
               <div>
                 <label className="block text-xs font-bold uppercase tracking-widest text-on-surface-variant mb-2">Request Type</label>
                 <select aria-label="Clearance request type" className="w-full rounded-xl border-none bg-surface-container-high p-3 text-sm font-medium focus:ring-2 focus:ring-primary" value={form.requestType} onChange={(e) => setForm((c) => ({ ...c, requestType: e.target.value as typeof form.requestType }))}>

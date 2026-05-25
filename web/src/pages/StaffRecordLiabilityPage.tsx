@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { BackButton } from "../components/BackButton";
+import { useToast } from "../components/ToastContext";
 import { useAuth } from "../modules/auth/AuthContext";
 import { getCampusBySlug } from "../modules/campus/catalog";
 
@@ -28,6 +29,7 @@ function todayInputValue() {
 
 export function StaffRecordLiabilityPage() {
   const { token, user } = useAuth();
+  const { showToast } = useToast();
   const { campusSlug } = useParams();
   const navigate = useNavigate();
   const campus = getCampusBySlug(campusSlug);
@@ -46,7 +48,6 @@ export function StaffRecordLiabilityPage() {
   });
 
   const [submitting, setSubmitting] = useState(false);
-  const [feedback, setFeedback] = useState<{ ok: boolean; msg: string } | null>(null);
 
   function updateField(key: string, value: string) {
     setForm((f) => ({ ...f, [key]: value }));
@@ -58,12 +59,11 @@ export function StaffRecordLiabilityPage() {
 
     const amount = parseFloat(form.amount);
     if (!form.fullName.trim() || !form.studentId.trim() || !form.yearOfStudy || !form.department.trim() || !form.campus || isNaN(amount) || amount <= 0 || !form.paymentDate) {
-      setFeedback({ ok: false, msg: "Please fill in all required fields correctly. Amount must be greater than 0." });
+      showToast("Please fill in all required fields correctly. Amount must be greater than 0.", "error");
       return;
     }
 
     setSubmitting(true);
-    setFeedback(null);
 
     try {
       const payload = {
@@ -87,12 +87,12 @@ export function StaffRecordLiabilityPage() {
         throw new Error(err.message ?? "Failed to record fine.");
       }
 
-      setFeedback({ ok: true, msg: "FINE SUCCESSFULLY RECORDED" });
+      showToast("Fine successfully recorded.", "success");
       setTimeout(() => {
         navigate(`/campus/${campusSlug}/staff`);
       }, 2000);
     } catch (err) {
-      setFeedback({ ok: false, msg: err instanceof Error ? err.message : "Failed to record fine." });
+      showToast(err instanceof Error ? err.message : "Failed to record fine.", "error");
       setSubmitting(false);
     }
   }
@@ -124,13 +124,6 @@ export function StaffRecordLiabilityPage() {
       <main className="mx-auto max-w-xl px-4 py-8 sm:px-6">
         <form onSubmit={handleSubmit} className="rounded-2xl bg-white p-6 shadow-sm space-y-5">
           <h2 className="text-base font-bold text-[#001e40]">Student Fine Record</h2>
-
-          {feedback && (
-            <div className={`flex items-center gap-2 rounded-xl px-4 py-3 text-sm font-medium ${feedback.ok ? "bg-green-50 text-green-800 border border-green-200" : "bg-red-50 text-red-700 border border-red-200"}`}>
-              <span className="material-symbols-outlined text-base">{feedback.ok ? "check_circle" : "error"}</span>
-              {feedback.msg}
-            </div>
-          )}
 
           <div>
             <label className="mb-1 block text-[10px] font-bold uppercase tracking-wider text-[#43474f]">Student Full Name *</label>

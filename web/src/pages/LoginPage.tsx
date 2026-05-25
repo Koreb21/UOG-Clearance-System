@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { SessionControls } from "../components/SessionControls";
+import { useToast } from "../components/ToastContext";
 import { useAuth } from "../modules/auth/AuthContext";
 import { api } from "../lib/api";
 
@@ -148,6 +149,7 @@ type ResetStep = "email" | "code" | "newpassword" | "done";
 
 export function LoginPage() {
   const navigate = useNavigate();
+  const { showToast } = useToast();
   const { login, user, loading: authLoading } = useAuth();
   const sessionReady = !authLoading;
   const [selectedCampus, setSelectedCampus] = useState<CampusOption | null>(null);
@@ -157,12 +159,10 @@ export function LoginPage() {
   const [adminUsername, setAdminUsername] = useState("");
   const [adminPassword, setAdminPassword] = useState("");
   const [adminPasswordVisible, setAdminPasswordVisible] = useState(false);
-  const [adminError, setAdminError] = useState<string | null>(null);
   const [adminSubmitting, setAdminSubmitting] = useState(false);
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [passwordVisible, setPasswordVisible] = useState(false);
-  const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
   // ── Forgot password inline flow ──────────────────────────────────────────
@@ -173,8 +173,6 @@ export function LoginPage() {
   const [resetNewPw, setResetNewPw] = useState("");
   const [resetConfirmPw, setResetConfirmPw] = useState("");
   const [resetPwVisible, setResetPwVisible] = useState(false);
-  const [resetError, setResetError] = useState<string | null>(null);
-  const [resetSuccess, setResetSuccess] = useState<string | null>(null);
   const [resetLoading, setResetLoading] = useState(false);
   const [resendCountdown, setResendCountdown] = useState(0);
 
@@ -200,29 +198,25 @@ export function LoginPage() {
     setResetCode("");
     setResetNewPw("");
     setResetConfirmPw("");
-    setResetError(null);
-    setResetSuccess(null);
+    setResetPwVisible(false);
     setResendCountdown(0);
   }
 
   function closeForgot() {
     setShowForgot(false);
     setResetStep("email");
-    setResetError(null);
-    setResetSuccess(null);
   }
 
   async function handleResetRequestCode(e: React.FormEvent) {
     e.preventDefault();
-    setResetError(null);
     setResetLoading(true);
     try {
       await api.requestPasswordReset(resetEmail);
       setResetStep("code");
-      setResetSuccess(`A verification code was sent to ${resetEmail}. Check your inbox and spam folder.`);
+      showToast(`A verification code was sent to ${resetEmail}. Check your inbox and spam folder.`, "success");
       startResendCountdown();
     } catch (err) {
-      setResetError(err instanceof Error ? err.message : "Failed to send verification code. Please try again.");
+      showToast(err instanceof Error ? err.message : "Failed to send verification code. Please try again.", "error");
     } finally {
       setResetLoading(false);
     }
@@ -230,14 +224,13 @@ export function LoginPage() {
 
   async function handleResetVerifyCode(e: React.FormEvent) {
     e.preventDefault();
-    setResetError(null);
     setResetLoading(true);
     try {
       await api.verifyResetCode(resetEmail, resetCode);
       setResetStep("newpassword");
-      setResetSuccess("Code verified. Set your new password below.");
+      showToast("Code verified. Set your new password below.", "success");
     } catch (err) {
-      setResetError(err instanceof Error ? err.message : "Invalid or expired code. Please try again.");
+      showToast(err instanceof Error ? err.message : "Invalid or expired code. Please try again.", "error");
     } finally {
       setResetLoading(false);
     }
@@ -245,30 +238,28 @@ export function LoginPage() {
 
   async function handleResetSetPassword(e: React.FormEvent) {
     e.preventDefault();
-    setResetError(null);
-    if (resetNewPw !== resetConfirmPw) { setResetError("Passwords do not match."); return; }
-    if (resetNewPw.length < 6) { setResetError("Password must be at least 6 characters."); return; }
+    if (resetNewPw !== resetConfirmPw) { showToast("Passwords do not match.", "error"); return; }
+    if (resetNewPw.length < 6) { showToast("Password must be at least 6 characters.", "error"); return; }
     setResetLoading(true);
     try {
       await api.resetPassword(resetEmail, resetCode, resetNewPw);
       setResetStep("done");
-      setResetSuccess("Your password has been reset successfully. You can now sign in.");
+      showToast("Your password has been reset successfully. You can now sign in.", "success");
     } catch (err) {
-      setResetError(err instanceof Error ? err.message : "Failed to reset password. Please try again.");
+      showToast(err instanceof Error ? err.message : "Failed to reset password. Please try again.", "error");
     } finally {
       setResetLoading(false);
     }
   }
 
   async function handleResendCode() {
-    setResetError(null);
     setResetLoading(true);
     try {
       await api.requestPasswordReset(resetEmail);
-      setResetSuccess("A new verification code was sent to your email.");
+      showToast("A new verification code was sent to your email.", "success");
       startResendCountdown();
     } catch (err) {
-      setResetError(err instanceof Error ? err.message : "Failed to resend code.");
+      showToast(err instanceof Error ? err.message : "Failed to resend code.", "error");
     } finally {
       setResetLoading(false);
     }
@@ -279,7 +270,6 @@ export function LoginPage() {
     if (nextCount >= 5) {
       setAdminTapCount(0);
       setShowAdminGate(true);
-      setAdminError(null);
       return;
     }
     setAdminTapCount(nextCount);
@@ -288,16 +278,16 @@ export function LoginPage() {
   async function handleAdminSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setAdminSubmitting(true);
-    setAdminError(null);
     try {
       await login(adminUsername.trim(), adminPassword);
       setShowAdminGate(false);
       navigate("/admin", { replace: true });
     } catch (submissionError) {
-      setAdminError(
+      showToast(
         submissionError instanceof Error
           ? submissionError.message
-          : "Unable to authenticate admin access."
+          : "Unable to authenticate admin access.",
+        "error"
       );
     } finally {
       setAdminSubmitting(false);
@@ -307,15 +297,15 @@ export function LoginPage() {
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setSubmitting(true);
-    setError(null);
     try {
       await login(username.trim(), password, selectedCampus?.id ?? null);
       navigate("/");
     } catch (submissionError) {
-      setError(
+      showToast(
         submissionError instanceof Error
           ? submissionError.message
-          : "Unable to sign in"
+          : "Unable to sign in",
+        "error"
       );
     } finally {
       setSubmitting(false);
@@ -436,19 +426,6 @@ export function LoginPage() {
                     </div>
                   ))}
                 </div>
-
-                {resetSuccess && (
-                  <div className="mb-4 flex items-start gap-2 rounded-lg border border-green-200 bg-green-50 p-3">
-                    <span className="material-symbols-outlined text-green-600 text-base mt-0.5">check_circle</span>
-                    <p className="text-sm text-green-700">{resetSuccess}</p>
-                  </div>
-                )}
-                {resetError && (
-                  <div className="mb-4 flex items-start gap-2 rounded-lg border border-red-200 bg-red-50 p-3">
-                    <span className="material-symbols-outlined text-red-600 text-base mt-0.5">error</span>
-                    <p className="text-sm text-red-700">{resetError}</p>
-                  </div>
-                )}
 
                 {resetStep === "done" ? (
                   <div className="flex flex-col gap-3 text-center">
@@ -691,8 +668,6 @@ export function LoginPage() {
                     </div>
                   </label>
 
-                  {error ? <p className="error-text">{error}</p> : null}
-
                   <button className="portal-login-submit" disabled={submitting || !sessionReady}>
                     <span>
                       {!sessionReady ? "Preparing session…" : submitting ? "Signing in..." : "Access Clearance Dashboard"}
@@ -900,7 +875,6 @@ export function LoginPage() {
                 {adminPasswordVisible ? <EyeOffIcon /> : <EyeIcon />}
               </button>
             </div>
-            {adminError ? <p className="error-text">{adminError}</p> : null}
             <div style={{ display: "flex", gap: "0.5rem", justifyContent: "flex-end" }}>
               <button
                 type="button"
@@ -910,7 +884,6 @@ export function LoginPage() {
                   setAdminUsername("");
                   setAdminPassword("");
                   setAdminPasswordVisible(false);
-                  setAdminError(null);
                 }}
               >
                 Cancel

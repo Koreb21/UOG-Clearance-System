@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useParams } from "react-router-dom";
 import { SessionControls } from "../components/SessionControls";
 import { BackButton } from "../components/BackButton";
+import { useToast } from "../components/ToastContext";
 import { api } from "../lib/api";
 import { useAuth } from "../modules/auth/AuthContext";
 import { getCampusByCode, getCampusBySlug } from "../modules/campus/catalog";
@@ -14,18 +15,15 @@ function fmtDate(v?: string | null) {
 
 export function FinanceInquiriesPage() {
   const { token, user } = useAuth();
+  const { showToast } = useToast();
   const { campusSlug } = useParams();
   const campus = getCampusBySlug(campusSlug) ?? getCampusByCode(user?.campusId ?? null);
 
   const [queueItems, setQueueItems] = useState<StaffQueueItem[]>([]);
   const [selectedRequestId, setSelectedRequestId] = useState("");
   const [inquiries, setInquiries] = useState<Inquiry[]>([]);
-  const [error, setError] = useState<string | null>(null);
-  const [successMsg, setSuccessMsg] = useState<string | null>(null);
   const [respondingId, setRespondingId] = useState<string | null>(null);
   const [replyDraft, setReplyDraft] = useState("");
-
-  function flash(msg: string) { setSuccessMsg(msg); setTimeout(() => setSuccessMsg(null), 5000); }
 
   useEffect(() => {
     if (!token) return;
@@ -53,9 +51,9 @@ export function FinanceInquiriesPage() {
       const updated = await api.respondToInquiry(token, inquiry.id, { response: replyDraft.trim(), status: "ANSWERED" });
       setInquiries((cur) => cur.map((q) => (q.id === updated.id ? updated : q)));
       setReplyDraft("");
-      flash("Reply sent to student.");
+      showToast("Reply sent to student.", "success");
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Unable to send reply");
+      showToast(e instanceof Error ? e.message : "Unable to send reply", "error");
     } finally {
       setRespondingId(null);
     }
@@ -76,19 +74,6 @@ export function FinanceInquiriesPage() {
       </header>
 
       <main className="mx-auto max-w-4xl px-4 py-6 sm:px-6">
-        {error && (
-          <div className="mb-4 flex items-center gap-2 rounded-lg border border-error/30 bg-error-container/50 px-4 py-3 text-sm text-on-error-container">
-            {error}
-            <button type="button" className="ml-auto font-bold underline" onClick={() => setError(null)}>Dismiss</button>
-          </div>
-        )}
-        {successMsg && (
-          <div className="mb-4 flex items-center gap-2 rounded-lg border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-800">
-            <span className="material-symbols-outlined text-base">check_circle</span>
-            {successMsg}
-          </div>
-        )}
-
         <div className="mb-4">
           <select
             aria-label="Select student request"

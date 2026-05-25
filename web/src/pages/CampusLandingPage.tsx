@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { SessionControls } from "../components/SessionControls";
+import { useToast } from "../components/ToastContext";
 import { useAuth } from "../modules/auth/AuthContext";
 import { campusCatalog, getCampusByCode } from "../modules/campus/catalog";
 
@@ -52,7 +53,6 @@ export function CampusLandingPage() {
   const [showAdminGate, setShowAdminGate] = useState(false);
   const [adminUsername, setAdminUsername] = useState("");
   const [adminPassword, setAdminPassword] = useState("");
-  const [adminError, setAdminError] = useState<string | null>(null);
   const [adminSubmitting, setAdminSubmitting] = useState(false);
 
   function getPortalLink(portal: "student" | "staff") {
@@ -80,7 +80,6 @@ export function CampusLandingPage() {
     if (nextCount >= 5) {
       setTapCount(0);
       setShowAdminGate(true);
-      setAdminError(null);
       return;
     }
     setTapCount(nextCount);
@@ -89,13 +88,12 @@ export function CampusLandingPage() {
   async function handleAdminGateSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setAdminSubmitting(true);
-    setAdminError(null);
     try {
       await login(adminUsername.trim(), adminPassword);
       setShowAdminGate(false);
       navigate("/admin", { replace: true });
     } catch (error) {
-      setAdminError(error instanceof Error ? error.message : "Unable to authenticate admin access.");
+      showToast(error instanceof Error ? error.message : "Unable to authenticate admin access.", "error");
     } finally {
       setAdminSubmitting(false);
     }
@@ -265,7 +263,6 @@ export function CampusLandingPage() {
               autoComplete="current-password"
               required
             />
-            {adminError ? <p className="error-text">{adminError}</p> : null}
             <div style={{ display: "flex", gap: "0.5rem", justifyContent: "flex-end" }}>
               <button
                 type="button"
@@ -274,7 +271,6 @@ export function CampusLandingPage() {
                   setShowAdminGate(false);
                   setAdminUsername("");
                   setAdminPassword("");
-                  setAdminError(null);
                 }}
               >
                 Cancel

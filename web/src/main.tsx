@@ -4,6 +4,7 @@ import { BrowserRouter } from "react-router-dom";
 import App from "./App";
 import { AuthProvider } from "./modules/auth/AuthContext";
 import { CampusProvider } from "./modules/campus/CampusContext";
+import { ToastProvider } from "./components/ToastContext";
 import { installMockBackend } from "./lib/mockBackend";
 import "./styles.css";
 
@@ -14,7 +15,9 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
     <BrowserRouter>
       <AuthProvider>
         <CampusProvider>
-          <App />
+          <ToastProvider>
+            <App />
+          </ToastProvider>
         </CampusProvider>
       </AuthProvider>
     </BrowserRouter>
