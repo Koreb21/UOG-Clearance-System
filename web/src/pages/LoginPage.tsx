@@ -153,6 +153,7 @@ export function LoginPage() {
   const [selectedCampus, setSelectedCampus] = useState<CampusOption | null>(null);
   const [adminTapCount, setAdminTapCount] = useState(0);
   const [showAdminGate, setShowAdminGate] = useState(false);
+  const [showHelp, setShowHelp] = useState(false);
   const [adminUsername, setAdminUsername] = useState("");
   const [adminPassword, setAdminPassword] = useState("");
   const [adminPasswordVisible, setAdminPasswordVisible] = useState(false);
@@ -350,7 +351,7 @@ export function LoginPage() {
                 <SessionControls density="compact" />
               </>
             ) : null}
-            <button type="button" className="portal-login-help-button" aria-label="Help">
+            <button type="button" className="portal-login-help-button" aria-label="Help" onClick={() => setShowHelp(true)} title="Help & FAQ">
               <HelpIcon />
             </button>
           </div>
@@ -745,12 +746,93 @@ export function LoginPage() {
             <span>Excellence Through Digital Transformation</span>
           </div>
           <div className="portal-login-footer-links">
-            <a href="/">Privacy</a>
-            <a href="/">Terms</a>
-            <a href="/">Support</a>
+            <button type="button" onClick={() => setShowHelp(true)} className="portal-login-footer-link">Privacy</button>
+            <button type="button" onClick={() => setShowHelp(true)} className="portal-login-footer-link">Terms</button>
+            <button type="button" onClick={() => setShowHelp(true)} className="portal-login-footer-link">Support</button>
           </div>
         </div>
       </footer>
+
+      {/* Help / FAQ Modal */}
+      {showHelp ? (
+        <div
+          role="dialog"
+          aria-modal="true"
+          className="role-navigator-admin-backdrop"
+          style={{
+            position: "fixed",
+            inset: 0,
+            backgroundColor: "rgba(8, 15, 28, 0.68)",
+            display: "grid",
+            placeItems: "center",
+            zIndex: 1000,
+            padding: "1rem"
+          }}
+          onClick={() => setShowHelp(false)}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              background: "#fff",
+              borderRadius: "1rem",
+              padding: "1.75rem",
+              maxWidth: "520px",
+              width: "100%",
+              boxShadow: "0 24px 48px rgba(0,0,0,0.18)",
+              maxHeight: "80vh",
+              overflowY: "auto"
+            }}
+          >
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "1rem" }}>
+              <h3 style={{ margin: 0, fontSize: "1.15rem", fontWeight: 800, color: "#0f172a" }}>Help & FAQ</h3>
+              <button
+                type="button"
+                onClick={() => setShowHelp(false)}
+                style={{ background: "transparent", border: "none", cursor: "pointer", padding: "6px", color: "#64748b", borderRadius: "8px" }}
+                aria-label="Close"
+              >
+                <span className="material-symbols-outlined">close</span>
+              </button>
+            </div>
+
+            <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
+              <details style={{ border: "1px solid #e2e8f0", borderRadius: "12px", padding: "0.75rem 1rem" }} open>
+                <summary style={{ fontWeight: 700, color: "#0f172a", cursor: "pointer" }}>How do I sign in?</summary>
+                <p style={{ margin: "0.5rem 0 0", fontSize: "0.85rem", color: "#475569", lineHeight: 1.6 }}>
+                  1. Select your campus (Atse Tewodros, Maraki, or Atse Fasil).<br/>
+                  2. Enter your university ID or email and password.<br/>
+                  3. Click "Sign In" to access your dashboard.
+                </p>
+              </details>
+
+              <details style={{ border: "1px solid #e2e8f0", borderRadius: "12px", padding: "0.75rem 1rem" }}>
+                <summary style={{ fontWeight: 700, color: "#0f172a", cursor: "pointer" }}>Forgot your password?</summary>
+                <p style={{ margin: "0.5rem 0 0", fontSize: "0.85rem", color: "#475569", lineHeight: 1.6 }}>
+                  Click the "Forgot password?" link below the password field. Enter your registered email, and we will send you a verification code to reset it.
+                </p>
+              </details>
+
+              <details style={{ border: "1px solid #e2e8f0", borderRadius: "12px", padding: "0.75rem 1rem" }}>
+                <summary style={{ fontWeight: 700, color: "#0f172a", cursor: "pointer" }}>Demo accounts for testing</summary>
+                <p style={{ margin: "0.5rem 0 0", fontSize: "0.85rem", color: "#475569", lineHeight: 1.6 }}>
+                  <strong>Students:</strong> student1 / student123<br/>
+                  <strong>Staff:</strong> librarian / staff123<br/>
+                  <strong>Finance:</strong> finance / finance123<br/>
+                  <strong>Registrar:</strong> registrar / reg123<br/>
+                  <strong>Admin:</strong> admin / admin123
+                </p>
+              </details>
+
+              <details style={{ border: "1px solid #e2e8f0", borderRadius: "12px", padding: "0.75rem 1rem" }}>
+                <summary style={{ fontWeight: 700, color: "#0f172a", cursor: "pointer" }}>Who do I contact for support?</summary>
+                <p style={{ margin: "0.5rem 0 0", fontSize: "0.85rem", color: "#475569", lineHeight: 1.6 }}>
+                  For technical issues, contact the University of Gondar ICT office at <a href="mailto:ict@uog.edu.et" style={{ color: "#003366" }}>ict@uog.edu.et</a>. For clearance-related questions, reach out to the Registrar's Office.
+                </p>
+              </details>
+            </div>
+          </div>
+        </div>
+      ) : null}
 
       {showAdminGate ? (
         <div
