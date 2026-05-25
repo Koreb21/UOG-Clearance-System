@@ -83,7 +83,6 @@ export function StaffWorkbenchTailwind({
   const { campusSlug } = useParams();
   const headerSubtitle = `${roleConfig.officeName} · ${roleConfig.roleBadge}`;
 
-  const [activeTab, setActiveTab] = useState<"records" | "approvals">("approvals");
   const [clearanceQueue, setClearanceQueue] = useState<ClearanceQueueItem[]>([]);
   const [loadingQueue, setLoadingQueue] = useState(true);
   const [approving, setApproving] = useState<string | null>(null);
@@ -179,7 +178,6 @@ export function StaffWorkbenchTailwind({
       ? `${activeFlags.length} unresolved item${activeFlags.length > 1 ? "s" : ""}: ${activeFlags[0]?.itemName ?? "liability"}`
       : null;
 
-  const allPastLiabilities = currentLiabilities;
 
   return (
     <div className="relative flex min-h-screen w-full flex-col overflow-x-hidden bg-background font-body text-on-surface">
@@ -254,40 +252,10 @@ export function StaffWorkbenchTailwind({
           </div>
         )}
 
-        {/* ── Main Tab bar ──────────────────────────────────────────────── */}
-        <div className="flex rounded-xl bg-surface-container-low p-1 gap-1">
-          <button
-            type="button"
-            onClick={() => setActiveTab("approvals")}
-            className={`flex-1 flex items-center justify-center gap-1.5 rounded-lg py-2.5 text-xs font-bold uppercase tracking-wide transition-colors ${
-              activeTab === "approvals" ? "bg-white shadow text-primary" : "text-on-surface-variant hover:text-on-surface"
-            }`}
-          >
-            <span className="material-symbols-outlined text-[16px]">approval</span>
-            Approval Queue
-            {pendingCount > 0 && (
-              <span className="rounded-full bg-error px-1.5 py-0.5 text-[9px] font-black text-white">{pendingCount}</span>
-            )}
-          </button>
-          <button
-            type="button"
-            onClick={() => setActiveTab("records")}
-            className={`flex-1 flex items-center justify-center gap-1.5 rounded-lg py-2.5 text-xs font-bold uppercase tracking-wide transition-colors ${
-              activeTab === "records" ? "bg-white shadow text-primary" : "text-on-surface-variant hover:text-on-surface"
-            }`}
-          >
-            <span className="material-symbols-outlined text-[16px]">history</span>
-            Records
-            {allPastLiabilities.length > 0 && (
-              <span className="rounded-full bg-error px-1.5 py-0.5 text-[9px] font-black text-white">{allPastLiabilities.length}</span>
-            )}
-          </button>
-        </div>
-
         {/* ══════════════════════════════════════════════════════════════ */}
-        {/* TAB: APPROVAL QUEUE                                           */}
+        {/* APPROVAL QUEUE                                                  */}
         {/* ══════════════════════════════════════════════════════════════ */}
-        {activeTab === "approvals" && (
+        {
           <div className="space-y-4">
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
               <div>
@@ -444,102 +412,15 @@ export function StaffWorkbenchTailwind({
               </div>
             )}
           </div>
-        )}
-
-
-        {/* ══════════════════════════════════════════════════════════════ */}
-        {/* TAB: RECORDS                                                   */}
-        {/* ══════════════════════════════════════════════════════════════ */}
-        {activeTab === "records" && (
-          <div className="space-y-4">
-            <div className="rounded-xl border border-outline-variant/10 bg-surface-container-lowest p-5 shadow-sm">
-              <div className="mb-4 flex items-center justify-between">
-                <h5 className="text-sm font-bold text-on-surface">Student Records &amp; Fines History</h5>
-                <span className="rounded-full bg-primary-fixed px-2 py-0.5 text-[10px] font-bold text-on-primary-fixed-variant">{allPastLiabilities.length} total</span>
-              </div>
-              {!status ? (
-                <p className="text-sm text-on-surface-variant">Select a student to view their records.</p>
-              ) : allPastLiabilities.length === 0 ? (
-                <div className="flex flex-col items-center gap-2 py-8 text-center text-on-surface-variant">
-                  <span className="material-symbols-outlined text-4xl">assignment</span>
-                  <p className="text-sm font-medium">No records found for this student</p>
-                </div>
-              ) : (
-                <div className="space-y-3">
-                  {allPastLiabilities.map((rec) => {
-                    const resolved = ["PAID", "CLEARED", "WAIVED"].includes(rec.status);
-                    return (
-                      <div key={rec.id} className={`rounded-xl p-4 border ${resolved ? "border-outline-variant/10 bg-surface-container-low" : "border-error/30 bg-red-50"}`}>
-                        <div className="flex items-start gap-3">
-                          <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-lg ${resolved ? "bg-primary/10 text-primary" : "bg-error/10 text-error"}`}>
-                            <span className="material-symbols-outlined text-[22px]">{resolved ? "check_circle" : "report_problem"}</span>
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-start justify-between gap-2">
-                              <p className="text-sm font-bold text-on-surface">{rec.itemName}</p>
-                              <span className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-bold ${statusBadgeClass(rec.status)}`}>
-                                {getStatusLabel(rec.status)}
-                              </span>
-                            </div>
-                            {rec.description && <p className="mt-0.5 text-xs text-on-surface-variant">{rec.description}</p>}
-                            <div className="mt-2 flex flex-wrap items-center gap-3 text-[10px] text-on-surface-variant">
-                              <span className="flex items-center gap-1">
-                                <span className="material-symbols-outlined text-[12px]">category</span>
-                                {rec.category ?? rec.departmentCheckCode}
-                              </span>
-                              <span className={`flex items-center gap-1 font-bold ${rec.amount > 0 && !resolved ? "text-error" : ""}`}>
-                                <span className="material-symbols-outlined text-[12px]">payments</span>
-                                {rec.amount.toFixed(2)} {rec.currency}
-                                {rec.paymentRequired && <span className="text-[9px] rounded bg-secondary-container px-1 py-0.5 ml-1">Payment req.</span>}
-                              </span>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
-            </div>
-
-            {status && (
-              <div className="rounded-xl border border-outline-variant/10 bg-surface-container-lowest p-5 shadow-sm">
-                <h5 className="mb-4 text-sm font-bold text-on-surface">All Clearance Checks</h5>
-                <div className="space-y-2">
-                  {status.checks.map((check) => {
-                    const isFlagged = check.status === "FLAGGED" || check.status === "AWAITING_FINANCE" || check.status === "FAILED";
-                    return (
-                      <div key={check.id} className={`flex items-center justify-between rounded-lg px-4 py-3 ${isFlagged ? "border border-error/30 bg-red-50" : check.status === "CLEARED" ? "bg-surface-container-low" : "bg-surface-container-low opacity-70"}`}>
-                        <div className="flex items-center gap-3">
-                          {isFlagged ? (
-                            <span className="material-symbols-outlined text-error" style={{ fontVariationSettings: "'FILL' 1" }}>flag</span>
-                          ) : check.status === "CLEARED" ? (
-                            <span className="material-symbols-outlined text-primary" style={{ fontVariationSettings: "'FILL' 1" }}>check_circle</span>
-                          ) : (
-                            <span className="material-symbols-outlined text-outline">radio_button_unchecked</span>
-                          )}
-                          <div>
-                            <p className="text-sm font-bold text-on-surface">{check.checkCode.replace(/_/g, " ")}</p>
-                            {check.comment && <p className={`text-[10px] ${isFlagged ? "text-error font-medium" : "text-on-surface-variant"}`}>{check.comment}</p>}
-                          </div>
-                        </div>
-                        <span className={`text-[10px] font-bold rounded px-2 py-0.5 ${statusBadgeClass(check.status)}`}>{getStatusLabel(check.status)}</span>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-            )}
-          </div>
-        )}
+        }
       </main>
 
       {/* Bottom nav */}
       <nav className="fixed bottom-0 left-0 right-0 z-50 border-t border-outline-variant/20 bg-surface-container-lowest/95 backdrop-blur-md">
         <div className="mx-auto flex max-w-7xl gap-1 px-2 pb-3 pt-2">
-          <button type="button" onClick={() => setActiveTab("approvals")} className={`flex flex-1 flex-col items-center gap-1 rounded-lg py-1 transition-colors ${activeTab === "approvals" ? "text-primary" : "text-on-surface-variant"}`}>
+          <button type="button" className="flex flex-1 flex-col items-center gap-1 rounded-lg py-1 transition-colors text-primary">
             <span className="relative">
-              <span className="material-symbols-outlined text-[24px]" style={{ fontVariationSettings: activeTab === "approvals" ? "'FILL' 1" : "'FILL' 0" }}>approval</span>
+              <span className="material-symbols-outlined text-[24px]" style={{ fontVariationSettings: "'FILL' 1" }}>approval</span>
               {pendingCount > 0 && <span className="absolute -right-1.5 -top-1 flex size-4 items-center justify-center rounded-full bg-error text-[8px] font-black text-white">{pendingCount}</span>}
             </span>
             <span className="text-[10px] font-medium">Approvals</span>
