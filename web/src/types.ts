@@ -114,6 +114,11 @@ export type StaffQueueItem = {
   studentName: string;
   campusId: string;
   submittedAt: string | null;
+  liabilityItemName?: string;
+  liabilityAmount?: number;
+  liabilityCurrency?: string;
+  liabilityDescription?: string;
+  staffComment?: string;
 };
 
 export type Liability = {

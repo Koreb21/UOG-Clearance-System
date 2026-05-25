@@ -15,6 +15,7 @@ export function FinanceDashboardPage() {
 
   const [flaggedItems, setFlaggedItems] = useState<StaffQueueItem[]>([]);
   const [loadingFlagged, setLoadingFlagged] = useState(true);
+  const [selectedItem, setSelectedItem] = useState<StaffQueueItem | null>(null);
 
   useEffect(() => {
     if (!token) return;
@@ -26,6 +27,33 @@ export function FinanceDashboardPage() {
   }, [token, campus?.code]);
 
   function go(path: string) { navigate(`/campus/${campusSlug}/finance/${path}`); }
+
+  const navCards = [
+    {
+      path: "manual-payment",
+      icon: "payments",
+      label: "Manual Payment",
+      desc: "Record standalone cash / bank payments and generate official receipts",
+      badge: null,
+      color: "from-green-700 to-green-500",
+    },
+    {
+      path: "liabilities",
+      icon: "receipt_long",
+      label: "Liability Ledger",
+      desc: "View campus liabilities and add financial obligations to student records",
+      badge: null,
+      color: "from-secondary to-secondary-container",
+    },
+    {
+      path: "inquiries",
+      icon: "forum",
+      label: "Student Inquiries",
+      desc: "Read and reply to inquiries submitted by students",
+      badge: null,
+      color: "from-[#4a5568] to-[#2d3748]",
+    },
+  ];
 
   return (
     <div className="flex min-h-screen flex-col bg-background font-body text-on-surface">
@@ -43,7 +71,6 @@ export function FinanceDashboardPage() {
             </div>
           </div>
           <div className="flex items-center gap-3">
-            <p className="hidden text-sm font-semibold text-on-surface-variant sm:block">{user?.username}</p>
             <SessionControls density="compact" />
           </div>
         </div>
@@ -61,20 +88,33 @@ export function FinanceDashboardPage() {
                 Queues and liabilities scoped to <strong>{campus?.name ?? "your assigned campus"}</strong>.
                 Verify payments, manage liabilities, and respond to student inquiries.
               </p>
-              <div className="flex flex-wrap gap-3">
-                <button type="button" onClick={() => go("liabilities")} className="rounded-lg border border-white/30 bg-white/10 px-5 py-2.5 font-bold text-white backdrop-blur-sm">
-                  Liability Ledger
-                </button>
-                <button type="button" onClick={() => go("inquiries")} className="rounded-lg border border-white/30 bg-white/10 px-5 py-2.5 font-bold text-white backdrop-blur-sm">
-                  Inquiries
-                </button>
-                <button type="button" onClick={() => navigate(`/campus/${campusSlug}/messages`)} className="flex items-center gap-2 rounded-lg border border-white/30 bg-white/10 px-5 py-2.5 font-bold text-white backdrop-blur-sm">
-                  <span className="material-symbols-outlined text-[20px]">chat</span>
-                  Messages
-                </button>
-              </div>
             </div>
             <div className="pointer-events-none absolute -right-10 -top-10 size-64 rounded-full bg-secondary-container/10 blur-3xl" />
+          </div>
+
+          <div className="mt-5 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {navCards.map((card) => (
+              <button
+                key={card.path}
+                type="button"
+                onClick={() => go(card.path)}
+                className="group flex items-start gap-4 rounded-2xl bg-surface-container-lowest p-5 shadow-sm ring-1 ring-outline-variant/20 transition-all hover:ring-primary/20 hover:shadow-md text-left"
+              >
+                <div className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br ${card.color} text-white shadow-sm`}>
+                  <span className="material-symbols-outlined text-[22px]">{card.icon}</span>
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="mb-1 flex items-center gap-2">
+                    <h3 className="text-base font-black text-on-surface">{card.label}</h3>
+                    {card.badge && (
+                      <span className="rounded-full bg-error px-2 py-0.5 text-[10px] font-bold text-on-error">{card.badge}</span>
+                    )}
+                  </div>
+                  <p className="text-sm text-on-surface-variant">{card.desc}</p>
+                </div>
+                <span className="material-symbols-outlined text-outline/50 group-hover:text-primary transition-colors mt-0.5">chevron_right</span>
+              </button>
+            ))}
           </div>
         </section>
 
@@ -132,7 +172,7 @@ export function FinanceDashboardPage() {
                         <td className="px-4 py-3">
                           <button
                             type="button"
-                            onClick={() => navigate(`/campus/${campusSlug}/finance/queue`, { state: { selectedRequestId: item.clearanceRequestId } })}
+                            onClick={() => setSelectedItem(item)}
                             className="text-xs font-bold text-primary underline"
                           >
                             Review
@@ -164,6 +204,71 @@ export function FinanceDashboardPage() {
           ))}
         </div>
       </footer>
+
+      {/* Review Detail Drawer */}
+      {selectedItem && (
+        <div className="fixed inset-0 z-[100] flex items-start justify-end p-0">
+          <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={() => setSelectedItem(null)} />
+          <div className="relative z-10 h-full w-full max-w-md overflow-y-auto bg-surface-container-lowest shadow-2xl">
+            <div className="border-b border-outline-variant/20 p-5">
+              <div className="flex items-center justify-between">
+                <h3 className="text-lg font-black text-on-surface">Financial Details</h3>
+                <button type="button" onClick={() => setSelectedItem(null)} className="rounded-lg p-2 text-on-surface-variant hover:bg-surface-container">
+                  <span className="material-symbols-outlined">close</span>
+                </button>
+              </div>
+            </div>
+            <div className="p-5 space-y-5">
+              <div>
+                <p className="text-xs font-bold uppercase tracking-wider text-on-surface-variant mb-1">Student</p>
+                <p className="text-base font-semibold text-on-surface">{selectedItem.studentName}</p>
+                <p className="text-sm font-mono text-on-surface-variant">{selectedItem.studentId}</p>
+              </div>
+              <div>
+                <p className="text-xs font-bold uppercase tracking-wider text-on-surface-variant mb-1">Request</p>
+                <p className="text-sm text-on-surface">{selectedItem.requestNumber} <span className="text-on-surface-variant">({selectedItem.requestType})</span></p>
+              </div>
+              <div>
+                <p className="text-xs font-bold uppercase tracking-wider text-on-surface-variant mb-1">Flagged By</p>
+                <p className="text-sm text-on-surface">{selectedItem.checkCode}</p>
+              </div>
+              <div className="rounded-xl border border-outline-variant/20 bg-surface-container-low p-4">
+                <p className="text-xs font-bold uppercase tracking-wider text-primary mb-2">Liability</p>
+                <p className="text-base font-bold text-on-surface">{selectedItem.liabilityItemName ?? "—"}</p>
+                {selectedItem.liabilityDescription && (
+                  <p className="text-sm text-on-surface-variant mt-1">{selectedItem.liabilityDescription}</p>
+                )}
+                <div className="mt-3 flex items-baseline gap-1">
+                  <span className="text-2xl font-black text-error">{selectedItem.liabilityAmount?.toLocaleString() ?? "—"}</span>
+                  <span className="text-sm font-bold text-error">{selectedItem.liabilityCurrency ?? "ETB"}</span>
+                </div>
+              </div>
+              {selectedItem.staffComment && (
+                <div className="rounded-xl border border-outline-variant/20 bg-surface-container-low p-4">
+                  <p className="text-xs font-bold uppercase tracking-wider text-on-surface-variant mb-1">Staff Note</p>
+                  <p className="text-sm text-on-surface">{selectedItem.staffComment}</p>
+                </div>
+              )}
+              <div className="flex gap-3 pt-2">
+                <button
+                  type="button"
+                  onClick={() => { setSelectedItem(null); go("manual-payment"); }}
+                  className="flex-1 rounded-xl bg-primary px-4 py-3 text-sm font-bold text-on-primary shadow-md transition hover:bg-primary/90"
+                >
+                  Record Payment
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setSelectedItem(null)}
+                  className="rounded-xl border-2 border-outline-variant px-4 py-3 text-sm font-bold text-on-surface transition hover:bg-surface-container"
+                >
+                  Close
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

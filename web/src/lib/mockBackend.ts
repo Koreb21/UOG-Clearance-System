@@ -689,12 +689,15 @@ function handleFlaggedStudents(token: string | null, campusId: string, db: Db) {
     clearanceRequestId: string; requestNumber: string; requestType: string;
     requestStatus: string; studentId: string; studentName: string;
     campusId: string; submittedAt: string | null;
+    liabilityItemName?: string; liabilityAmount?: number; liabilityCurrency?: string;
+    liabilityDescription?: string; staffComment?: string;
   }> = [];
   for (const check of flaggedChecks) {
     const req = db.requests.find((r) => r.id === check.clearanceRequestId);
     if (!req) continue;
     if (targetCampus && req.campusId !== targetCampus) continue;
     const student = db.students.find((s) => s.studentId === req.studentId);
+    const liability = db.liabilities.find((l) => l.clearanceRequestId === req.id && l.departmentCheckCode === check.checkCode);
     result.push({
       checkId: check.id,
       checkCode: check.checkCode,
@@ -707,6 +710,11 @@ function handleFlaggedStudents(token: string | null, campusId: string, db: Db) {
       studentName: student ? `${student.firstName} ${student.lastName}` : req.studentId,
       campusId: req.campusId,
       submittedAt: req.submittedAt,
+      liabilityItemName: liability?.itemName ?? undefined,
+      liabilityAmount: liability?.amount ?? undefined,
+      liabilityCurrency: liability?.currency ?? undefined,
+      liabilityDescription: liability?.description ?? undefined,
+      staffComment: check.comment ?? undefined,
     });
   }
   return result;
