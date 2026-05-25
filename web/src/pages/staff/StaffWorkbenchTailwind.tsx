@@ -111,7 +111,7 @@ export function StaffWorkbenchTailwind({
     setApproveSuccess(null);
     try {
       await api.quickApproveCheck(token, checkId);
-      setApproveSuccess(`${studentName} has been approved.`);
+      setApproveSuccess("APPROVED");
       await fetchClearanceQueue();
       setTimeout(() => setApproveSuccess(null), 3000);
     } catch (err) {

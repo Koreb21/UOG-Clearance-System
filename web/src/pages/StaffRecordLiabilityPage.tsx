@@ -87,21 +87,14 @@ export function StaffRecordLiabilityPage() {
         throw new Error(err.message ?? "Failed to record fine.");
       }
 
-      setFeedback({ ok: true, msg: "Fine recorded successfully." });
-      setForm({
-        fullName: "",
-        studentId: "",
-        yearOfStudy: "",
-        department: "",
-        campus: campus?.name ?? "",
-        amount: "",
-        paymentDate: todayInputValue(),
-      });
+      setFeedback({ ok: true, msg: "FINE SUCCESSFULLY RECORDED" });
+      setTimeout(() => {
+        navigate(`/campus/${campusSlug}/staff`);
+      }, 2000);
     } catch (err) {
       setFeedback({ ok: false, msg: err instanceof Error ? err.message : "Failed to record fine." });
+      setSubmitting(false);
     }
-
-    setSubmitting(false);
   }
 
   return (
@@ -242,7 +235,7 @@ export function StaffRecordLiabilityPage() {
               disabled={submitting}
               className="flex-1 rounded-xl bg-[#003366] py-3 text-sm font-bold text-white shadow-sm hover:bg-[#002244] transition-colors disabled:opacity-50"
             >
-              {submitting ? "Saving…" : "CONFIRM PAYMENT"}
+              {submitting ? "Saving…" : "CONFIRM RECORD"}
             </button>
           </div>
         </form>
