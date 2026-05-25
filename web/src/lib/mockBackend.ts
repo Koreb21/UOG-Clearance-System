@@ -1213,26 +1213,6 @@ function handleAdminGetBatchDetail(token: string | null, batchId: string, db: Db
   };
 }
 
-function handleAdminBatchPreview(token: string | null, batchId: string, db: Db) {
-  requireAuth(token, db);
-  const batch = db.batches.find((b) => b.id === batchId);
-  if (!batch) throw { status: 404, message: "Batch not found." };
-  const prospectives = db.prospectiveStudents.filter((s) => s.batchId === batchId);
-  const nextIndex = db.students.length + 1;
-  const preview = prospectives.map((p, i) => {
-    const year = p.academicYear ?? new Date().getFullYear();
-    const studentId = generateStudentId(nextIndex + i, year);
-    const password = generatePassword(year);
-    return {
-      id: p.id, firstName: p.firstName, fatherName: p.fatherName, lastName: p.lastName,
-      gender: p.gender, age: p.age, email: p.email, department: p.department,
-      academicYear: p.academicYear, campusId: p.campusId,
-      generatedStudentId: studentId, generatedPassword: password,
-    };
-  });
-  return { batch: { id: batch.id, name: batch.name, campusId: batch.campusId, studentCount: batch.studentCount, status: batch.status }, preview };
-}
-
 function handleAdminImportBatch(token: string | null, batchId: string, db: Db) {
   const user = requireAuth(token, db);
   const batch = db.batches.find((b) => b.id === batchId);
@@ -1243,6 +1223,7 @@ function handleAdminImportBatch(token: string | null, batchId: string, db: Db) {
   let failed = 0;
   const errors: string[] = [];
   const nextIndex = db.students.length + 1;
+  const generatedCredentials: Array<{ firstName: string; fatherName: string | null; lastName: string; studentId: string; password: string }> = [];
   for (let i = 0; i < prospectives.length; i++) {
     const p = prospectives[i];
     if (!p.firstName || !p.lastName) { failed++; errors.push(`Row ${i + 1}: missing first or last name`); continue; }
@@ -1262,6 +1243,7 @@ function handleAdminImportBatch(token: string | null, batchId: string, db: Db) {
       email: p.email, role: "STUDENT", campusId: p.campusId,
       departmentId: null, studentId, active: true, mustChangePassword: true,
     });
+    generatedCredentials.push({ firstName: p.firstName, fatherName: p.fatherName, lastName: p.lastName, studentId, password });
     imported++;
   }
   batch.status = "IMPORTED";
@@ -1269,7 +1251,7 @@ function handleAdminImportBatch(token: string | null, batchId: string, db: Db) {
   batch.importedBy = user.username;
   batch.importedCount = imported;
   writeDb(db);
-  return { batchId, totalRows: prospectives.length, importedCount: imported, failedCount: failed, errors };
+  return { batchId, totalRows: prospectives.length, importedCount: imported, failedCount: failed, errors, generatedCredentials };
 }
 
 function handleAdminStudents(token: string | null, db: Db) {
@@ -1548,10 +1530,6 @@ async function dispatch(method: string, path: string, headers: Headers, bodyText
     if (method === "GET" && /^\/admin\/student-batches\//.test(pathOnly) && !pathOnly.endsWith("/import")) {
       const batchId = pathOnly.split("/")[3];
       return { status: 200, body: handleAdminGetBatchDetail(token, batchId, db) };
-    }
-    if (method === "GET" && /^\/admin\/student-batches\/[^/]+\/preview$/.test(pathOnly)) {
-      const batchId = pathOnly.split("/")[3];
-      return { status: 200, body: handleAdminBatchPreview(token, batchId, db) };
     }
     if (method === "POST" && /^\/admin\/student-batches\/[^/]+\/import$/.test(pathOnly)) {
       const batchId = pathOnly.split("/")[3];
