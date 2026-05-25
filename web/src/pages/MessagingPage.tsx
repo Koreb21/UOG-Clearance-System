@@ -6,6 +6,13 @@ import { getCampusBySlug } from "../modules/campus/catalog";
 const API = "/api/v1";
 
 interface Contact { id: string; username: string; role: string; campusId: string | null; }
+interface Attachment {
+  name: string;
+  type: string;
+  size: number;
+  data: string;
+}
+
 interface Message {
   id: string;
   fromUserId: string; fromUsername: string; fromRole: string;
@@ -13,6 +20,7 @@ interface Message {
   subject: string; body: string; sentAt: string;
   readAt: string | null; isBroadcast: boolean;
   deletedBySender: boolean; deletedByRecipient: boolean;
+  attachments: Attachment[] | null;
 }
 
 interface Conversation {
@@ -160,6 +168,15 @@ export function MessagingPage() {
     }
   }, [selectedConv, chatMessages.length]);
 
+  async function fileToAttachment(file: File): Promise<Attachment> {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve({ name: file.name, type: file.type, size: file.size, data: reader.result as string });
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
+  }
+
   async function sendMessage(e?: React.FormEvent) {
     if (e) e.preventDefault();
     if (!token || !newMsgText.trim()) return;
@@ -167,6 +184,11 @@ export function MessagingPage() {
     const recipient = isBroadcast ? null : (selectedContact || selectedConv?.contactId);
     const subject = newMsgSubject.trim() || (replyingTo ? `Re: ${replyingTo.subject}` : "New message");
     try {
+      let attachments: Attachment[] | null = null;
+      if (attachFile) {
+        const att = await fileToAttachment(attachFile);
+        attachments = [att];
+      }
       await fetch(`${API}/messages`, {
         method: "POST",
         headers: authHeaders(token),
@@ -175,10 +197,12 @@ export function MessagingPage() {
           subject,
           body: newMsgText,
           isBroadcast,
+          attachments,
         })
       });
       setNewMsgText("");
       setNewMsgSubject("");
+      setAttachFile(null);
       setReplyingTo(null);
       setIsBroadcast(false);
       setSelectedContact("");
@@ -391,6 +415,17 @@ export function MessagingPage() {
                   <textarea value={newMsgText} onChange={e => setNewMsgText(e.target.value)} required placeholder="Write your message..." className="flex-1 w-full rounded-xl border border-[#c3c6d1]/30 bg-[#f2f4f7] px-4 py-3 text-sm outline-none focus:border-[#003366] focus:ring-2 focus:ring-[#003366]/20 resize-none" />
                 </div>
 
+                {attachFile && (
+                  <div className="flex items-center gap-2 rounded-xl border border-[#c3c6d1]/30 bg-[#f2f4f7] px-3 py-2">
+                    <span className="material-symbols-outlined text-[18px] text-[#003366]">attach_file</span>
+                    <span className="flex-1 truncate text-sm text-[#191c1e]">{attachFile.name}</span>
+                    <span className="text-[10px] text-[#43474f]">{(attachFile.size / 1024).toFixed(1)} KB</span>
+                    <button type="button" onClick={() => setAttachFile(null)} className="rounded-full p-1 hover:bg-red-50">
+                      <span className="material-symbols-outlined text-[16px] text-red-500">close</span>
+                    </button>
+                  </div>
+                )}
+
                 <div className="flex gap-3">
                   <button type="button" onClick={() => setShowNewMsg(false)} className="flex-1 rounded-xl border-2 border-[#c3c6d1] py-3 text-sm font-bold text-[#43474f] hover:bg-[#f2f4f7]">Cancel</button>
                   <button type="submit" disabled={sending || (!isBroadcast && !selectedContact) || !newMsgText.trim()} className="flex-1 flex items-center justify-center gap-2 rounded-xl bg-[#003366] py-3 text-sm font-bold text-white shadow-sm hover:bg-[#002244] disabled:opacity-50">
@@ -434,6 +469,23 @@ export function MessagingPage() {
                             )}
                             <p className="text-xs font-semibold mb-1">{msg.subject}</p>
                             <p className="text-sm leading-relaxed whitespace-pre-wrap">{msg.body}</p>
+                            {msg.attachments && msg.attachments.length > 0 && (
+                              <div className="mt-2 space-y-1.5">
+                                {msg.attachments.map((att) => (
+                                  <a
+                                    key={att.name}
+                                    href={att.data}
+                                    download={att.name}
+                                    className={`flex items-center gap-2 rounded-lg px-3 py-2 text-sm transition-colors ${isMe ? "bg-white/10 hover:bg-white/20 text-white" : "bg-[#f2f4f7] hover:bg-[#e4e7ec] text-[#191c1e]"}`}
+                                  >
+                                    <span className="material-symbols-outlined text-[18px]">{att.type.startsWith("image/") ? "image" : "description"}</span>
+                                    <span className="flex-1 truncate text-xs font-medium">{att.name}</span>
+                                    <span className="text-[10px] opacity-70">{(att.size / 1024).toFixed(1)} KB</span>
+                                    <span className="material-symbols-outlined text-[16px]">download</span>
+                                  </a>
+                                ))}
+                              </div>
+                            )}
                             <div className={`mt-1 flex items-center gap-1 text-[10px] ${isMe ? "text-white/70" : "text-[#43474f]/60"}`}>
                               <span>{fmtDate(msg.sentAt)}</span>
                               {isMe && <span className="material-symbols-outlined text-[12px]">{msg.readAt ? "done_all" : "done"}</span>}

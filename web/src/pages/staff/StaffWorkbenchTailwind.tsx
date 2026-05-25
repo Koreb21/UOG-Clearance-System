@@ -87,6 +87,7 @@ export function StaffWorkbenchTailwind({
   const { showToast } = useToast();
   const [clearanceQueue, setClearanceQueue] = useState<ClearanceQueueItem[]>([]);
   const [loadingQueue, setLoadingQueue] = useState(true);
+  const [unreadMessages, setUnreadMessages] = useState(0);
   const [approving, setApproving] = useState<string | null>(null);
   const [queueSearch, setQueueSearch] = useState("");
 
@@ -103,6 +104,21 @@ export function StaffWorkbenchTailwind({
   }, [token]);
 
   useEffect(() => { fetchClearanceQueue(); }, [fetchClearanceQueue]);
+
+  useEffect(() => {
+    async function fetchUnread() {
+      if (!token) return;
+      try {
+        const res = await fetch(`/api/v1/messages/inbox`, { headers: { Authorization: `Bearer ${token}` } });
+        if (!res.ok) return;
+        const messages = (await res.json()) as Array<{ readAt: string | null }>;
+        setUnreadMessages(messages.filter((m) => !m.readAt).length);
+      } catch {/* silently ignore */}
+    }
+    fetchUnread();
+    const interval = setInterval(fetchUnread, 30000);
+    return () => clearInterval(interval);
+  }, [token]);
 
   async function handleQuickApprove(checkId: string, studentName: string) {
     if (!token) return;
@@ -407,7 +423,10 @@ export function StaffWorkbenchTailwind({
             <span className="text-[10px] font-medium">Fine</span>
           </button>
           <button type="button" onClick={() => navigate(`/campus/${campusSlug}/messages`)} className="flex flex-1 flex-col items-center gap-1 py-1 text-on-surface-variant">
-            <span className="material-symbols-outlined text-[24px]">chat</span>
+            <span className="relative">
+              <span className="material-symbols-outlined text-[24px]">chat</span>
+              {unreadMessages > 0 && <span className="absolute -right-1.5 -top-1 flex size-4 items-center justify-center rounded-full bg-error text-[8px] font-black text-white">{unreadMessages > 9 ? "9+" : unreadMessages}</span>}
+            </span>
             <span className="text-[10px] font-medium">Messages</span>
           </button>
           <button type="button" className="flex flex-1 flex-col items-center gap-1 py-1 text-on-surface-variant" onClick={() => setShowProfileModal(true)}>

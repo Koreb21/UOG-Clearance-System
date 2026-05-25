@@ -146,6 +146,7 @@ interface DbMessage {
   deletedBySender: boolean;
   deletedByRecipient: boolean;
   isBroadcast: boolean;
+  attachments: Array<{ name: string; type: string; size: number; data: string }> | null;
 }
 
 interface Db {
@@ -891,14 +892,14 @@ function handleGetSent(token: string | null, db: Db) {
     .sort((a, b) => b.sentAt.localeCompare(a.sentAt));
 }
 
-function handleSendMessage(token: string | null, body: { toUserId: string | null; subject: string; body: string; isBroadcast: boolean }, db: Db) {
+function handleSendMessage(token: string | null, body: { toUserId: string | null; subject: string; body: string; isBroadcast: boolean; attachments?: Array<{ name: string; type: string; size: number; data: string }> | null }, db: Db) {
   const user = requireAuth(token, db);
   let toUsername: string | null = null;
   if (body.toUserId) {
     const recipient = db.users.find((u) => u.id === body.toUserId);
     toUsername = recipient?.username ?? null;
   }
-  const msg: DbMessage = { id: uid(), fromUserId: user.id, fromUsername: user.username, fromRole: user.role, toUserId: body.isBroadcast ? null : body.toUserId, toUsername: body.isBroadcast ? null : toUsername, campusId: user.campusId ?? "", subject: body.subject, body: body.body, sentAt: isoNow(), readAt: null, deletedBySender: false, deletedByRecipient: false, isBroadcast: body.isBroadcast };
+  const msg: DbMessage = { id: uid(), fromUserId: user.id, fromUsername: user.username, fromRole: user.role, toUserId: body.isBroadcast ? null : body.toUserId, toUsername: body.isBroadcast ? null : toUsername, campusId: user.campusId ?? "", subject: body.subject, body: body.body, sentAt: isoNow(), readAt: null, deletedBySender: false, deletedByRecipient: false, isBroadcast: body.isBroadcast, attachments: body.attachments ?? null };
   db.messages.push(msg);
   writeDb(db);
   return msg;
