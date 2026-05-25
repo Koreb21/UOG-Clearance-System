@@ -227,7 +227,7 @@ export function StaffWorkbenchTailwind({
   const { campusSlug } = useParams();
   const headerSubtitle = `${roleConfig.officeName} · ${roleConfig.roleBadge}`;
 
-  const [activeTab, setActiveTab] = useState<"current" | "records" | "approvals">("approvals");
+  const [activeTab, setActiveTab] = useState<"records" | "approvals">("approvals");
   const [clearanceQueue, setClearanceQueue] = useState<ClearanceQueueItem[]>([]);
   const [loadingQueue, setLoadingQueue] = useState(true);
   const [approving, setApproving] = useState<string | null>(null);
@@ -288,7 +288,7 @@ export function StaffWorkbenchTailwind({
       {
         label: "Awaiting my approval",
         value: `${pendingCount}`,
-        hint: pendingCount ? "Students need review" : "All caught up",
+        hint: pendingCount ? "Students awaiting approval" : "All caught up",
         hintClass: pendingCount ? "text-yellow-300" : "text-secondary",
         icon: "pending_actions"
       },
@@ -427,16 +427,6 @@ export function StaffWorkbenchTailwind({
             {pendingCount > 0 && (
               <span className="rounded-full bg-error px-1.5 py-0.5 text-[9px] font-black text-white">{pendingCount}</span>
             )}
-          </button>
-          <button
-            type="button"
-            onClick={() => setActiveTab("current")}
-            className={`flex-1 flex items-center justify-center gap-1.5 rounded-lg py-2.5 text-xs font-bold uppercase tracking-wide transition-colors ${
-              activeTab === "current" ? "bg-white shadow text-primary" : "text-on-surface-variant hover:text-on-surface"
-            }`}
-          >
-            <span className="material-symbols-outlined text-[16px]">manage_search</span>
-            Student Review
           </button>
           <button
             type="button"
@@ -609,16 +599,14 @@ export function StaffWorkbenchTailwind({
                             </span>
                           )}
 
-                          {/* View detail button */}
+                          {/* Full decision button */}
                           <button
                             type="button"
-                            onClick={() => {
-                              setSelectedStudentId(item.studentId);
-                              setSelectedRequestId(item.clearanceRequestId);
-                              setActiveTab("current");
-                            }}
+                            onClick={() =>
+                              navigate(`/campus/${campusSlug}/staff/record-liability?studentId=${item.studentId}&requestId=${item.clearanceRequestId}`)
+                            }
                             className="flex size-9 items-center justify-center rounded-xl bg-surface-container-high text-on-surface-variant hover:bg-primary hover:text-on-primary transition-all"
-                            title="View student details"
+                            title="Full decision"
                           >
                             <span className="material-symbols-outlined text-[18px]">open_in_new</span>
                           </button>
@@ -632,308 +620,6 @@ export function StaffWorkbenchTailwind({
           </div>
         )}
 
-        {/* ══════════════════════════════════════════════════════════════ */}
-        {/* TAB: STUDENT REVIEW (existing detailed view)                  */}
-        {/* ══════════════════════════════════════════════════════════════ */}
-        {activeTab === "current" && (
-          <div className="grid grid-cols-1 gap-6 lg:grid-cols-12 lg:gap-8">
-            {/* Left column: queue list */}
-            <div className="space-y-4 lg:col-span-4">
-              <div className="flex items-center justify-between">
-                <h3 className="text-lg font-bold text-on-primary-fixed-variant">{roleConfig.queueLabel}</h3>
-                <span className="rounded bg-primary-fixed px-2 py-0.5 text-[10px] font-bold text-on-primary-fixed-variant">LIVE</span>
-              </div>
-              <div className="space-y-2 rounded-xl bg-surface-container-low p-2">
-                {queueItems.length === 0 ? (
-                  <p className="p-4 text-sm text-on-surface-variant">No items waiting for this office on your campus.</p>
-                ) : (
-                  queueItems.slice(0, 8).map((item) => {
-                    const active = item.studentId === selectedStudentId && item.clearanceRequestId === selectedRequestId;
-                    const flagged = hasActiveIssue(item.checkStatus);
-                    return (
-                      <button
-                        key={item.checkId}
-                        type="button"
-                        onClick={() => {
-                          setSelectedStudentId(item.studentId);
-                          setSelectedRequestId(item.clearanceRequestId);
-                        }}
-                        className={`flex w-full items-center gap-3 rounded-lg border-l-4 p-3 text-left transition-colors ${
-                          active
-                            ? "border-secondary bg-surface-container-lowest shadow-sm"
-                            : flagged
-                            ? "border-error bg-error-container/10 hover:bg-error-container/20"
-                            : "border-transparent bg-surface-container-lowest hover:bg-primary-fixed/20"
-                        }`}
-                      >
-                        <div className={`flex size-11 shrink-0 items-center justify-center rounded-full text-xs font-bold ${
-                          flagged ? "bg-error-container text-on-error-container" : "bg-surface-container-high text-primary"
-                        }`}>
-                          {item.studentName.split(" ").map(p => p[0]).join("").slice(0, 2).toUpperCase()}
-                        </div>
-                        <div className="min-w-0 flex-1">
-                          <div className="flex items-center gap-1.5">
-                            <p className="truncate font-bold">{item.studentName}</p>
-                            {flagged && (
-                              <span className="material-symbols-outlined shrink-0 text-[16px] text-error" style={{ fontVariationSettings: "'FILL' 1" }} title="Issues detected">flag</span>
-                            )}
-                          </div>
-                          <p className="text-xs text-on-surface-variant">{item.studentId}</p>
-                        </div>
-                        <div className="text-right">
-                          <p className={`text-[10px] font-bold ${statusBadgeClass(item.checkStatus)} rounded px-2 py-0.5`}>
-                            {getStatusLabel(item.checkStatus)}
-                          </p>
-                          <p className="text-[9px] text-on-surface-variant">{item.requestNumber}</p>
-                        </div>
-                      </button>
-                    );
-                  })
-                )}
-              </div>
-              <div className="relative">
-                <span className="material-symbols-outlined pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant text-[20px]">search</span>
-                <input
-                  value={search}
-                  onChange={(e) => setSearch(e.target.value)}
-                  placeholder="Search by name or student ID..."
-                  className="w-full rounded-lg border-none bg-surface-container-lowest py-3 pl-10 pr-3 text-sm shadow-sm ring-1 ring-outline-variant/20 focus:ring-2 focus:ring-primary"
-                />
-              </div>
-              {/* Inline Record Fine shortcut */}
-              {selectedStudentId && selectedRequestId && (
-                <button
-                  type="button"
-                  className="flex w-full items-center justify-center gap-2 rounded-lg border-2 border-dashed border-error/40 py-3 text-error transition-all hover:border-error hover:bg-red-50"
-                  onClick={() => {
-                    const found = queueItems.find(q => q.studentId === selectedStudentId);
-                    setFineModal({
-                      studentId: selectedStudentId,
-                      studentName: found?.studentName ?? displayName,
-                      requestId: selectedRequestId,
-                      checkId: relevantCheck?.id ?? "",
-                    });
-                  }}
-                >
-                  <span className="material-symbols-outlined text-[20px]">receipt_long</span>
-                  <span className="text-sm font-bold">Record Fine / Liability</span>
-                </button>
-              )}
-            </div>
-
-            {/* Right column: student detail */}
-            <div className="space-y-6 lg:col-span-8">
-              <div className="flex flex-wrap items-center justify-between gap-3">
-                <h3 className="text-lg font-bold text-on-primary-fixed-variant">Student clearance profile</h3>
-                {requests.length > 1 ? (
-                  <label className="flex items-center gap-2 text-xs font-bold text-on-surface-variant">
-                    Request
-                    <select
-                      value={selectedRequestId}
-                      onChange={(e) => setSelectedRequestId(e.target.value)}
-                      className="rounded-lg border-none bg-surface-container-high px-2 py-1 text-sm text-on-surface focus:ring-2 focus:ring-primary"
-                    >
-                      {requests.map((r) => (
-                        <option key={r.id} value={r.id}>{r.requestNumber ?? r.id}</option>
-                      ))}
-                    </select>
-                  </label>
-                ) : null}
-              </div>
-
-              {hasFlaggedCheck && (
-                <div className="flex items-start gap-3 rounded-xl border-2 border-error/40 bg-red-50 p-4">
-                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-error text-white">
-                    <span className="material-symbols-outlined text-xl" style={{ fontVariationSettings: "'FILL' 1" }}>flag</span>
-                  </div>
-                  <div className="flex-1">
-                    <p className="text-sm font-black text-error">Red Flag — Approval Blocked</p>
-                    <p className="mt-0.5 text-xs text-red-700">{flagReason ?? "Student has unresolved issues."}</p>
-                    {activeFlags.length > 0 && (
-                      <ul className="mt-2 space-y-0.5">
-                        {activeFlags.map((f) => (
-                          <li key={f.id} className="flex items-center gap-1.5 text-[10px] font-bold text-red-700">
-                            <span className="material-symbols-outlined text-[12px]">arrow_right</span>
-                            {f.itemName}{f.amount > 0 ? ` — ${f.amount.toFixed(2)} ${f.currency}` : ""}
-                            <span className="rounded bg-error-container px-1 py-0.5 text-[9px] text-on-error-container">{f.status}</span>
-                          </li>
-                        ))}
-                      </ul>
-                    )}
-                  </div>
-                  <span className="text-[10px] font-bold uppercase text-error rounded bg-error-container px-2 py-1">
-                    {relevantCheck?.status.replace(/_/g, " ")}
-                  </span>
-                </div>
-              )}
-
-              <div className="rounded-xl border border-outline-variant/10 bg-surface-container-lowest p-5 shadow-sm md:p-6">
-                <div className="flex flex-col gap-5 md:flex-row md:items-start">
-                  <div className="size-24 shrink-0 overflow-hidden rounded-lg bg-surface-container-low">
-                    {status?.student.hasProfileImage ? (
-                      <img src={toApiUrl(status.student.profileImageUrl) ?? undefined} alt="" className="size-full object-cover" />
-                    ) : (
-                      <div className="flex size-full items-center justify-center text-2xl font-bold text-primary">{initials}</div>
-                    )}
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <div className="mb-2 flex flex-wrap items-center gap-2">
-                      <h4 className="text-xl font-bold md:text-2xl">{displayName}</h4>
-                      {hasFlaggedCheck ? (
-                        <span className="flex items-center gap-1 rounded bg-error-container px-2 py-0.5 text-[10px] font-bold uppercase text-on-error-container">
-                          <span className="material-symbols-outlined text-[12px]" style={{ fontVariationSettings: "'FILL' 1" }}>flag</span>
-                          Issues detected
-                        </span>
-                      ) : unpaidOfficeTotal > 0 ? (
-                        <span className="rounded bg-error-container px-2 py-0.5 text-[10px] font-bold uppercase text-on-error-container">Debt detected</span>
-                      ) : null}
-                    </div>
-                    <div className="grid grid-cols-2 gap-3 text-sm sm:grid-cols-4">
-                      <div><p className="text-xs text-on-surface-variant">Department</p><p className="font-medium">{status?.student.program ?? "—"}</p></div>
-                      <div><p className="text-xs text-on-surface-variant">Student ID</p><p className="font-medium">{status?.student.studentId ?? selectedStudentId ?? "—"}</p></div>
-                      <div><p className="text-xs text-on-surface-variant">Campus</p><p className="font-medium">{campus?.name ?? status?.student.campusId ?? "—"}</p></div>
-                      <div>
-                        <p className="text-xs text-on-surface-variant">Office status</p>
-                        <p className={`font-bold ${hasFlaggedCheck ? "text-error" : unpaidOfficeTotal > 0 ? "text-error" : "text-primary"}`}>
-                          {relevantCheck ? getStatusLabel(relevantCheck.status) : "—"}
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Action panel */}
-              <div className="rounded-xl border border-outline-variant/10 bg-surface-container-lowest p-5 shadow-sm">
-                <div className="flex items-center justify-between flex-wrap gap-3">
-                  <div>
-                    <h5 className="text-sm font-bold text-on-surface">{roleConfig.liabilityTitle}</h5>
-                    <p className="mt-0.5 text-xs text-on-surface-variant">Record liabilities or submit a clearance decision for this student.</p>
-                  </div>
-                  <div className="flex gap-2 flex-wrap">
-                    {selectedStudentId && selectedRequestId && (
-                      <button
-                        type="button"
-                        onClick={() => {
-                          const found = queueItems.find(q => q.studentId === selectedStudentId);
-                          setFineModal({
-                            studentId: selectedStudentId,
-                            studentName: found?.studentName ?? displayName,
-                            requestId: selectedRequestId,
-                            checkId: relevantCheck?.id ?? "",
-                          });
-                        }}
-                        className="flex items-center gap-2 rounded-xl border-2 border-error/40 bg-red-50 px-4 py-2.5 text-sm font-bold text-error hover:bg-error hover:text-white transition-all"
-                      >
-                        <span className="material-symbols-outlined text-[18px]">receipt_long</span>
-                        Record Fine
-                      </button>
-                    )}
-                    <button
-                      type="button"
-                      onClick={() =>
-                        navigate(`/campus/${campusSlug}/staff/record-liability${selectedStudentId ? `?studentId=${selectedStudentId}&requestId=${selectedRequestId}` : ""}`)
-                      }
-                      className="flex items-center gap-2 rounded-xl bg-primary px-4 py-2.5 text-sm font-bold text-on-primary shadow-md hover:brightness-110 transition-all"
-                    >
-                      <span className="material-symbols-outlined text-[18px]">gavel</span>
-                      Full Decision
-                    </button>
-                  </div>
-                </div>
-              </div>
-
-              <div className="rounded-xl bg-surface-container-low p-5">
-                <h5 className="mb-4 text-xs font-bold uppercase tracking-widest text-on-surface-variant">Liabilities &amp; items</h5>
-                <div className="space-y-3">
-                  {currentLiabilities.length === 0 ? (
-                    <p className="text-sm text-on-surface-variant">No liabilities on this clearance request.</p>
-                  ) : (
-                    currentLiabilities.map((liability) => {
-                      const isIssue = !["PAID", "CLEARED", "WAIVED"].includes(liability.status);
-                      return (
-                        <div key={liability.id} className={`flex items-center gap-3 rounded-lg bg-surface-container-lowest p-3 ${isIssue ? "border border-error-container shadow-sm shadow-error/10" : ""}`}>
-                          <div className={`flex size-10 shrink-0 items-center justify-center rounded ${isIssue ? "bg-error/5 text-error" : "bg-primary/5 text-primary"}`}>
-                            <span className="material-symbols-outlined text-[22px]">{isIssue ? "warning" : "menu_book"}</span>
-                          </div>
-                          <div className="min-w-0 flex-1">
-                            <p className="text-sm font-bold">{liability.itemName}</p>
-                            <p className="text-xs text-on-surface-variant">{liability.description ?? liability.category ?? "—"}</p>
-                          </div>
-                          <div className="text-right">
-                            <span className={`inline-block rounded-full px-2 py-0.5 text-[10px] font-bold ${statusBadgeClass(liability.status)}`}>
-                              {getStatusLabel(liability.status)}
-                            </span>
-                            <p className={`mt-1 text-xs font-bold ${isIssue ? "text-error" : ""}`}>{liability.amount.toFixed(2)} {liability.currency}</p>
-                          </div>
-                        </div>
-                      );
-                    })
-                  )}
-                </div>
-              </div>
-
-              <div className="rounded-xl border border-outline-variant/20 bg-surface-container-lowest p-5">
-                <h5 className="mb-2 text-sm font-bold text-on-surface">Finance proof</h5>
-                {verifiedPayment ? (
-                  <p className="text-sm text-on-surface-variant">
-                    Verified: <strong>{verifiedPayment.receiptNumber ?? verifiedPayment.txRef}</strong> · {formatDateTime(verifiedPayment.verifiedAt ?? verifiedPayment.receiptIssuedAt)}
-                  </p>
-                ) : (
-                  <p className="text-sm text-on-surface-variant">
-                    No verified payment yet. Finance officers on <strong>{campus?.name ?? "this campus"}</strong> will see liabilities for their queue only.
-                  </p>
-                )}
-              </div>
-
-              <div className="rounded-xl bg-surface-container-low p-5">
-                <h5 className="mb-3 text-sm font-bold">Student inquiry</h5>
-                {latestInquiry ? (
-                  <div className="space-y-3">
-                    <p className="text-sm">{latestInquiry.message}</p>
-                    <textarea
-                      value={replyDraft}
-                      onChange={(e) => setReplyDraft(e.target.value)}
-                      rows={3}
-                      className="w-full rounded-lg border-none bg-surface-container-lowest p-3 text-sm focus:ring-2 focus:ring-primary"
-                      placeholder="Official response…"
-                    />
-                    <button
-                      type="button"
-                      onClick={handleReplyInquiry}
-                      disabled={respondingInquiryId === latestInquiry.id || !replyDraft.trim()}
-                      className="rounded-lg bg-primary px-4 py-2 text-sm font-bold text-on-primary disabled:opacity-50"
-                    >
-                      {respondingInquiryId === latestInquiry.id ? "Sending…" : "Send reply"}
-                    </button>
-                  </div>
-                ) : (
-                  <p className="text-sm text-on-surface-variant">No open inquiry for this request.</p>
-                )}
-              </div>
-
-              <div className="rounded-xl bg-surface-container-low p-5">
-                <h5 className="mb-3 text-xs font-bold uppercase tracking-widest text-on-surface-variant">Activity</h5>
-                <div className="space-y-3">
-                  {activityItems.length === 0 ? (
-                    <p className="text-sm text-on-surface-variant">Workflow events will appear here.</p>
-                  ) : (
-                    activityItems.map((item) => (
-                      <div key={`${item.title}-${item.time}`} className="flex gap-3 text-sm">
-                        <span className="mt-1.5 size-2 shrink-0 rounded-full bg-primary" />
-                        <div>
-                          <p className="font-bold text-on-surface">{item.title}</p>
-                          <p className="text-xs text-on-surface-variant">{item.detail}</p>
-                          <p className="text-[10px] text-outline">{item.time}</p>
-                        </div>
-                      </div>
-                    ))
-                  )}
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
 
         {/* ══════════════════════════════════════════════════════════════ */}
         {/* TAB: RECORDS                                                   */}
@@ -946,7 +632,7 @@ export function StaffWorkbenchTailwind({
                 <span className="rounded-full bg-primary-fixed px-2 py-0.5 text-[10px] font-bold text-on-primary-fixed-variant">{allPastLiabilities.length} total</span>
               </div>
               {!status ? (
-                <p className="text-sm text-on-surface-variant">Select a student from the Student Review tab to view their records.</p>
+                <p className="text-sm text-on-surface-variant">Select a student to view their records.</p>
               ) : allPastLiabilities.length === 0 ? (
                 <div className="flex flex-col items-center gap-2 py-8 text-center text-on-surface-variant">
                   <span className="material-symbols-outlined text-4xl">assignment</span>
@@ -1031,10 +717,6 @@ export function StaffWorkbenchTailwind({
               {pendingCount > 0 && <span className="absolute -right-1.5 -top-1 flex size-4 items-center justify-center rounded-full bg-error text-[8px] font-black text-white">{pendingCount}</span>}
             </span>
             <span className="text-[10px] font-medium">Approvals</span>
-          </button>
-          <button type="button" onClick={() => setActiveTab("current")} className={`flex flex-1 flex-col items-center gap-1 py-1 transition-colors ${activeTab === "current" ? "text-primary" : "text-on-surface-variant"}`}>
-            <span className="material-symbols-outlined text-[24px]" style={{ fontVariationSettings: activeTab === "current" ? "'FILL' 1" : "'FILL' 0" }}>manage_search</span>
-            <span className="text-[10px] font-medium">Review</span>
           </button>
           <button type="button" onClick={() => { if (selectedStudentId && selectedRequestId) { const found = queueItems.find(q => q.studentId === selectedStudentId); setFineModal({ studentId: selectedStudentId, studentName: found?.studentName ?? displayName, requestId: selectedRequestId, checkId: relevantCheck?.id ?? "" }); } else { setActiveTab("approvals"); } }} className="flex flex-1 flex-col items-center gap-1 py-1 text-error">
             <span className="material-symbols-outlined text-[24px]">receipt_long</span>
