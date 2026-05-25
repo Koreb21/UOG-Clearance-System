@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useMemo, useRef } from "react";
 import { SessionControls } from "../components/SessionControls";
-import { BackButton } from "../components/BackButton";
 import { useToast } from "../components/ToastContext";
 import { api, toApiUrl } from "../lib/api";
 import { useAuth } from "../modules/auth/AuthContext";
@@ -467,8 +466,6 @@ export function AdminDashboardPage() {
       {/* ── TopBar ── */}
       <header className="fixed top-0 w-full z-50 flex justify-between items-center px-8 h-20 bg-white/70 backdrop-blur-xl shadow-[0_12px_32px_-4px_rgba(0,30,64,0.08)]">
         <div className="flex items-center gap-4">
-          <BackButton />
-          <div className="w-px h-6 bg-outline-variant/40" />
           <span className="material-symbols-outlined text-primary text-3xl">shield_person</span>
           <h1 className="text-xl font-black text-[#001e40] tracking-tight">Registrar Management</h1>
         </div>
