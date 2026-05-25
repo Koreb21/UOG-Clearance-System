@@ -23,7 +23,7 @@ export function SessionControls({ density = "full", className = "" }: SessionCon
   function handleConfirmLogout() {
     setShowConfirm(false);
     logout();
-    void navigate("/login", { replace: true });
+    window.location.href = "/login";
   }
 
   function handleCancelLogout() {

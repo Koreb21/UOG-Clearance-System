@@ -50,6 +50,7 @@ export function AdminDashboardPage() {
 
   /* ── Students tab state ───────────────────────────────────── */
   const [studentSearch, setStudentSearch] = useState("");
+  const [studentStatusFilter, setStudentStatusFilter] = useState<"ALL" | "ACTIVE" | "INACTIVE">("ALL");
   const [showStudentEditModal, setShowStudentEditModal] = useState(false);
   const [showStudentAddModal, setShowStudentAddModal] = useState(false);
   const [showStudentImportModal, setShowStudentImportModal] = useState(false);
@@ -577,7 +578,10 @@ export function AdminDashboardPage() {
               </div>
             </div>
 
-            <div className="bg-surface-container-lowest p-6 rounded-2xl flex flex-col justify-between shadow-sm border border-surface-container">
+            <button
+              onClick={() => { setMainTab("STUDENTS"); setStudentStatusFilter("INACTIVE"); setStudentSearch(""); }}
+              className="bg-surface-container-lowest p-6 rounded-2xl flex flex-col justify-between shadow-sm border border-surface-container text-left hover:bg-surface-container transition-all cursor-pointer"
+            >
               <span className="material-symbols-outlined text-error text-3xl">domain_disabled</span>
               <div>
                 <p className="text-[10px] font-bold uppercase tracking-widest text-on-surface-variant">Inactive Users</p>
@@ -586,16 +590,20 @@ export function AdminDashboardPage() {
               <div className="flex items-center gap-1 text-xs text-on-surface-variant">
                 <span className="material-symbols-outlined text-sm">warning</span><span>Requires attention</span>
               </div>
-            </div>
+            </button>
           </section>
         )}
 
         {/* ════════════════════════ STUDENTS TAB ════════════════════════ */}
         {mainTab === "STUDENTS" && (() => {
           const filteredStudents = students.filter(s => {
-            if (!studentSearch) return true;
-            const q = studentSearch.toLowerCase();
-            return `${s.firstName} ${s.lastName}`.toLowerCase().includes(q) || s.studentId.toLowerCase().includes(q) || (s.email ?? "").toLowerCase().includes(q);
+            const matchesSearch = !studentSearch || (() => {
+              const q = studentSearch.toLowerCase();
+              return `${s.firstName} ${s.lastName}`.toLowerCase().includes(q) || s.studentId.toLowerCase().includes(q) || (s.email ?? "").toLowerCase().includes(q);
+            })();
+            const matchesStatus = studentStatusFilter === "ALL" ||
+              (studentStatusFilter === "ACTIVE" ? s.status === "ACTIVE" : s.status !== "ACTIVE");
+            return matchesSearch && matchesStatus;
           });
           const allFilteredIds = filteredStudents.map(s => s.id);
           const allSelected = allFilteredIds.length > 0 && allFilteredIds.every(id => selectedStudentIds.has(id));
@@ -636,11 +644,36 @@ export function AdminDashboardPage() {
                 </div>
               </section>
 
-              {/* Search */}
-              <div className="bg-surface-container-low p-4 rounded-2xl flex gap-4 items-center">
-                <div className="relative flex-grow">
-                  <span className="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-on-surface-variant">search</span>
-                  <input value={studentSearch} onChange={e => setStudentSearch(e.target.value)} type="text" placeholder="Search by Name, ID, or Email..." className="w-full pl-12 pr-4 py-3 bg-white border-none rounded-xl focus:ring-2 focus:ring-primary/40 text-sm shadow-sm transition-shadow" />
+              {/* Search + Status Filter */}
+              <div className="bg-surface-container-low p-4 rounded-2xl flex flex-col gap-3">
+                <div className="flex gap-4 items-center">
+                  <div className="relative flex-grow">
+                    <span className="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-on-surface-variant">search</span>
+                    <input value={studentSearch} onChange={e => setStudentSearch(e.target.value)} type="text" placeholder="Search by Name, ID, or Email..." className="w-full pl-12 pr-4 py-3 bg-white border-none rounded-xl focus:ring-2 focus:ring-primary/40 text-sm shadow-sm transition-shadow" />
+                  </div>
+                </div>
+                <div className="flex gap-2 flex-wrap">
+                  {(["ALL", "ACTIVE", "INACTIVE"] as const).map(status => (
+                    <button
+                      key={status}
+                      onClick={() => setStudentStatusFilter(status)}
+                      className={`px-3 py-1.5 rounded-full text-xs font-bold transition-all ${
+                        studentStatusFilter === status
+                          ? "bg-primary text-white shadow-sm"
+                          : "bg-white text-on-surface-variant hover:bg-surface-container border border-outline-variant/30"
+                      }`}
+                    >
+                      {status === "ALL" ? "All Students" : status === "ACTIVE" ? "Active" : "Inactive"}
+                    </button>
+                  ))}
+                  {studentStatusFilter !== "ALL" && (
+                    <button
+                      onClick={() => setStudentStatusFilter("ALL")}
+                      className="px-3 py-1.5 rounded-full text-xs font-bold bg-white text-on-surface-variant hover:bg-surface-container border border-outline-variant/30 transition-all"
+                    >
+                      Clear Filter
+                    </button>
+                  )}
                 </div>
               </div>
 

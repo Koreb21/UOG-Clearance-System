@@ -541,7 +541,7 @@ function handleRequestPasswordReset(body: { email: string; identifier?: string }
   db.passwordResetTokens.push(tokenRecord);
   writeDb(db);
   // In real backend, email would be sent here. In mock, we expose OTP in response for testing.
-  return { message: "If an account exists, a verification code was sent.", _debug_otp: otp };
+  return { message: "If an account exists, a verification code was sent.", _debug_otp: otp, recipientEmail: user.email ?? email };
 }
 
 function handleVerifyResetCode(body: { email: string; code: string }, db: Db) {

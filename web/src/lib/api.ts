@@ -664,7 +664,7 @@ export const api = {
       token
     ),
   requestPasswordReset: (email: string) =>
-    request(
+    request<{ message: string; _debug_otp?: string; recipientEmail?: string }>(
       "/auth/request-password-reset",
       {
         method: "POST",

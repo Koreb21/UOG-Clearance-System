@@ -178,6 +178,7 @@ export function LoginPage() {
   const [resendCountdown, setResendCountdown] = useState(0);
   const [debugOtp, setDebugOtp] = useState<string | null>(null);
   const [showDebugOtp, setShowDebugOtp] = useState(false);
+  const [recipientEmail, setRecipientEmail] = useState<string | null>(null);
 
   const activeCampusName = useMemo(
     () => selectedCampus?.title ?? "Campus",
@@ -205,6 +206,7 @@ export function LoginPage() {
     setResendCountdown(0);
     setDebugOtp(null);
     setShowDebugOtp(false);
+    setRecipientEmail(null);
   }
 
   function closeForgot() {
@@ -216,8 +218,9 @@ export function LoginPage() {
     e.preventDefault();
     setResetLoading(true);
     try {
-      const res = (await api.requestPasswordReset(resetEmail)) as { message: string; _debug_otp?: string };
+      const res = await api.requestPasswordReset(resetEmail);
       if (res._debug_otp) setDebugOtp(res._debug_otp);
+      if (res.recipientEmail) setRecipientEmail(res.recipientEmail);
       setResetStep("code");
       showToast(`A verification code was sent to ${resetEmail}. Check your inbox and spam folder.`, "success");
       startResendCountdown();
@@ -261,8 +264,9 @@ export function LoginPage() {
   async function handleResendCode() {
     setResetLoading(true);
     try {
-      const res = (await api.requestPasswordReset(resetEmail)) as { message: string; _debug_otp?: string };
+      const res = await api.requestPasswordReset(resetEmail);
       if (res._debug_otp) setDebugOtp(res._debug_otp);
+      if (res.recipientEmail) setRecipientEmail(res.recipientEmail);
       showToast("A new verification code was sent to your email.", "success");
       startResendCountdown();
     } catch (err) {
@@ -498,14 +502,14 @@ export function LoginPage() {
                       Code sent to <strong>{resetEmail}</strong>. It expires in 60 minutes.
                     </p>
                     {debugOtp && (
-                      <div className="mt-2 p-2 bg-yellow-50 border border-yellow-200 rounded-lg">
-                        <p className="text-[10px] text-yellow-700 font-bold uppercase tracking-wider">Development Mode — OTP</p>
-                        <div className="flex items-center gap-2 mt-1">
-                          <span className="text-xl font-black text-yellow-800 tracking-widest font-mono">{showDebugOtp ? debugOtp : "••••••"}</span>
-                          <button type="button" onClick={() => setShowDebugOtp(!showDebugOtp)} className="text-[10px] font-bold text-yellow-700 hover:text-yellow-900">
-                            {showDebugOtp ? "Hide" : "Show"}
-                          </button>
+                      <div className="mt-2 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                        <p className="text-[10px] text-blue-700 font-bold uppercase tracking-wider mb-1">Verification Code</p>
+                        <div className="flex items-center gap-2">
+                          <span className="text-2xl font-black text-blue-900 tracking-widest font-mono">{debugOtp}</span>
                         </div>
+                        {recipientEmail && (
+                          <p className="text-[10px] text-blue-600 mt-1">Sent to: <strong>{recipientEmail}</strong></p>
+                        )}
                       </div>
                     )}
                     <button
