@@ -1,6 +1,6 @@
-# Local MongoDB for ClearanceSystem (Spring Boot default URI matches port 27017).
-# From repo root: npm run dev:mongo
-# Then: npm run dev:backend  and  npm run dev:web
+# UGClear — MongoDB for University of Gondar Clearance System
+# Usage: docker compose up -d
+# The Spring Boot backend expects mongodb://localhost:27017/clearance_system
 
 services:
   mongo:

@@ -2,11 +2,9 @@ package com.uog.clearance.user.repository;
 
 import com.uog.clearance.user.model.User;
 import java.util.Optional;
-import org.springframework.data.jpa.repository.JpaRepository;
-import org.springframework.data.jpa.repository.Query;
-import org.springframework.data.repository.query.Param;
+import org.springframework.data.mongodb.repository.MongoRepository;
 
-public interface UserRepository extends JpaRepository<User, String> {
+public interface UserRepository extends MongoRepository<User, String> {
 
     Optional<User> findByUsername(String username);
 
@@ -14,9 +12,7 @@ public interface UserRepository extends JpaRepository<User, String> {
 
     Optional<User> findByEmailIgnoreCase(String email);
 
-    @Query("SELECT u FROM User u WHERE LOWER(u.username) LIKE LOWER(:pattern)")
-    Optional<User> findFirstByUsernameRegexIgnoreCase(@Param("pattern") String pattern);
+    Optional<User> findFirstByUsernameRegexIgnoreCase(String pattern);
 
-    @Query("SELECT u FROM User u WHERE LOWER(u.email) LIKE LOWER(:pattern)")
-    Optional<User> findFirstByEmailRegexIgnoreCase(@Param("pattern") String pattern);
+    Optional<User> findFirstByEmailRegexIgnoreCase(String pattern);
 }

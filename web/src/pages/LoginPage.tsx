@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { SessionControls } from "../components/SessionControls";
 import { LanguageToggle } from "../components/LanguageToggle";
+import { ThemeToggle } from "../components/ThemeToggle";
 import { VoiceInput } from "../components/VoiceInput";
 import { useToast } from "../components/ToastContext";
 import { useAuth } from "../modules/auth/AuthContext";
@@ -344,6 +345,7 @@ export function LoginPage() {
             <span className="font-black tracking-tight">UGClear</span>
           </button>
           <div className="flex items-center gap-2 sm:gap-3">
+            <ThemeToggle />
             <LanguageToggle />
             {user && sessionReady ? (
               <>

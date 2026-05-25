@@ -3,11 +3,9 @@ package com.uog.clearance.student.repository;
 import com.uog.clearance.student.model.Student;
 import java.util.List;
 import java.util.Optional;
-import org.springframework.data.jpa.repository.JpaRepository;
-import org.springframework.data.jpa.repository.Query;
-import org.springframework.data.repository.query.Param;
+import org.springframework.data.mongodb.repository.MongoRepository;
 
-public interface StudentRepository extends JpaRepository<Student, String> {
+public interface StudentRepository extends MongoRepository<Student, String> {
 
     Optional<Student> findByStudentId(String studentId);
 
@@ -17,9 +15,7 @@ public interface StudentRepository extends JpaRepository<Student, String> {
 
     List<Student> findByCampusId(String campusId);
 
-    @Query("SELECT s FROM Student s WHERE LOWER(s.studentId) LIKE LOWER(:pattern)")
-    Optional<Student> findFirstByStudentIdRegexIgnoreCase(@Param("pattern") String pattern);
+    Optional<Student> findFirstByStudentIdRegexIgnoreCase(String pattern);
 
-    @Query("SELECT s FROM Student s WHERE LOWER(s.email) LIKE LOWER(:pattern)")
-    Optional<Student> findFirstByEmailRegexIgnoreCase(@Param("pattern") String pattern);
+    Optional<Student> findFirstByEmailRegexIgnoreCase(String pattern);
 }

@@ -1,35 +1,28 @@
 package com.uog.clearance.auth.model;
 
 import com.uog.clearance.common.model.BaseDocument;
-import jakarta.persistence.Column;
-import jakarta.persistence.Entity;
-import jakarta.persistence.Table;
 import java.time.Instant;
 import lombok.Getter;
 import lombok.Setter;
+import org.springframework.data.mongodb.core.index.Indexed;
+import org.springframework.data.mongodb.core.mapping.Document;
 
 @Getter
 @Setter
-@Entity
-@Table(name = "password_reset_requests")
+@Document(collection = "password_reset_requests")
 public class PasswordResetRequest extends BaseDocument {
 
-    @Column(name = "email", unique = true)
+    @Indexed(unique = true)
     private String email;
 
-    @Column(name = "verification_code")
     private String verificationCode;
 
-    @Column(name = "code_expiry")
     private Instant codeExpiry;
 
-    @Column(name = "is_verified")
     private boolean verified = false;
 
-    @Column(name = "reset_token")
     private String resetToken;
 
-    @Column(name = "token_expiry")
     private Instant tokenExpiry;
 
     public PasswordResetRequest() {

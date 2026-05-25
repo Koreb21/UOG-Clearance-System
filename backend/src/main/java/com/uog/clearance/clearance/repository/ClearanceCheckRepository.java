@@ -5,9 +5,9 @@ import com.uog.clearance.clearance.model.ClearanceCheckCode;
 import com.uog.clearance.clearance.model.ClearanceCheckStatus;
 import java.util.List;
 import java.util.Optional;
-import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.mongodb.repository.MongoRepository;
 
-public interface ClearanceCheckRepository extends JpaRepository<ClearanceCheck, String> {
+public interface ClearanceCheckRepository extends MongoRepository<ClearanceCheck, String> {
 
     List<ClearanceCheck> findByClearanceRequestId(String clearanceRequestId);
 

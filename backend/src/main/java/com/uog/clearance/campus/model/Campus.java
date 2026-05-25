@@ -1,27 +1,20 @@
 package com.uog.clearance.campus.model;
 
 import com.uog.clearance.common.model.BaseDocument;
-import jakarta.persistence.Column;
-import jakarta.persistence.Entity;
-import jakarta.persistence.EnumType;
-import jakarta.persistence.Enumerated;
-import jakarta.persistence.Table;
 import lombok.Getter;
 import lombok.Setter;
+import org.springframework.data.mongodb.core.index.Indexed;
+import org.springframework.data.mongodb.core.mapping.Document;
 
 @Getter
 @Setter
-@Entity
-@Table(name = "campuses")
+@Document(collection = "campuses")
 public class Campus extends BaseDocument {
 
-    @Enumerated(EnumType.STRING)
-    @Column(name = "code", unique = true)
+    @Indexed(unique = true)
     private CampusCode code;
 
-    @Column(name = "name")
     private String name;
 
-    @Column(name = "is_active")
     private boolean active = true;
 }

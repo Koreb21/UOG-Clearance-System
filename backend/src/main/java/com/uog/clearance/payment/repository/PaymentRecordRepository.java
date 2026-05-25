@@ -3,9 +3,9 @@ package com.uog.clearance.payment.repository;
 import com.uog.clearance.payment.model.PaymentRecord;
 import java.util.List;
 import java.util.Optional;
-import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.mongodb.repository.MongoRepository;
 
-public interface PaymentRecordRepository extends JpaRepository<PaymentRecord, String> {
+public interface PaymentRecordRepository extends MongoRepository<PaymentRecord, String> {
 
     Optional<PaymentRecord> findByTxRef(String txRef);
 

@@ -4,6 +4,7 @@ import { useTranslation } from "react-i18next";
 import { SessionControls } from "../components/SessionControls";
 import { BackButton } from "../components/BackButton";
 import { LanguageToggle } from "../components/LanguageToggle";
+import { ThemeToggle } from "../components/ThemeToggle";
 import { api, toApiUrl } from "../lib/api";
 import { useAuth } from "../modules/auth/AuthContext";
 import type { CampusCode } from "../modules/campus/catalog";
@@ -132,6 +133,7 @@ export function StudentDashboardPage() {
           <span className="text-lg font-bold tracking-tight text-primary sm:text-xl">{t("gondarClearanceSystem")}</span>
         </div>
         <div className="flex items-center gap-2 sm:gap-4">
+          <ThemeToggle />
           <LanguageToggle />
           <div className="flex items-center gap-1 sm:gap-2">
             <SessionControls density="compact" />

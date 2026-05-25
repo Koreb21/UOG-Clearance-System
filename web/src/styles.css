@@ -29,6 +29,45 @@ html {
   --brand-deep: #134e4a;
   --accent: #c56a2d;
   --shadow: 0 24px 80px rgba(28, 36, 48, 0.12);
+  --login-bg: #f7f9fc;
+  --login-ink: #191c1e;
+  --header-bg: rgba(255, 255, 255, 0.78);
+  --header-border: rgba(15, 23, 42, 0.08);
+  --card-bg: #ffffff;
+  --shell-shadow: 0 30px 80px rgba(15, 23, 42, 0.16);
+  --left-bg: linear-gradient(135deg, #001e40 0%, #003366 100%);
+  --form-bg: #ffffff;
+  --form-border: #e2e8f0;
+  --input-bg: #ffffff;
+  --input-border: #e2e8f0;
+  --navigator-bg: #f4efe7;
+}
+
+.dark {
+  color-scheme: dark;
+  --bg: #000000;
+  --paper: rgba(13, 15, 20, 0.92);
+  --surface: rgba(20, 22, 28, 0.96);
+  --surface-strong: #14161c;
+  --ink: #e0e2ec;
+  --muted: #a6abb6;
+  --line: rgba(255, 255, 255, 0.08);
+  --brand: #5de0d0;
+  --brand-deep: #4dbfa6;
+  --accent: #ffb68e;
+  --shadow: 0 24px 80px rgba(0, 0, 0, 0.35);
+  --login-bg: #0a0c12;
+  --login-ink: #e0e2ec;
+  --header-bg: rgba(10, 12, 20, 0.78);
+  --header-border: rgba(255, 255, 255, 0.06);
+  --card-bg: #14161c;
+  --shell-shadow: 0 30px 80px rgba(0, 0, 0, 0.45);
+  --left-bg: linear-gradient(135deg, #000511 0%, #001e40 100%);
+  --form-bg: #14161c;
+  --form-border: #2c2e36;
+  --input-bg: #1c1e24;
+  --input-border: #3f4148;
+  --navigator-bg: #0d0f14;
 }
 
 * {
@@ -46,14 +85,23 @@ body {
     radial-gradient(circle at top left, rgba(197, 106, 45, 0.16), transparent 28%),
     radial-gradient(circle at bottom right, rgba(15, 118, 110, 0.18), transparent 32%),
     linear-gradient(135deg, #f5eadc 0%, #f1f3ea 48%, #e9efe6 100%);
+  transition: color 0.2s ease;
+}
+
+.dark body {
+  background:
+    radial-gradient(circle at top left, rgba(58, 95, 148, 0.2), transparent 28%),
+    radial-gradient(circle at bottom right, rgba(15, 118, 110, 0.2), transparent 32%),
+    linear-gradient(135deg, #000000 0%, #0d0f14 48%, #14161c 100%);
 }
 
 .portal-login-page {
   min-height: 100vh;
-  background: #f7f9fc;
-  color: #191c1e;
+  background: var(--login-bg);
+  color: var(--login-ink);
   display: flex;
   flex-direction: column;
+  transition: background 0.3s ease, color 0.3s ease;
 }
 
 .portal-login-header {
@@ -61,8 +109,9 @@ body {
   top: 0;
   z-index: 30;
   backdrop-filter: blur(14px);
-  background: rgba(255, 255, 255, 0.78);
-  box-shadow: 0 1px 0 rgba(15, 23, 42, 0.08);
+  background: var(--header-bg);
+  box-shadow: 0 1px 0 var(--header-border);
+  transition: background 0.3s ease, box-shadow 0.3s ease;
 }
 
 .portal-login-header-inner,
@@ -166,8 +215,9 @@ body {
   grid-template-columns: minmax(320px, 0.95fr) minmax(0, 1.45fr);
   border-radius: 20px;
   overflow: hidden;
-  background: #ffffff;
-  box-shadow: 0 30px 80px rgba(15, 23, 42, 0.16);
+  background: var(--card-bg);
+  box-shadow: var(--shell-shadow);
+  transition: background 0.3s ease, box-shadow 0.3s ease;
 }
 
 .portal-login-left {
@@ -177,7 +227,7 @@ body {
   display: flex;
   flex-direction: column;
   justify-content: space-between;
-  background: linear-gradient(135deg, #001e40 0%, #003366 100%);
+  background: var(--left-bg);
   color: #ffffff;
 }
 
@@ -2026,19 +2076,21 @@ body {
 
 .role-navigator-page {
   min-height: 100vh;
-  background: linear-gradient(180deg, #f7f9fc 0%, #eef2f8 100%);
-  color: #191c1e;
+  background: var(--navigator-bg);
+  color: var(--login-ink);
   display: flex;
   flex-direction: column;
+  transition: background 0.3s ease, color 0.3s ease;
 }
 
 .role-navigator-header {
   position: sticky;
   top: 0;
   z-index: 30;
-  background: rgba(255, 255, 255, 0.7);
+  background: var(--header-bg);
   backdrop-filter: blur(12px);
-  box-shadow: 0 1px 0 rgba(15, 23, 42, 0.08);
+  box-shadow: 0 1px 0 var(--header-border);
+  transition: background 0.3s ease, box-shadow 0.3s ease;
 }
 
 .role-navigator-header-inner,
@@ -4544,4 +4596,73 @@ input {
   .staff-portal-footer {
     text-align: left;
   }
+}
+
+/* ===== Dark mode overrides for page backgrounds ===== */
+.dark .student-portal-page {
+  background: #000000 !important;
+  color: #e0e2ec !important;
+}
+.dark .student-portal-header {
+  background: rgba(0,0,0,0.85) !important;
+  border-bottom-color: rgba(208,216,232,0.15) !important;
+}
+.dark .staff-portal-page {
+  background: #000000 !important;
+  color: #e0e2ec !important;
+}
+.dark .staff-portal-header {
+  background: rgba(0,0,0,0.85) !important;
+  border-bottom-color: rgba(208,216,232,0.15) !important;
+}
+.dark .staff-portal-summary-card,
+.dark .staff-portal-card {
+  background: #121318 !important;
+  border-color: rgba(208,216,232,0.15) !important;
+}
+.dark .student-portal-card {
+  background: #121318 !important;
+  border-color: rgba(208,216,232,0.15) !important;
+}
+.dark .student-portal-request-card {
+  background: #121318 !important;
+  border-color: rgba(208,216,232,0.15) !important;
+}
+.dark .portal-login-input,
+.dark .portal-login-select {
+  background: #121318 !important;
+  color: #e0e2ec !important;
+  border-color: rgba(208,216,232,0.25) !important;
+}
+.dark .portal-login-right {
+  background: #000000 !important;
+  color: #e0e2ec !important;
+}
+.dark .portal-login-form-label {
+  color: #a0a5b0 !important;
+}
+.dark .portal-login-right-title {
+  color: #e0e2ec !important;
+}
+.dark .portal-login-right-subtitle {
+  color: #a0a5b0 !important;
+}
+.dark .portal-login-header-brand {
+  color: #e0e2ec !important;
+}
+.dark .role-navigator-header-brand {
+  color: #e0e2ec !important;
+}
+.dark .role-navigator-crest {
+  background: linear-gradient(135deg, #0a2a52 0%, #001e40 100%) !important;
+}
+.dark .campus-card {
+  background: #121318 !important;
+  border-color: rgba(208,216,232,0.15) !important;
+}
+.dark .campus-card-title {
+  color: #e0e2ec !important;
+}
+.dark .campus-card-desc {
+  color: #a0a5b0 !important;
 }

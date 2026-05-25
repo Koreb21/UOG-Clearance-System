@@ -1,20 +1,10 @@
 spring:
   application:
     name: clearance-backend
-  datasource:
-    url: jdbc:postgresql://${PGHOST:localhost}:${PGPORT:5432}/${PGDATABASE:clearance}?sslmode=disable
-    username: ${PGUSER:postgres}
-    password: ${PGPASSWORD:postgres}
-    driver-class-name: org.postgresql.Driver
-  jpa:
-    hibernate:
-      ddl-auto: update
-    show-sql: false
-    properties:
-      hibernate:
-        dialect: org.hibernate.dialect.PostgreSQLDialect
-        format_sql: false
-    open-in-view: false
+  data:
+    mongodb:
+      uri: ${MONGO_URI:mongodb://localhost:27017/clearance_system}
+      auto-index-creation: true
   mail:
     host: ${MAIL_HOST:smtp.gmail.com}
     port: ${MAIL_PORT:587}
@@ -64,4 +54,4 @@ app:
 logging:
   level:
     org.springframework.security: INFO
-    org.hibernate.SQL: WARN
+    org.springframework.data.mongodb.core: WARN
