@@ -257,7 +257,7 @@
   "financePayments": "Finance & Payments",
   "selectRequest": "Select Request",
   "financeActionRequired": "Finance action required",
-  "unpaidLiabilitiesDesc": "You have {{count}} unpaid {{count, plural, one {liability} other {liabilities}}} totalling {{total}} ETB.",
+  "unpaidLiabilitiesDesc": "You have {{count}} unpaid liabilities totalling {{total}} ETB.",
   "firstLiability": "First",
   "redirecting": "Redirecting\u2026",
   "payViaChapa": "Pay {{amount}} ETB via Chapa",

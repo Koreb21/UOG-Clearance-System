@@ -26,6 +26,7 @@ import { ClearanceCertificatePage } from "./pages/ClearanceCertificatePage";
 import { MessagingPage } from "./pages/MessagingPage";
 import { StaffRecordLiabilityPage } from "./pages/StaffRecordLiabilityPage";
 import { StaffPaymentScannerPage } from "./pages/StaffPaymentScannerPage";
+import { ChapaSandboxPage } from "./pages/ChapaSandboxPage";
 
 function HomeRedirect() {
   const { user } = useAuth();
@@ -256,6 +257,9 @@ export default function App() {
           )
         }
       />
+      {/* ── Chapa sandbox (demo only) ── */}
+      <Route path="/chapa-sandbox" element={<ChapaSandboxPage />} />
+
       <Route path="*" element={<NotFoundPage />} />
     </Routes>
   );

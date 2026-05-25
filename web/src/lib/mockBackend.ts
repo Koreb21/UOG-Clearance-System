@@ -921,8 +921,15 @@ function handleInitiateChapa(token: string | null, body: { clearanceRequestId: s
   const payment: DbPayment = { id: uid(), clearanceRequestId: body.clearanceRequestId, studentId: student.studentId, liabilityIds: body.liabilityIds, provider: "CHAPA", txRef: "TX-" + uid().slice(0, 8).toUpperCase(), providerReference: null, departmentCheckCode: liabilities[0]?.departmentCheckCode ?? null, amount: total, currency: "ETB", status: "PENDING", verifiedAt: null, receiptNumber: null, receiptSignature: null, receiptIssuedAt: null };
   db.payments.push(payment);
   writeDb(db);
-  const returnUrl = window.location.origin + "/campus/tewodros/student/finance?payment=success&tx_ref=" + payment.txRef;
-  return { payment, checkoutUrl: returnUrl + "&mock_checkout=1", callbackUrl: window.location.origin + "/api/v1/payments/chapa/callback", returnUrl };
+  const returnUrl = window.location.href.split("?")[0];
+  const studentName = encodeURIComponent([student.firstName, student.middleName, student.lastName].filter(Boolean).join(" "));
+  const sandboxUrl = window.location.origin
+    + "/chapa-sandbox?tx_ref=" + encodeURIComponent(payment.txRef)
+    + "&amount=" + total
+    + "&currency=ETB"
+    + "&name=" + studentName
+    + "&return_url=" + encodeURIComponent(returnUrl);
+  return { payment, checkoutUrl: sandboxUrl, callbackUrl: window.location.origin + "/api/v1/payments/chapa/callback", returnUrl };
 }
 
 function handleVerifyChapa(token: string | null, txRef: string, body: { status: string; providerReference?: string }, db: Db) {
