@@ -17,7 +17,7 @@ import lombok.Setter;
 @Table(name = "liabilities")
 public class Liability extends BaseDocument {
 
-    @Column(name = "clearance_request_id")
+    @Column(name = "clearance_request_id", nullable = true)
     private String clearanceRequestId;
 
     @Column(name = "student_id")

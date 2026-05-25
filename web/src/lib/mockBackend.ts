@@ -77,7 +77,7 @@ interface DbCheck {
 
 interface DbLiability {
   id: string;
-  clearanceRequestId: string;
+  clearanceRequestId?: string;
   studentId: string;
   campusId: string;
   departmentCheckCode: string;
@@ -537,20 +537,22 @@ function handleReviewCheck(token: string | null, checkId: string, body: { status
   return check;
 }
 
-function handleCreateLiability(token: string | null, body: { studentId: string; clearanceRequestId: string; departmentCheckCode: string; itemName: string; category?: string; description?: string; amount: number; paymentRequired: boolean }, db: Db) {
+function handleCreateLiability(token: string | null, body: { studentId: string; clearanceRequestId?: string; departmentCheckCode: string; itemName: string; category?: string; description?: string; amount: number; paymentRequired: boolean }, db: Db) {
   const user = requireAuth(token, db);
-  const liability: DbLiability = { id: uid(), clearanceRequestId: body.clearanceRequestId, studentId: body.studentId, campusId: user.campusId ?? "", departmentCheckCode: body.departmentCheckCode, category: body.category ?? null, itemName: body.itemName, description: body.description ?? null, amount: body.amount, currency: "ETB", status: "PENDING", paymentRequired: body.paymentRequired };
+  const liability: DbLiability = { id: uid(), clearanceRequestId: body.clearanceRequestId ?? undefined, studentId: body.studentId, campusId: user.campusId ?? "", departmentCheckCode: body.departmentCheckCode, category: body.category ?? null, itemName: body.itemName, description: body.description ?? null, amount: body.amount, currency: "ETB", status: "PENDING", paymentRequired: body.paymentRequired };
   db.liabilities.push(liability);
-  const check = db.checks.find((c) => c.clearanceRequestId === body.clearanceRequestId && c.checkCode === body.departmentCheckCode);
-  if (check && check.status !== "CLEARED") {
-    check.status = "AWAITING_FINANCE";
-    check.comment = `Liability added: ${body.itemName} (${body.amount} ETB)`;
-    check.reviewedBy = user.id;
-    check.reviewedAt = isoNow();
-    const req = db.requests.find((r) => r.id === body.clearanceRequestId);
-    if (req) {
-      const allChecks = db.checks.filter((c) => c.clearanceRequestId === req.id);
-      req.status = computeRequestStatus(allChecks, db.liabilities.filter((l) => l.clearanceRequestId === req.id));
+  if (body.clearanceRequestId) {
+    const check = db.checks.find((c) => c.clearanceRequestId === body.clearanceRequestId && c.checkCode === body.departmentCheckCode);
+    if (check && check.status !== "CLEARED") {
+      check.status = "AWAITING_FINANCE";
+      check.comment = `Liability added: ${body.itemName} (${body.amount} ETB)`;
+      check.reviewedBy = user.id;
+      check.reviewedAt = isoNow();
+      const req = db.requests.find((r) => r.id === body.clearanceRequestId);
+      if (req) {
+        const allChecks = db.checks.filter((c) => c.clearanceRequestId === req.id);
+        req.status = computeRequestStatus(allChecks, db.liabilities.filter((l) => l.clearanceRequestId === req.id));
+      }
     }
   }
   writeDb(db);

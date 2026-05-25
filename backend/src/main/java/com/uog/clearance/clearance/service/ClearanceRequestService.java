@@ -6,10 +6,14 @@ import com.uog.clearance.clearance.dto.ClearanceRequestResponse;
 import com.uog.clearance.clearance.dto.CreateClearanceRequestRequest;
 import com.uog.clearance.clearance.model.ClearanceCheck;
 import com.uog.clearance.clearance.model.ClearanceCheckCode;
+import com.uog.clearance.clearance.model.ClearanceCheckStatus;
 import com.uog.clearance.clearance.model.ClearanceRequest;
 import com.uog.clearance.clearance.model.ClearanceRequestStatus;
 import com.uog.clearance.clearance.repository.ClearanceCheckRepository;
 import com.uog.clearance.clearance.repository.ClearanceRequestRepository;
+import com.uog.clearance.liability.model.Liability;
+import com.uog.clearance.liability.model.LiabilityStatus;
+import com.uog.clearance.liability.repository.LiabilityRepository;
 import com.uog.clearance.security.model.UserPrincipal;
 import com.uog.clearance.security.service.CampusAccessService;
 import java.time.Instant;
@@ -28,6 +32,7 @@ public class ClearanceRequestService {
     private final ClearanceCheckRepository clearanceCheckRepository;
     private final AuditLogService auditLogService;
     private final CampusAccessService campusAccessService;
+    private final LiabilityRepository liabilityRepository;
 
     public ClearanceRequestResponse createForStudent(UserPrincipal principal, CreateClearanceRequestRequest request) {
         ClearanceRequest clearanceRequest = new ClearanceRequest();
@@ -46,7 +51,24 @@ public class ClearanceRequestService {
         String campusId = principal.getCampusId();
 
         Arrays.stream(ClearanceCheckCode.values())
-                .forEach(code -> clearanceCheckRepository.save(newCheck(clearanceRequestId, studentId, campusId, code)));
+                .forEach(code -> {
+                    ClearanceCheck check = newCheck(clearanceRequestId, studentId, campusId, code);
+                    // Scan for pre-existing unpaid liabilities for this student under this office
+                    List<Liability> historical = liabilityRepository.findByStudentIdAndDepartmentCheckCode(studentId, code);
+                    boolean hasUnpaid = historical.stream()
+                            .anyMatch(l -> !List.of(LiabilityStatus.PAID, LiabilityStatus.CLEARED, LiabilityStatus.WAIVED).contains(l.getStatus()));
+                    boolean hasPaymentRequired = historical.stream()
+                            .anyMatch(l -> l.isPaymentRequired()
+                                    && !List.of(LiabilityStatus.PAID, LiabilityStatus.CLEARED, LiabilityStatus.WAIVED).contains(l.getStatus()));
+                    if (hasPaymentRequired) {
+                        check.setStatus(ClearanceCheckStatus.AWAITING_FINANCE);
+                        check.setComment("Pre-existing payment-required liability on record");
+                    } else if (hasUnpaid) {
+                        check.setStatus(ClearanceCheckStatus.FLAGGED);
+                        check.setComment("Pre-existing liability on record");
+                    }
+                    clearanceCheckRepository.save(check);
+                });
 
         auditLogService.log(
                 principal,

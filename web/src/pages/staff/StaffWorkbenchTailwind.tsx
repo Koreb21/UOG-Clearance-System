@@ -44,16 +44,17 @@ function RecordFineModal({ studentId, studentName, requestId, checkCode, roleCon
     setSubmitting(true);
     setError(null);
     try {
-      await api.createLiability(token, {
+      const payload: Parameters<typeof api.createLiability>[1] = {
         studentId,
-        clearanceRequestId: requestId,
         departmentCheckCode: checkCode,
         itemName: form.itemName.trim(),
         category: form.category.trim() || undefined,
         description: form.description.trim() || undefined,
         amount,
         paymentRequired: form.paymentRequired,
-      });
+      };
+      if (requestId) payload.clearanceRequestId = requestId;
+      await api.createLiability(token, payload);
       setSuccess(true);
       setTimeout(() => { onSuccess(); onClose(); }, 1200);
     } catch (err) {

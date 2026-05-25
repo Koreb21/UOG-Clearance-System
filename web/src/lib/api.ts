@@ -484,7 +484,7 @@ export const api = {
     token: string,
     payload: {
       studentId: string;
-      clearanceRequestId: string;
+      clearanceRequestId?: string;
       departmentCheckCode: string;
       itemName: string;
       category?: string;

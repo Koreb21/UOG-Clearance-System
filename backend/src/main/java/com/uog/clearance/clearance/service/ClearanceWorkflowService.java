@@ -65,15 +65,21 @@ public class ClearanceWorkflowService {
         campusAccessService.requireStudentAccess(principal, request.studentId());
         validateRoleForCheck(principal.getUser().getRole(), request.departmentCheckCode());
 
-        ClearanceRequest clearanceRequest = getClearanceRequest(request.clearanceRequestId());
-        if (!clearanceRequest.getStudentId().equals(request.studentId())) {
-            throw new IllegalArgumentException("Clearance request does not belong to the student");
+        String campusId;
+        if (request.clearanceRequestId() != null && !request.clearanceRequestId().isBlank()) {
+            ClearanceRequest clearanceRequest = getClearanceRequest(request.clearanceRequestId());
+            if (!clearanceRequest.getStudentId().equals(request.studentId())) {
+                throw new IllegalArgumentException("Clearance request does not belong to the student");
+            }
+            campusId = clearanceRequest.getCampusId();
+        } else {
+            campusId = principal.getCampusId();
         }
 
         Liability liability = new Liability();
         liability.setClearanceRequestId(request.clearanceRequestId());
         liability.setStudentId(request.studentId());
-        liability.setCampusId(clearanceRequest.getCampusId());
+        liability.setCampusId(campusId);
         liability.setDepartmentCheckCode(request.departmentCheckCode());
         liability.setCategory(request.category());
         liability.setItemName(request.itemName());
@@ -83,15 +89,19 @@ public class ClearanceWorkflowService {
         liability.setCreatedBy(principal.getId());
         liability.setUpdatedBy(principal.getId());
         liability = liabilityRepository.save(liability);
-        if (request.paymentRequired()) {
-            updateCheckStatus(
-                    clearanceRequest.getId(),
-                    request.departmentCheckCode(),
-                    ClearanceCheckStatus.AWAITING_FINANCE,
-                    principal.getId(),
-                    "Payment required. Waiting for finance verification.");
-        } else {
-            markCheckFlagged(clearanceRequest.getId(), request.departmentCheckCode(), principal.getId(), "Liability recorded");
+
+        // Update the active check for this student under this office, if one exists
+        if (request.clearanceRequestId() != null && !request.clearanceRequestId().isBlank()) {
+            if (request.paymentRequired()) {
+                updateCheckStatus(
+                        request.clearanceRequestId(),
+                        request.departmentCheckCode(),
+                        ClearanceCheckStatus.AWAITING_FINANCE,
+                        principal.getId(),
+                        "Payment required. Waiting for finance verification.");
+            } else {
+                markCheckFlagged(request.clearanceRequestId(), request.departmentCheckCode(), principal.getId(), "Liability recorded");
+            }
         }
 
         auditLogService.log(
@@ -271,7 +281,9 @@ public class ClearanceWorkflowService {
     }
 
     private void refreshCheckStatusFromLiabilities(String clearanceRequestId, ClearanceCheckCode checkCode, String reviewerId) {
-        List<Liability> liabilities = liabilityRepository.findByClearanceRequestIdAndDepartmentCheckCode(clearanceRequestId, checkCode);
+        ClearanceRequest request = getClearanceRequest(clearanceRequestId);
+        String studentId = request.getStudentId();
+        List<Liability> liabilities = liabilityRepository.findByStudentIdAndDepartmentCheckCode(studentId, checkCode);
         boolean hasOutstandingPayment = liabilities.stream()
                 .anyMatch(liability -> liability.isPaymentRequired()
                         && liability.getStatus() != LiabilityStatus.PAID
@@ -307,8 +319,8 @@ public class ClearanceWorkflowService {
             return;
         }
 
-        List<Liability> liabilities = liabilityRepository.findByClearanceRequestIdAndDepartmentCheckCode(
-                check.getClearanceRequestId(),
+        List<Liability> liabilities = liabilityRepository.findByStudentIdAndDepartmentCheckCode(
+                check.getStudentId(),
                 check.getCheckCode());
 
         boolean hasOutstandingPayment = liabilities.stream()
@@ -486,8 +498,9 @@ public class ClearanceWorkflowService {
                                     Objects.toString(student.getFirstName(), "").trim(),
                                     Objects.toString(student.getLastName(), "").trim()).trim();
 
-                    List<Liability> liabilities = liabilityRepository.findByClearanceRequestIdAndDepartmentCheckCode(
-                            check.getClearanceRequestId(), check.getCheckCode());
+                    // Look up ALL historical liabilities for this student under this office
+                    List<Liability> liabilities = liabilityRepository.findByStudentIdAndDepartmentCheckCode(
+                            check.getStudentId(), check.getCheckCode());
 
                     BigDecimal totalFines = liabilities.stream()
                             .map(Liability::getAmount)
@@ -524,8 +537,9 @@ public class ClearanceWorkflowService {
         campusAccessService.requireStudentAccess(principal, check.getStudentId());
         validateRoleForCheck(principal.getUser().getRole(), check.getCheckCode());
 
-        List<Liability> liabilities = liabilityRepository.findByClearanceRequestIdAndDepartmentCheckCode(
-                check.getClearanceRequestId(), check.getCheckCode());
+        // Look up ALL historical liabilities for this student under this office
+        List<Liability> liabilities = liabilityRepository.findByStudentIdAndDepartmentCheckCode(
+                check.getStudentId(), check.getCheckCode());
 
         boolean hasOutstandingPayment = liabilities.stream()
                 .anyMatch(liability -> liability.isPaymentRequired()

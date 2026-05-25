@@ -87,23 +87,24 @@ export function StaffRecordLiabilityPage() {
 
   async function handleSubmitLiability(e: React.FormEvent) {
     e.preventDefault();
-    if (!token || !selectedStudentId || !selectedRequestId || !form.itemName.trim()) return;
+    if (!token || !selectedStudentId || !form.itemName.trim()) return;
     setSubmitting(true);
     setFeedback(null);
     try {
+      const payload: Record<string, unknown> = {
+        studentId: selectedStudentId,
+        departmentCheckCode: checkCode,
+        itemName: form.itemName,
+        category: form.category || undefined,
+        description: form.description || undefined,
+        amount: parseFloat(form.amount) || 0,
+        paymentRequired: form.paymentRequired,
+      };
+      if (selectedRequestId) payload.clearanceRequestId = selectedRequestId;
       const r = await fetch(`${API}/staff/liabilities`, {
         method: "POST",
         headers: authHeaders(token),
-        body: JSON.stringify({
-          studentId: selectedStudentId,
-          clearanceRequestId: selectedRequestId,
-          departmentCheckCode: checkCode,
-          itemName: form.itemName,
-          category: form.category || undefined,
-          description: form.description || undefined,
-          amount: parseFloat(form.amount) || 0,
-          paymentRequired: form.paymentRequired,
-        }),
+        body: JSON.stringify(payload),
       });
       if (!r.ok) { const err = await r.json(); throw new Error(err.message ?? "Failed to record liability."); }
       setFeedback({ ok: true, msg: "Liability recorded successfully." });
@@ -225,12 +226,12 @@ export function StaffRecordLiabilityPage() {
             <div className="space-y-4">
               <div>
                 <label className="mb-1 block text-[10px] font-bold uppercase tracking-wider text-[#43474f]">{config.itemLabel}</label>
-                <input value={form.itemName} onChange={(e) => setForm((f) => ({ ...f, itemName: e.target.value }))} required disabled={!selectedRequestId} placeholder={config.itemLabel} className="w-full rounded-xl border border-[#c3c6d1]/40 bg-[#f2f4f7] px-4 py-2.5 text-sm focus:border-[#003366] focus:ring-2 focus:ring-[#003366]/20 outline-none disabled:opacity-50" />
+                <input value={form.itemName} onChange={(e) => setForm((f) => ({ ...f, itemName: e.target.value }))} required disabled={!selectedStudentId} placeholder={config.itemLabel} className="w-full rounded-xl border border-[#c3c6d1]/40 bg-[#f2f4f7] px-4 py-2.5 text-sm focus:border-[#003366] focus:ring-2 focus:ring-[#003366]/20 outline-none disabled:opacity-50" />
               </div>
 
               <div>
                 <label className="mb-1 block text-[10px] font-bold uppercase tracking-wider text-[#43474f]">{config.categoryLabel}</label>
-                <select value={form.category} onChange={(e) => setForm((f) => ({ ...f, category: e.target.value }))} disabled={!selectedRequestId} className="w-full rounded-xl border border-[#c3c6d1]/40 bg-[#f2f4f7] px-4 py-2.5 text-sm focus:border-[#003366] focus:ring-2 focus:ring-[#003366]/20 outline-none disabled:opacity-50">
+                <select value={form.category} onChange={(e) => setForm((f) => ({ ...f, category: e.target.value }))} disabled={!selectedStudentId} className="w-full rounded-xl border border-[#c3c6d1]/40 bg-[#f2f4f7] px-4 py-2.5 text-sm focus:border-[#003366] focus:ring-2 focus:ring-[#003366]/20 outline-none disabled:opacity-50">
                   <option value="">Select category…</option>
                   {config.categories.map((c) => <option key={c} value={c}>{c}</option>)}
                 </select>
@@ -238,23 +239,23 @@ export function StaffRecordLiabilityPage() {
 
               <div>
                 <label className="mb-1 block text-[10px] font-bold uppercase tracking-wider text-[#43474f]">{config.descLabel}</label>
-                <textarea value={form.description} onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))} disabled={!selectedRequestId} rows={3} placeholder="Add notes about this liability…" className="w-full rounded-xl border border-[#c3c6d1]/40 bg-[#f2f4f7] px-4 py-2.5 text-sm focus:border-[#003366] focus:ring-2 focus:ring-[#003366]/20 outline-none resize-none disabled:opacity-50" />
+                <textarea value={form.description} onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))} disabled={!selectedStudentId} rows={3} placeholder="Add notes about this liability…" className="w-full rounded-xl border border-[#c3c6d1]/40 bg-[#f2f4f7] px-4 py-2.5 text-sm focus:border-[#003366] focus:ring-2 focus:ring-[#003366]/20 outline-none resize-none disabled:opacity-50" />
               </div>
 
               <div>
                 <label className="mb-1 block text-[10px] font-bold uppercase tracking-wider text-[#43474f]">Amount (ETB)</label>
-                <input type="number" min="0" step="0.01" value={form.amount} onChange={(e) => setForm((f) => ({ ...f, amount: e.target.value }))} disabled={!selectedRequestId} placeholder="0.00" className="w-full rounded-xl border border-[#c3c6d1]/40 bg-[#f2f4f7] px-4 py-2.5 text-sm focus:border-[#003366] focus:ring-2 focus:ring-[#003366]/20 outline-none disabled:opacity-50" />
+                <input type="number" min="0" step="0.01" value={form.amount} onChange={(e) => setForm((f) => ({ ...f, amount: e.target.value }))} disabled={!selectedStudentId} placeholder="0.00" className="w-full rounded-xl border border-[#c3c6d1]/40 bg-[#f2f4f7] px-4 py-2.5 text-sm focus:border-[#003366] focus:ring-2 focus:ring-[#003366]/20 outline-none disabled:opacity-50" />
               </div>
 
               <label className="flex cursor-pointer items-center gap-3 rounded-xl border border-[#c3c6d1]/30 px-4 py-3">
-                <input type="checkbox" checked={form.paymentRequired} onChange={(e) => setForm((f) => ({ ...f, paymentRequired: e.target.checked }))} disabled={!selectedRequestId} className="rounded text-[#003366] focus:ring-[#003366]" />
+                <input type="checkbox" checked={form.paymentRequired} onChange={(e) => setForm((f) => ({ ...f, paymentRequired: e.target.checked }))} disabled={!selectedStudentId} className="rounded text-[#003366] focus:ring-[#003366]" />
                 <div>
                   <p className="text-sm font-semibold text-[#001e40]">Payment required</p>
                   <p className="text-[10px] text-[#43474f]">Routes this liability to the Finance office for payment processing</p>
                 </div>
               </label>
 
-              <button type="submit" disabled={!selectedRequestId || submitting || !form.itemName.trim()} className="w-full flex items-center justify-center gap-2 rounded-xl bg-[#003366] py-3 text-sm font-bold text-white shadow-sm hover:bg-[#002244] transition-colors disabled:opacity-50">
+              <button type="submit" disabled={!selectedStudentId || submitting || !form.itemName.trim()} className="w-full flex items-center justify-center gap-2 rounded-xl bg-[#003366] py-3 text-sm font-bold text-white shadow-sm hover:bg-[#002244] transition-colors disabled:opacity-50">
                 {submitting ? <span className="material-symbols-outlined animate-spin text-[18px]">progress_activity</span> : <span className="material-symbols-outlined text-[18px]">save</span>}
                 {submitting ? "Saving…" : "Record Liability"}
               </button>

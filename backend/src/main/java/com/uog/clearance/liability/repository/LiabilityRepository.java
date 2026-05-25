@@ -14,6 +14,8 @@ public interface LiabilityRepository extends JpaRepository<Liability, String> {
 
     List<Liability> findByClearanceRequestIdAndDepartmentCheckCode(String clearanceRequestId, ClearanceCheckCode departmentCheckCode);
 
+    List<Liability> findByStudentIdAndDepartmentCheckCode(String studentId, ClearanceCheckCode departmentCheckCode);
+
     long countByClearanceRequestIdAndDepartmentCheckCodeAndStatusIn(String clearanceRequestId,
                                                                     ClearanceCheckCode departmentCheckCode,
                                                                     List<LiabilityStatus> statuses);

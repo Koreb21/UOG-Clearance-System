@@ -8,7 +8,7 @@ import java.math.BigDecimal;
 
 public record CreateLiabilityRequest(
         @NotBlank String studentId,
-        @NotBlank String clearanceRequestId,
+        String clearanceRequestId,
         @NotNull ClearanceCheckCode departmentCheckCode,
         @NotBlank String itemName,
         String category,
