@@ -1,6 +1,6 @@
 import { MaterialIcons } from "@expo/vector-icons";
 import { Platform, Pressable, StyleSheet, Text, View } from "react-native";
-import { tokens } from "../theme/tokens";
+import { useTheme } from "../modules/theme/ThemeContext";
 
 export type TabId = "overview" | "payments" | "inquiries" | "certificate";
 
@@ -14,14 +14,16 @@ const TABS: { id: TabId; icon: string; label: string }[] = [
 type Props = { active: TabId; onChange: (id: TabId) => void };
 
 export function BottomNav({ active, onChange }: Props) {
+  const { tokens } = useTheme();
+
   return (
-    <View style={styles.nav}>
+    <View style={[styles.nav, { backgroundColor: tokens.surfaceContainerLow, borderTopColor: tokens.outlineVariant }]}>
       {TABS.map((tab) => {
         const isActive = tab.id === active;
         return (
           <Pressable
             key={tab.id}
-            style={[styles.tab, isActive && styles.tabActive]}
+            style={[styles.tab, isActive && { backgroundColor: tokens.secondaryContainer }]}
             onPress={() => onChange(tab.id)}
           >
             <MaterialIcons
@@ -29,7 +31,9 @@ export function BottomNav({ active, onChange }: Props) {
               size={22}
               color={isActive ? tokens.onSecondaryContainer : tokens.onSurfaceVariant}
             />
-            <Text style={[styles.label, isActive && styles.labelActive]}>{tab.label}</Text>
+            <Text style={[styles.label, isActive && { color: tokens.onSecondaryContainer, fontWeight: "700" }]}>
+              {tab.label}
+            </Text>
           </Pressable>
         );
       })}
@@ -42,9 +46,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "space-around",
     alignItems: "center",
-    backgroundColor: "rgba(254,249,241,0.94)",
     borderTopWidth: 1,
-    borderTopColor: "rgba(0,0,0,0.05)",
     paddingBottom: Platform.OS === "ios" ? 22 : 8,
     paddingTop: 8,
     shadowColor: "#000",
@@ -61,7 +63,5 @@ const styles = StyleSheet.create({
     borderRadius: 9999,
     gap: 2,
   },
-  tabActive: { backgroundColor: tokens.secondaryContainer },
-  label: { fontSize: 11, color: tokens.onSurfaceVariant, fontWeight: "500" },
-  labelActive: { color: tokens.onSecondaryContainer, fontWeight: "700" },
+  label: { fontSize: 11, fontWeight: "500" },
 });

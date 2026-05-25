@@ -1,14 +1,19 @@
 import { MaterialIcons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
-import { Platform, StyleSheet, Text, View } from "react-native";
-import { tokens } from "../theme/tokens";
+import { Platform, Pressable, StyleSheet, Text, View } from "react-native";
+import { useTheme } from "../modules/theme/ThemeContext";
 
 type Props = { title?: string };
 
 export function AppBar({ title = "Clearance Portal" }: Props) {
+  const { tokens, mode, toggle } = useTheme();
+
+  const gradStart = mode === "dark" ? tokens.primaryContainer : "#000511";
+  const gradEnd = mode === "dark" ? tokens.primary : "#006a63";
+
   return (
     <LinearGradient
-      colors={["#000511", "#006a63"]}
+      colors={[gradStart, gradEnd]}
       start={{ x: 0, y: 0 }}
       end={{ x: 1, y: 0 }}
       style={styles.bar}
@@ -19,7 +24,16 @@ export function AppBar({ title = "Clearance Portal" }: Props) {
         </View>
         <Text style={styles.title}>{title}</Text>
       </View>
-      <MaterialIcons name="account-circle" size={28} color="#fff" />
+      <View style={styles.right}>
+        <Pressable onPress={toggle} style={styles.themeBtn} hitSlop={8}>
+          <MaterialIcons
+            name={mode === "dark" ? "light-mode" : "dark-mode"}
+            size={24}
+            color="#fff"
+          />
+        </Pressable>
+        <MaterialIcons name="account-circle" size={28} color="#fff" />
+      </View>
     </LinearGradient>
   );
 }
@@ -34,6 +48,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
   },
   left: { flexDirection: "row", alignItems: "center", gap: 10 },
+  right: { flexDirection: "row", alignItems: "center", gap: 10 },
   logoCircle: {
     width: 36,
     height: 36,
@@ -43,4 +58,12 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   title: { color: "#fff", fontSize: 18, fontWeight: "700" },
+  themeBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: "rgba(255,255,255,0.12)",
+    alignItems: "center",
+    justifyContent: "center",
+  },
 });

@@ -5,9 +5,9 @@ import {
   ScrollView,
   StyleSheet,
   View,
-  useWindowDimensions
+  useWindowDimensions,
 } from "react-native";
-import { tokens } from "../theme/tokens";
+import { useTheme } from "../modules/theme/ThemeContext";
 
 type ScreenContainerProps = {
   children: ReactNode;
@@ -16,16 +16,17 @@ type ScreenContainerProps = {
 };
 
 export function ScreenContainer({ children, refreshing, onRefresh }: ScreenContainerProps) {
+  const { tokens } = useTheme();
   const { width } = useWindowDimensions();
   const isTabletLike = width >= 768;
 
   return (
-    <SafeAreaView style={styles.safe}>
+    <SafeAreaView style={[styles.safe, { backgroundColor: tokens.background }]}>
       <ScrollView
         contentContainerStyle={styles.content}
         refreshControl={
           onRefresh ? (
-            <RefreshControl refreshing={!!refreshing} onRefresh={onRefresh} tintColor={tokens.accent} />
+            <RefreshControl refreshing={!!refreshing} onRefresh={onRefresh} tintColor={tokens.secondary} />
           ) : undefined
         }
       >
@@ -38,20 +39,19 @@ export function ScreenContainer({ children, refreshing, onRefresh }: ScreenConta
 const styles = StyleSheet.create({
   safe: {
     flex: 1,
-    backgroundColor: tokens.canvas
   },
   content: {
-    flexGrow: 1
+    flexGrow: 1,
   },
   inner: {
     padding: 18,
-    gap: 16
+    gap: 16,
   },
   innerWide: {
     width: "100%",
     maxWidth: 920,
     alignSelf: "center",
     paddingHorizontal: 24,
-    paddingVertical: 28
-  }
+    paddingVertical: 28,
+  },
 });

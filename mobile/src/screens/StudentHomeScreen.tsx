@@ -6,7 +6,7 @@ import { BottomNav, type TabId } from "../components/BottomNav";
 import { api } from "../lib/api";
 import { storage } from "../lib/storage";
 import { useAuth } from "../modules/auth/AuthContext";
-import { tokens } from "../theme/tokens";
+import { useTheme } from "../modules/theme/ThemeContext";
 import type { ClearanceRequest, ClearanceStatus, Inquiry } from "../types";
 import { CertificateTab } from "./tabs/CertificateTab";
 import { InquiriesTab } from "./tabs/InquiriesTab";
@@ -17,6 +17,7 @@ type Cache = { requests: ClearanceRequest[]; selectedRequestId: string; status: 
 
 export function StudentHomeScreen() {
   const { user, token, logout } = useAuth();
+  const { tokens } = useTheme();
   const [activeTab, setActiveTab] = useState<TabId>("overview");
   const [requests, setRequests] = useState<ClearanceRequest[]>([]);
   const [selectedRequestId, setSelectedRequestId] = useState("");
@@ -124,8 +125,19 @@ export function StudentHomeScreen() {
     }
   }
 
+  async function handleCreateRequest(form: { semester: string; academicYearLabel: string; requestType: "SEMESTER" | "FINAL" | "WITHDRAWAL" }) {
+    if (!token) return;
+    try {
+      const created = await api.createStudentRequest(token, form);
+      setRequests((cur) => [created, ...cur]);
+      setSelectedRequestId(created.id);
+    } catch (err) {
+      console.error("Failed to create request:", err);
+    }
+  }
+
   return (
-    <View style={styles.root}>
+    <View style={[styles.root, { backgroundColor: tokens.background }]}>
       <AppBar />
       <View style={styles.content}>
         {activeTab === "overview" && (
@@ -135,6 +147,10 @@ export function StudentHomeScreen() {
             refreshing={refreshing}
             onRefresh={() => void handleRefresh()}
             onLogout={() => void logout()}
+            requests={requests}
+            selectedRequestId={selectedRequestId}
+            onSelectRequest={setSelectedRequestId}
+            onCreateRequest={handleCreateRequest}
           />
         )}
         {activeTab === "payments" && (
@@ -166,6 +182,6 @@ export function StudentHomeScreen() {
 }
 
 const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: tokens.background },
+  root: { flex: 1 },
   content: { flex: 1 },
 });

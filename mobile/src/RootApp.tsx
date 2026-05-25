@@ -6,10 +6,11 @@ import { NonStudentScreen } from "./screens/NonStudentScreen";
 import { StudentHomeScreen } from "./screens/StudentHomeScreen";
 import { WelcomeScreen } from "./screens/WelcomeScreen";
 import { useAuth } from "./modules/auth/AuthContext";
-import { tokens } from "./theme/tokens";
+import { useTheme } from "./modules/theme/ThemeContext";
 
 export function RootApp() {
   const { loading, mustChangePassword, user } = useAuth();
+  const { tokens } = useTheme();
   const [welcomed, setWelcomed] = useState(false);
 
   if (loading) {

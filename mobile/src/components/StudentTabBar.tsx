@@ -1,7 +1,7 @@
 import type { ComponentProps } from "react";
 import { Ionicons } from "@expo/vector-icons";
 import { Pressable, StyleSheet, Text, View, useWindowDimensions } from "react-native";
-import { tokens } from "../theme/tokens";
+import { useTheme } from "../modules/theme/ThemeContext";
 
 export type StudentTabId = "overview" | "payments" | "inquiries" | "certificate";
 
@@ -17,10 +17,10 @@ const TAB_DEFS: TabDef[] = [
 type Props = {
   active: StudentTabId;
   onChange: (tab: StudentTabId) => void;
-  accentColor?: string;
 };
 
-export function StudentTabBar({ active, onChange, accentColor = tokens.accent }: Props) {
+export function StudentTabBar({ active, onChange }: Props) {
+  const { tokens } = useTheme();
   const { width } = useWindowDimensions();
   const compact = width < 420;
 
@@ -34,10 +34,27 @@ export function StudentTabBar({ active, onChange, accentColor = tokens.accent }:
             accessibilityRole="button"
             accessibilityState={{ selected }}
             onPress={() => onChange(tab.id)}
-            style={[styles.tab, compact && styles.tabFull, selected && { borderColor: accentColor, backgroundColor: tokens.accentMuted }]}
+            style={[
+              styles.tab,
+              compact && styles.tabFull,
+              { backgroundColor: tokens.surfaceContainerLowest },
+              selected && {
+                borderColor: tokens.secondary,
+                backgroundColor: tokens.secondaryContainer,
+              },
+            ]}
           >
-            <Ionicons name={tab.icon} size={22} color={selected ? accentColor : tokens.muted} />
-            <Text style={[styles.label, { color: selected ? accentColor : tokens.muted }]}>{tab.label}</Text>
+            <Ionicons
+              name={tab.icon}
+              size={22}
+              color={selected ? tokens.onSecondaryContainer : tokens.onSurfaceVariant}
+            />
+            <Text style={[
+              styles.label,
+              { color: selected ? tokens.onSecondaryContainer : tokens.onSurfaceVariant },
+            ]}>
+              {tab.label}
+            </Text>
           </Pressable>
         );
       })}
@@ -64,10 +81,9 @@ const styles = StyleSheet.create({
     gap: 6,
     paddingVertical: 12,
     paddingHorizontal: 10,
-    borderRadius: tokens.radiusMd,
+    borderRadius: 12,
     borderWidth: 1,
     borderColor: "rgba(28,36,48,0.1)",
-    backgroundColor: tokens.surfaceElevated
   },
   tabFull: {
     flexBasis: "100%",

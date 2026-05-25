@@ -107,7 +107,7 @@ export const api = {
         body: JSON.stringify(payload)
       },
       token
-    )
+    ),
 };
 
 export function toMediaUrl(path?: string | null) {

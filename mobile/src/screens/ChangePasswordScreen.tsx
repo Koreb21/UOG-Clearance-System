@@ -1,26 +1,31 @@
-import { Ionicons } from "@expo/vector-icons";
+import { Ionicons, MaterialIcons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { useState } from "react";
-import { Pressable, StyleSheet, Text, TextInput, View } from "react-native";
-import { ScreenContainer } from "../components/ScreenContainer";
+import { KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 import { api } from "../lib/api";
 import { useAuth } from "../modules/auth/AuthContext";
-import { tokens } from "../theme/tokens";
+import { useTheme } from "../modules/theme/ThemeContext";
 
 export function ChangePasswordScreen() {
   const { token, completePasswordChange, logout } = useAuth();
+  const { tokens, mode } = useTheme();
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState(false);
+
+  const isDark = mode === "dark";
 
   async function handleSubmit() {
-    if (!token) {
-      return;
-    }
+    if (!token) return;
     if (newPassword !== confirmPassword) {
       setError("New password and confirmation do not match");
+      return;
+    }
+    if (newPassword.length < 8) {
+      setError("Password must be at least 8 characters");
       return;
     }
 
@@ -28,7 +33,8 @@ export function ChangePasswordScreen() {
     setError(null);
     try {
       await api.changePassword(token, currentPassword, newPassword);
-      completePasswordChange();
+      setSuccess(true);
+      setTimeout(() => completePasswordChange(), 800);
     } catch (requestError) {
       setError(requestError instanceof Error ? requestError.message : "Unable to change password");
     } finally {
@@ -36,137 +42,189 @@ export function ChangePasswordScreen() {
     }
   }
 
-  return (
-    <ScreenContainer>
-      <LinearGradient colors={["#e8f5f2", tokens.surface]} style={styles.head}>
-        <View style={styles.headIcon}>
-          <Ionicons name="shield-checkmark" size={28} color={tokens.accent} />
+  if (success) {
+    return (
+      <View style={[styles.centered, { backgroundColor: tokens.background }]}>
+        <View style={[styles.successCard, {
+          backgroundColor: isDark ? tokens.surfaceContainerLow : tokens.surfaceContainerLowest,
+          ...tokens.shadowSoft,
+        }]}>
+          <MaterialIcons name="check-circle" size={48} color={tokens.secondary} />
+          <Text style={[styles.successTitle, { color: tokens.onSurface }]}>Password Updated</Text>
+          <Text style={[styles.successBody, { color: tokens.onSurfaceVariant }]}>
+            Your password has been changed successfully. Taking you back to the app…
+          </Text>
         </View>
-        <Text style={styles.eyebrow}>First login</Text>
-        <Text style={styles.title}>Choose a secure password</Text>
-        <Text style={styles.copy}>
-          Replace the temporary password from the super admin before using the student portal.
-        </Text>
+      </View>
+    );
+  }
+
+  return (
+    <View style={[styles.root, { backgroundColor: tokens.background }]}>
+      <LinearGradient colors={[isDark ? tokens.primaryContainer : "#000511", isDark ? "#001e40" : "#006a63"]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
+        style={[styles.appBar, { paddingTop: Platform.OS === "ios" ? 44 : 0 }]}
+      >
+        <View style={styles.appBarLeft}>
+          <View style={styles.logoCircle}>
+            <MaterialIcons name="school" size={20} color="#fff" />
+          </View>
+          <Text style={styles.appBarTitle}>Secure Access</Text>
+        </View>
       </LinearGradient>
 
-      <View style={styles.card}>
-        <TextInput
-          style={styles.input}
-          value={currentPassword}
-          onChangeText={setCurrentPassword}
-          secureTextEntry
-          placeholder="Current password"
-          placeholderTextColor={tokens.muted}
-        />
-        <TextInput
-          style={styles.input}
-          value={newPassword}
-          onChangeText={setNewPassword}
-          secureTextEntry
-          placeholder="New password"
-          placeholderTextColor={tokens.muted}
-        />
-        <TextInput
-          style={styles.input}
-          value={confirmPassword}
-          onChangeText={setConfirmPassword}
-          secureTextEntry
-          placeholder="Confirm new password"
-          placeholderTextColor={tokens.muted}
-        />
-        {error ? <Text style={styles.error}>{error}</Text> : null}
+      <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : undefined} style={{ flex: 1 }}>
+        <ScrollView contentContainerStyle={styles.scroll}>
+          <Text style={[styles.eyebrow, { color: tokens.secondary }]}>First login</Text>
+          <Text style={[styles.title, { color: tokens.onSurface }]}>Choose a secure password</Text>
+          <Text style={[styles.copy, { color: tokens.onSurfaceVariant }]}>
+            Replace the temporary password from the super admin before using the student portal.
+          </Text>
 
-        <Pressable style={[styles.primaryButton, saving && styles.primaryDisabled]} onPress={handleSubmit} disabled={saving}>
-          <Text style={styles.primaryButtonText}>{saving ? "Saving…" : "Save & continue"}</Text>
-        </Pressable>
-        <Pressable style={styles.secondaryButton} onPress={() => void logout()}>
-          <Text style={styles.secondaryButtonText}>Sign out</Text>
-        </Pressable>
-      </View>
-    </ScreenContainer>
+          <View style={[styles.card, {
+            backgroundColor: isDark ? tokens.surfaceContainerLow : tokens.surfaceContainerLowest,
+            borderColor: isDark ? tokens.outlineVariant : "rgba(0,0,0,0.06)",
+            ...tokens.shadowSoft,
+          }]}>
+            <View style={styles.headIcon}>
+              <Ionicons name="shield-checkmark" size={28} color={tokens.secondary} />
+            </View>
+
+            <Text style={[styles.fieldLabel, { color: tokens.onSurfaceVariant }]}>Current Password</Text>
+            <View style={[styles.inputRow, { backgroundColor: tokens.surfaceContainerLowest, borderColor: tokens.outlineVariant }]}>
+              <MaterialIcons name="lock" size={20} color={tokens.outline} />
+              <TextInput
+                style={[styles.input, { color: tokens.onSurface }]}
+                value={currentPassword}
+                onChangeText={setCurrentPassword}
+                secureTextEntry
+                placeholder="Current password"
+                placeholderTextColor={tokens.onSurfaceVariant}
+              />
+            </View>
+
+            <Text style={[styles.fieldLabel, { color: tokens.onSurfaceVariant }]}>New Password</Text>
+            <View style={[styles.inputRow, { backgroundColor: tokens.surfaceContainerLowest, borderColor: tokens.outlineVariant }]}>
+              <MaterialIcons name="vpn-key" size={20} color={tokens.outline} />
+              <TextInput
+                style={[styles.input, { color: tokens.onSurface }]}
+                value={newPassword}
+                onChangeText={setNewPassword}
+                secureTextEntry
+                placeholder="At least 8 characters"
+                placeholderTextColor={tokens.onSurfaceVariant}
+              />
+            </View>
+
+            <Text style={[styles.fieldLabel, { color: tokens.onSurfaceVariant }]}>Confirm New Password</Text>
+            <View style={[styles.inputRow, { backgroundColor: tokens.surfaceContainerLowest, borderColor: tokens.outlineVariant }]}>
+              <MaterialIcons name="vpn-key" size={20} color={tokens.outline} />
+              <TextInput
+                style={[styles.input, { color: tokens.onSurface }]}
+                value={confirmPassword}
+                onChangeText={setConfirmPassword}
+                secureTextEntry
+                placeholder="Confirm new password"
+                placeholderTextColor={tokens.onSurfaceVariant}
+              />
+            </View>
+
+            {error ? (
+              <View style={[styles.errorBox, { backgroundColor: tokens.errorContainer }]}>
+                <MaterialIcons name="error-outline" size={16} color={tokens.onErrorContainer} />
+                <Text style={[styles.errorText, { color: tokens.onErrorContainer }]}>{error}</Text>
+              </View>
+            ) : null}
+
+            <Pressable
+              style={({ pressed }) => [styles.primaryBtn, {
+                backgroundColor: tokens.secondary,
+                shadowColor: isDark ? "#000" : "#006a63",
+                opacity: pressed || saving ? 0.85 : 1,
+              }]}
+              onPress={() => void handleSubmit()}
+              disabled={saving}
+            >
+              <Text style={styles.primaryBtnText}>{saving ? "Saving…" : "Save & Continue"}</Text>
+              <MaterialIcons name="arrow-forward" size={20} color="#fff" />
+            </Pressable>
+            <Pressable
+              style={({ pressed }) => [styles.secondaryBtn, {
+                borderColor: tokens.outlineVariant,
+                backgroundColor: isDark ? "transparent" : "transparent",
+                opacity: pressed ? 0.7 : 1,
+              }]}
+              onPress={() => void logout()}
+            >
+              <Text style={[styles.secondaryBtnText, { color: tokens.onSurface }]}>Sign out</Text>
+            </Pressable>
+          </View>
+        </ScrollView>
+      </KeyboardAvoidingView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  head: {
-    borderRadius: tokens.radiusLg,
-    padding: 22,
-    gap: 10,
-    marginBottom: 4
+  root: { flex: 1 },
+  appBar: {
+    height: Platform.OS === "ios" ? 88 : 64,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingHorizontal: 20,
+  },
+  appBarLeft: { flexDirection: "row", alignItems: "center", gap: 10 },
+  logoCircle: {
+    width: 38, height: 38, borderRadius: 19,
+    backgroundColor: "rgba(255,255,255,0.2)",
+    alignItems: "center", justifyContent: "center",
+  },
+  appBarTitle: { color: "#fff", fontSize: 18, fontWeight: "700" },
+  centered: { flex: 1, alignItems: "center", justifyContent: "center", padding: 24 },
+  successCard: {
+    borderRadius: 24, padding: 30,
+    alignItems: "center", gap: 14,
+    shadowColor: "#000", shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.08, shadowRadius: 24, elevation: 4,
+  },
+  successTitle: { fontSize: 22, fontWeight: "800" },
+  successBody: { fontSize: 14, textAlign: "center", lineHeight: 21 },
+  scroll: { flexGrow: 1, paddingHorizontal: 20, paddingTop: 28, paddingBottom: 60, gap: 8 },
+  eyebrow: { fontSize: 11, fontWeight: "700", letterSpacing: 3, textTransform: "uppercase", marginBottom: 4 },
+  title: { fontSize: 30, fontWeight: "800", marginBottom: 6 },
+  copy: { fontSize: 14, lineHeight: 20, marginBottom: 20 },
+  card: {
+    borderRadius: 24, padding: 24, gap: 12,
+    borderWidth: 1,
+    shadowColor: "#000", shadowOffset: { width: 0, height: 12 }, shadowOpacity: 0.1, shadowRadius: 30, elevation: 8,
   },
   headIcon: {
     alignSelf: "flex-start",
-    backgroundColor: tokens.surfaceElevated,
-    borderRadius: 16,
-    padding: 12,
-    ...tokens.shadowSoft,
-    shadowOpacity: 0.06
+    backgroundColor: "rgba(0,0,0,0.04)",
+    borderRadius: 16, padding: 12,
   },
-  eyebrow: {
-    color: tokens.accent,
-    textTransform: "uppercase",
-    letterSpacing: 2,
-    fontSize: 11,
-    fontWeight: "800"
+  fieldLabel: { fontSize: 12, fontWeight: "500", marginBottom: -4 },
+  inputRow: {
+    flexDirection: "row", alignItems: "center", gap: 10,
+    borderRadius: 9999, borderWidth: 1,
+    paddingHorizontal: 16, paddingVertical: 13,
   },
-  title: {
-    fontSize: 26,
-    lineHeight: 30,
-    fontWeight: "900",
-    color: tokens.ink
+  input: { flex: 1, fontSize: 15 },
+  errorBox: {
+    flexDirection: "row", alignItems: "center", gap: 8,
+    borderRadius: 10, padding: 10,
   },
-  copy: {
-    color: tokens.muted,
-    lineHeight: 22,
-    fontSize: 15
+  errorText: { fontSize: 13, flex: 1, fontWeight: "600" },
+  primaryBtn: {
+    borderRadius: 9999, height: 54,
+    flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8,
+    shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.35, shadowRadius: 14, elevation: 6,
+    marginTop: 4,
   },
-  card: {
-    backgroundColor: tokens.surface,
-    borderRadius: tokens.radiusLg,
-    padding: 20,
-    gap: 12,
+  primaryBtnText: { color: "#fff", fontSize: 17, fontWeight: "800" },
+  secondaryBtn: {
+    borderRadius: 9999, height: 48,
+    alignItems: "center", justifyContent: "center",
     borderWidth: 1,
-    borderColor: "rgba(28,36,48,0.06)"
   },
-  input: {
-    backgroundColor: tokens.surfaceElevated,
-    borderRadius: 16,
-    paddingHorizontal: 16,
-    paddingVertical: 15,
-    borderWidth: 1,
-    borderColor: "rgba(28,36,48,0.12)",
-    fontSize: 16,
-    color: tokens.ink
-  },
-  primaryButton: {
-    backgroundColor: tokens.accent,
-    paddingVertical: 16,
-    borderRadius: tokens.radiusPill,
-    alignItems: "center",
-    marginTop: 4
-  },
-  primaryDisabled: { opacity: 0.75 },
-  primaryButtonText: {
-    color: "#ffffff",
-    fontWeight: "800",
-    fontSize: 16
-  },
-  secondaryButton: {
-    borderWidth: 1,
-    borderColor: "rgba(28,36,48,0.12)",
-    borderRadius: tokens.radiusPill,
-    paddingVertical: 14,
-    alignItems: "center"
-  },
-  secondaryButtonText: {
-    color: tokens.ink,
-    fontWeight: "700"
-  },
-  error: {
-    color: tokens.dangerInk,
-    backgroundColor: tokens.dangerBg,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    borderRadius: 14
-  }
+  secondaryBtnText: { fontSize: 16, fontWeight: "700" },
 });

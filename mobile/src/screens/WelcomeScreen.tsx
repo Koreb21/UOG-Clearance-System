@@ -1,21 +1,29 @@
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { Pressable, StyleSheet, Text, View } from "react-native";
+import { useTheme } from "../modules/theme/ThemeContext";
 
 type Props = { onGetStarted: () => void };
 
 export function WelcomeScreen({ onGetStarted }: Props) {
+  const { tokens, mode } = useTheme();
+
+  const isDark = mode === "dark";
+  const gradStart = isDark ? "#000000" : "#001e40";
+  const gradMid = isDark ? "#14161c" : "#0c5c54";
+  const gradEnd = isDark ? "#1a3050" : "#0f766e";
+
   return (
     <LinearGradient
-      colors={["#001e40", "#0c5c54", "#0f766e"]}
+      colors={[gradStart, gradMid, gradEnd]}
       start={{ x: 0, y: 0 }}
       end={{ x: 1, y: 1 }}
       style={styles.container}
     >
       {/* Ambient glow blobs */}
-      <View style={[styles.glow, { top: -80, left: -80, width: 320, height: 320 }]} />
-      <View style={[styles.glow, { top: "35%", left: "10%", width: 400, height: 400, opacity: 0.18 }]} />
-      <View style={[styles.glow, { bottom: -100, right: -80, width: 380, height: 380, opacity: 0.22 }]} />
+      <View style={[styles.glow, { top: -80, left: -80, width: 320, height: 320, backgroundColor: isDark ? "#0f766e" : "#0f766e" }]} />
+      <View style={[styles.glow, { top: "35%", left: "10%", width: 400, height: 400, opacity: 0.18, backgroundColor: isDark ? "#3a5f94" : "#0f766e" }]} />
+      <View style={[styles.glow, { bottom: -100, right: -80, width: 380, height: 380, opacity: 0.22, backgroundColor: isDark ? "#0f766e" : "#0f766e" }]} />
 
       {/* Branding */}
       <View style={styles.brand}>
@@ -39,11 +47,14 @@ export function WelcomeScreen({ onGetStarted }: Props) {
       {/* CTA */}
       <View style={styles.bottom}>
         <Pressable
-          style={({ pressed }) => [styles.cta, pressed && { opacity: 0.88, transform: [{ scale: 0.98 }] }]}
+          style={({ pressed }) => [styles.cta, {
+            backgroundColor: isDark ? tokens.secondaryContainer : "#0f766e",
+            shadowColor: isDark ? "#000" : "#000",
+          }, pressed && { opacity: 0.88, transform: [{ scale: 0.98 }] }]}
           onPress={onGetStarted}
         >
-          <Text style={styles.ctaText}>Get Started</Text>
-          <Ionicons name="arrow-forward" size={22} color="#fff" />
+          <Text style={[styles.ctaText, { color: isDark ? tokens.onSecondaryContainer : "#fff" }]}>Get Started</Text>
+          <Ionicons name="arrow-forward" size={22} color={isDark ? tokens.onSecondaryContainer : "#fff"} />
         </Pressable>
 
         {/* Dots */}
@@ -70,7 +81,6 @@ const styles = StyleSheet.create({
   glow: {
     position: "absolute",
     borderRadius: 9999,
-    backgroundColor: "#0f766e",
     opacity: 0.32,
   },
   brand: { alignItems: "center", gap: 14, zIndex: 1 },
@@ -119,19 +129,17 @@ const styles = StyleSheet.create({
   cta: {
     width: "100%",
     height: 64,
-    backgroundColor: "#0f766e",
     borderRadius: 9999,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
     gap: 10,
-    shadowColor: "#000",
     shadowOffset: { width: 0, height: 8 },
     shadowOpacity: 0.3,
     shadowRadius: 20,
     elevation: 8,
   },
-  ctaText: { color: "#fff", fontSize: 20, fontWeight: "800" },
+  ctaText: { fontSize: 20, fontWeight: "800" },
   dots: { flexDirection: "row", gap: 6, alignItems: "center" },
   dot: { width: 6, height: 4, borderRadius: 2, backgroundColor: "rgba(255,255,255,0.3)" },
   dotActive: { width: 28, backgroundColor: "#fff" },
