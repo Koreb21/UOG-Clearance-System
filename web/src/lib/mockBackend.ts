@@ -5,7 +5,7 @@
 // ─────────────────────────────────────────────────────────────────────────────
 import QRCode from "qrcode";
 
-const DB_KEY = "ugc_mock_db_v4";
+const DB_KEY = "ugc_mock_db_v5";
 const CHECK_CODES = ["LIBRARY", "PROCTOR", "CAFE", "DEPARTMENT_HEAD", "STUDENT_DEAN"] as const;
 type CheckCode = typeof CHECK_CODES[number];
 
@@ -150,6 +150,15 @@ interface DbMessage {
   attachments: Array<{ name: string; type: string; size: number; data: string }> | null;
 }
 
+interface DbDepartment {
+  id: string;
+  code: string;
+  name: string;
+  type: "ACADEMIC" | "CLEARANCE";
+  campusId: string;
+  active: boolean;
+}
+
 interface Db {
   users: DbUser[];
   students: DbStudent[];
@@ -160,6 +169,7 @@ interface Db {
   inquiries: DbInquiry[];
   payments: DbPayment[];
   messages: DbMessage[];
+  departments: DbDepartment[];
   initialized: boolean;
 }
 
@@ -174,7 +184,7 @@ function readDb(): Db {
       return parsed;
     }
   } catch {/* */}
-  return { users: [], students: [], requests: [], checks: [], liabilities: [], certificates: [], inquiries: [], payments: [], messages: [], initialized: false };
+  return { users: [], students: [], requests: [], checks: [], liabilities: [], certificates: [], inquiries: [], payments: [], messages: [], departments: [], initialized: false };
 }
 
 function writeDb(db: Db) {
@@ -325,6 +335,20 @@ function seed(db: Db): Db {
     { id: "pay-1", clearanceRequestId: "cr-1", studentId: "UGR/01234/15", liabilityIds: ["liab-1"], provider: "MANUAL", txRef: "TXN-AB12CD", providerReference: "Bank Slip #8921", departmentCheckCode: "LIBRARY", amount: 250, currency: "ETB", status: "VERIFIED", verifiedAt: new Date(Date.now() - 1 * 86400000).toISOString(), receiptNumber: "RCP-XJ9K2M", receiptSignature: null, receiptIssuedAt: new Date(Date.now() - 1 * 86400000).toISOString() },
     { id: "pay-2", clearanceRequestId: "standalone", studentId: "UGR/01235/15", liabilityIds: [], provider: "MANUAL", txRef: "TXN-EF34GH", providerReference: "Cash payment", departmentCheckCode: "FINANCE", amount: 1200, currency: "ETB", status: "VERIFIED", verifiedAt: new Date(Date.now() - 2 * 86400000).toISOString(), receiptNumber: "RCP-PL7QRS", receiptSignature: null, receiptIssuedAt: new Date(Date.now() - 2 * 86400000).toISOString() },
     { id: "pay-3", clearanceRequestId: "cr-2", studentId: "UGR/01235/15", liabilityIds: ["liab-3"], provider: "MANUAL", txRef: "TXN-IJ56KL", providerReference: "Bank Transfer #4451", departmentCheckCode: "LIBRARY", amount: 350, currency: "ETB", status: "VERIFIED", verifiedAt: new Date(Date.now() - 0.5 * 86400000).toISOString(), receiptNumber: "RCP-NM3WXY", receiptSignature: null, receiptIssuedAt: new Date(Date.now() - 0.5 * 86400000).toISOString() },
+  ];
+
+  db.departments = [
+    { id: "d-cs", code: "CS", name: "Computer Science", type: "ACADEMIC", campusId: TEWODROS, active: true },
+    { id: "d-ee", code: "EE", name: "Electrical Engineering", type: "ACADEMIC", campusId: TEWODROS, active: true },
+    { id: "d-law", code: "LAW", name: "Law", type: "ACADEMIC", campusId: MARAKI, active: true },
+    { id: "d-lib", code: "LIB", name: "Library", type: "CLEARANCE", campusId: TEWODROS, active: true },
+    { id: "d-fin", code: "FIN", name: "Finance", type: "CLEARANCE", campusId: TEWODROS, active: true },
+    { id: "d-dor", code: "DOR", name: "Dormitory", type: "CLEARANCE", campusId: TEWODROS, active: true },
+    { id: "d-reg", code: "REG", name: "Registrar", type: "CLEARANCE", campusId: TEWODROS, active: true },
+    { id: "d-ict", code: "ICT", name: "ICT", type: "CLEARANCE", campusId: TEWODROS, active: true },
+    { id: "d-cafe", code: "CAF", name: "Cafeteria", type: "CLEARANCE", campusId: TEWODROS, active: true },
+    { id: "d-dean", code: "DEAN", name: "College Dean", type: "CLEARANCE", campusId: TEWODROS, active: true },
+    { id: "d-proc", code: "PRO", name: "Proctor", type: "CLEARANCE", campusId: TEWODROS, active: true },
   ];
 
   db.initialized = true;
@@ -926,6 +950,43 @@ function handleVerifyQr(token: string | null, body: { hash: string }, db: Db) {
 }
 
 // Admin endpoints
+function handleImportStudentsCsv(token: string | null, file: { name: string; text: string } | null, db: Db) {
+  requireAuth(token, db);
+  if (!file) return { totalRows: 0, importedCount: 0, failedCount: 0, errors: ["No file uploaded."] };
+  const rows = file.text.split(/\r?\n/).map((r) => r.trim()).filter((r) => r.length > 0);
+  if (rows.length < 2) return { totalRows: 0, importedCount: 0, failedCount: 0, errors: ["CSV is empty or missing data rows."] };
+  const dataRows = rows.slice(1);
+  let imported = 0;
+  let failed = 0;
+  const errors: string[] = [];
+  for (let i = 0; i < dataRows.length; i++) {
+    const cols = dataRows[i].split(",");
+    if (cols.length < 12) { failed++; errors.push(`Row ${i + 2}: insufficient columns`); continue; }
+    const [studentId, firstName, middleName, lastName, gender, phone, email, campusId, academicDepartmentId, program, academicYear, graduationYear, password] = cols.map((c) => c.trim());
+    if (!studentId || !firstName || !lastName) { failed++; errors.push(`Row ${i + 2}: missing required fields`); continue; }
+    if (db.students.find((s) => s.studentId === studentId)) { failed++; errors.push(`Row ${i + 2}: Student ID ${studentId} already exists`); continue; }
+    const student: DbStudent = {
+      id: uid(), studentId, firstName, middleName: middleName || null, lastName,
+      gender: gender || null, phone: phone || null, email: email || null,
+      campusId: campusId || "TEWODROS",
+      academicDepartmentId: academicDepartmentId || null,
+      program: program || null,
+      academicYear: academicYear ? parseInt(academicYear, 10) : null,
+      graduationYear: graduationYear ? parseInt(graduationYear, 10) : null,
+      profileImageUrl: null, hasProfileImage: false, status: "ACTIVE"
+    };
+    db.students.push(student);
+    db.users.push({
+      id: uid(), username: studentId, password: password || "student123",
+      email: email || null, role: "STUDENT", campusId: student.campusId,
+      departmentId: null, studentId, active: true, mustChangePassword: true
+    });
+    imported++;
+  }
+  writeDb(db);
+  return { totalRows: dataRows.length, importedCount: imported, failedCount: failed, errors };
+}
+
 function handleAdminStudents(token: string | null, db: Db) {
   requireAuth(token, db);
   return db.students.map((s) => ({ id: s.id, studentId: s.studentId, firstName: s.firstName, middleName: s.middleName, lastName: s.lastName, gender: s.gender, phone: s.phone, email: s.email, campusId: s.campusId, academicDepartmentId: s.academicDepartmentId, program: s.program, academicYear: s.academicYear, graduationYear: s.graduationYear, profileImageUrl: null, idCardImageUrl: null, status: s.status }));
@@ -1030,12 +1091,12 @@ function getToken(headers: Headers): string | null {
   return auth.replace(/^Bearer\s+/i, "");
 }
 
-async function dispatch(method: string, path: string, headers: Headers, bodyText: string): Promise<{ status: number; body: unknown }> {
+async function dispatch(method: string, path: string, headers: Headers, bodyText: string, formDataFile?: { name: string; text: string } | null): Promise<{ status: number; body: unknown }> {
   const db = readDb();
   if (!db.initialized) {
     const seeded = seed(db);
     writeDb(seeded);
-    return dispatch(method, path, headers, bodyText);
+    return dispatch(method, path, headers, bodyText, formDataFile);
   }
 
   const body = parseJson(bodyText);
@@ -1188,11 +1249,38 @@ async function dispatch(method: string, path: string, headers: Headers, bodyText
       db.users = db.users.filter((u) => u.id !== userId);
       writeDb(db); return { status: 204, body: null };
     }
-    if (method === "POST" && pathOnly === "/admin/students/import") return { status: 200, body: { totalRows: 0, importedCount: 0, failedCount: 0, errors: [] } };
+    if (method === "POST" && pathOnly === "/admin/students/import") return { status: 200, body: handleImportStudentsCsv(token, formDataFile ?? null, db) };
 
     // ── Campus / Departments
     if (method === "GET" && pathOnly === "/campuses") return { status: 200, body: [{ id: "TEWODROS", code: "TEWODROS", name: "Atse Tewodros Campus", active: true }, { id: "MARAKI", code: "MARAKI", name: "Maraki Campus", active: true }, { id: "FASIL", code: "FASIL", name: "Atse Fasil Campus", active: true }] };
-    if (method === "GET" && pathOnly === "/departments") return { status: 200, body: [{ id: "d-cs", code: "CS", name: "Computer Science", type: "ACADEMIC", campusId: "TEWODROS", active: true }, { id: "d-ee", code: "EE", name: "Electrical Engineering", type: "ACADEMIC", campusId: "TEWODROS", active: true }, { id: "d-law", code: "LAW", name: "Law", type: "ACADEMIC", campusId: "MARAKI", active: true }] };
+    if (method === "GET" && pathOnly === "/departments") return { status: 200, body: db.departments.map((d) => ({ id: d.id, code: d.code, name: d.name, type: d.type, campusId: d.campusId, active: d.active })) };
+    if (method === "POST" && pathOnly === "/departments") {
+      const dept: DbDepartment = { id: uid(), code: body.code, name: body.name, type: body.type, campusId: body.campusId, active: body.active ?? true };
+      db.departments.push(dept); writeDb(db);
+      return { status: 200, body: { id: dept.id, code: dept.code, name: dept.name, type: dept.type, campusId: dept.campusId, active: dept.active } };
+    }
+    if (method === "PUT" && /^\/departments\/[^/]+$/.test(pathOnly)) {
+      const deptId = pathOnly.split("/").pop() ?? "";
+      const dept = db.departments.find((d) => d.id === deptId);
+      if (dept) { Object.assign(dept, body); writeDb(db); return { status: 200, body: { id: dept.id, code: dept.code, name: dept.name, type: dept.type, campusId: dept.campusId, active: dept.active } }; }
+      return { status: 404, body: { message: "Department not found" } };
+    }
+    if (method === "PATCH" && /^\/departments\/[^/]+\/toggle$/.test(pathOnly)) {
+      const deptId = pathOnly.split("/")[2];
+      const dept = db.departments.find((d) => d.id === deptId);
+      if (dept) { dept.active = !dept.active; writeDb(db); return { status: 200, body: { id: dept.id, code: dept.code, name: dept.name, type: dept.type, campusId: dept.campusId, active: dept.active } }; }
+      return { status: 404, body: { message: "Department not found" } };
+    }
+    if (method === "GET" && pathOnly === "/departments/assigned-staff") {
+      const deptId = params.get("departmentId");
+      const assigned = db.users.filter((u) => u.role !== "STUDENT" && u.departmentId === deptId).map((u) => ({ id: u.id, username: u.username, role: u.role }));
+      return { status: 200, body: assigned };
+    }
+    if (method === "POST" && pathOnly === "/departments/assign-staff") {
+      const user = db.users.find((u) => u.id === body.userId);
+      if (user) { user.departmentId = body.departmentId; writeDb(db); return { status: 200, body: { id: user.id, username: user.username, role: user.role } }; }
+      return { status: 404, body: { message: "User not found" } };
+    }
 
     return { status: 404, body: { message: "Endpoint not found: " + method + " " + pathOnly } };
   } catch (err: unknown) {
@@ -1221,9 +1309,20 @@ export function installMockBackend() {
     const method = (init?.method ?? (input instanceof Request ? input.method : "GET")).toUpperCase();
     const headers = new Headers(init?.headers ?? (input instanceof Request ? input.headers : {}));
     let bodyText = "";
+    let formDataFile: { name: string; text: string } | null = null;
     if (init?.body) {
       if (typeof init.body === "string") bodyText = init.body;
-      else if (init.body instanceof FormData) bodyText = "{}";
+      else if (init.body instanceof FormData) {
+        for (const [, value] of init.body.entries()) {
+          if (value instanceof File) {
+            try {
+              const text = await value.text();
+              formDataFile = { name: value.name, text };
+            } catch {/* */}
+          }
+        }
+        bodyText = "{}";
+      }
       else bodyText = String(init.body);
     } else if (input instanceof Request) {
       try { bodyText = await input.clone().text(); } catch {/* */}
@@ -1231,7 +1330,7 @@ export function installMockBackend() {
 
     await new Promise((resolve) => setTimeout(resolve, 50 + Math.random() * 60));
 
-    const { status, body } = await dispatch(method, apiPath, headers, bodyText);
+    const { status, body } = await dispatch(method, apiPath, headers, bodyText, formDataFile);
     const responseBody = body == null ? null : JSON.stringify(body);
     return new Response(responseBody, { status, headers: { "Content-Type": "application/json" } });
   };

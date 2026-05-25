@@ -209,6 +209,17 @@ public class ClearanceWorkflowService {
                                     Objects.toString(student.getFirstName(), "").trim(),
                                     Objects.toString(student.getLastName(), "").trim()).trim();
 
+                    Liability liability = liabilityRepository
+                            .findByClearanceRequestIdAndDepartmentCheckCode(
+                                    request.getId(), check.getCheckCode())
+                            .stream()
+                            .filter(l -> l.isPaymentRequired() &&
+                                    l.getStatus() != LiabilityStatus.PAID &&
+                                    l.getStatus() != LiabilityStatus.CLEARED &&
+                                    l.getStatus() != LiabilityStatus.WAIVED)
+                            .findFirst()
+                            .orElse(null);
+
                     return new StaffQueueItemResponse(
                             check.getId(),
                             check.getCheckCode(),
@@ -220,7 +231,12 @@ public class ClearanceWorkflowService {
                             check.getStudentId(),
                             studentName,
                             request.getCampusId(),
-                            request.getSubmittedAt() == null ? null : request.getSubmittedAt().toString()
+                            request.getSubmittedAt() == null ? null : request.getSubmittedAt().toString(),
+                            liability != null ? liability.getItemName() : null,
+                            liability != null ? liability.getAmount() : null,
+                            liability != null ? liability.getCurrency() : null,
+                            liability != null ? liability.getDescription() : null,
+                            check.getComment()
                     );
                 })
                 .toList();
@@ -255,6 +271,15 @@ public class ClearanceWorkflowService {
                                     Objects.toString(student.getFirstName(), "").trim(),
                                     Objects.toString(student.getLastName(), "").trim()).trim();
 
+                    Liability liability = liabilityRepository
+                            .findByClearanceRequestIdAndDepartmentCheckCode(
+                                    request.getId(), check.getCheckCode())
+                            .stream()
+                            .filter(l -> l.getStatus() != LiabilityStatus.CLEARED &&
+                                    l.getStatus() != LiabilityStatus.WAIVED)
+                            .findFirst()
+                            .orElse(null);
+
                     return new StaffQueueItemResponse(
                             check.getId(),
                             check.getCheckCode(),
@@ -266,7 +291,12 @@ public class ClearanceWorkflowService {
                             check.getStudentId(),
                             studentName,
                             request.getCampusId(),
-                            request.getSubmittedAt() == null ? null : request.getSubmittedAt().toString()
+                            request.getSubmittedAt() == null ? null : request.getSubmittedAt().toString(),
+                            liability != null ? liability.getItemName() : null,
+                            liability != null ? liability.getAmount() : null,
+                            liability != null ? liability.getCurrency() : null,
+                            liability != null ? liability.getDescription() : null,
+                            check.getComment()
                     );
                 })
                 .toList();

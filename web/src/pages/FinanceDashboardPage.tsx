@@ -255,7 +255,7 @@ export function FinanceDashboardPage() {
                   onClick={() => { setSelectedItem(null); go("manual-payment"); }}
                   className="flex-1 rounded-xl bg-primary px-4 py-3 text-sm font-bold text-on-primary shadow-md transition hover:bg-primary/90"
                 >
-                  Record Payment
+                  Manual Payment
                 </button>
                 <button
                   type="button"

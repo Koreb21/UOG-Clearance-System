@@ -36,7 +36,7 @@ function generateReceiptNumber(): string {
   return "RCP-" + uid().slice(0, 6).toUpperCase();
 }
 
-export function FinanceRecordPaymentPage() {
+export function FinanceManualPaymentPage() {
   const { token, user } = useAuth();
   const { showToast } = useToast();
   const navigate = useNavigate();

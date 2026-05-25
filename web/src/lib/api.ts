@@ -364,6 +364,16 @@ export const api = {
       { method: "GET" },
       token
     ),
+  createDepartment: (token: string, payload: { code: string; name: string; type: "ACADEMIC" | "CLEARANCE"; campusId: string; active?: boolean }) =>
+    request<Department>("/departments", { method: "POST", body: JSON.stringify(payload) }, token),
+  updateDepartment: (token: string, id: string, payload: Partial<{ code: string; name: string; type: "ACADEMIC" | "CLEARANCE"; campusId: string; active: boolean }>) =>
+    request<Department>(`/departments/${encodeURIComponent(id)}`, { method: "PUT", body: JSON.stringify(payload) }, token),
+  toggleDepartment: (token: string, id: string) =>
+    request<Department>(`/departments/${encodeURIComponent(id)}/toggle`, { method: "PATCH" }, token),
+  listAssignedStaff: (token: string, departmentId: string) =>
+    request<Array<{ id: string; username: string; role: string }>>(`/departments/assigned-staff?departmentId=${encodeURIComponent(departmentId)}`, { method: "GET" }, token),
+  assignStaffToDepartment: (token: string, payload: { userId: string; departmentId: string }) =>
+    request<{ id: string; username: string; role: string }>("/departments/assign-staff", { method: "POST", body: JSON.stringify(payload) }, token),
   listStaffStudents: (token: string) =>
     request<StudentSummary[]>("/staff/students", { method: "GET" }, token),
   listStaffQueue: (token: string) =>
