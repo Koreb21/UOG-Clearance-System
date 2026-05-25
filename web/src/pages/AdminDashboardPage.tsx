@@ -162,16 +162,18 @@ export function AdminDashboardPage() {
     try { const detail = await api.getBatchDetail(token, batchId); setBatchDetail(detail); } catch (err: any) { showToast(err.message ?? "Failed to load batch", "error"); }
   };
 
-  const handleBatchImport = async () => {
-    if (!token || !selectedBatchId || !batchDetail) return;
+  const handleBatchImport = async (batchId: string) => {
+    if (!token) return;
     setBatchImporting(true); setBatchImportResult(null);
     try {
-      const result = await api.importBatch(token, selectedBatchId);
+      const result = await api.importBatch(token, batchId);
       setBatchImportResult(result);
       showToast(`${result.importedCount} students registered with auto-generated IDs.`, "success");
       loadBatches();
-      const updated = await api.getBatchDetail(token, selectedBatchId);
-      setBatchDetail(updated);
+      if (batchDetail && batchDetail.batch.id === batchId) {
+        const updated = await api.getBatchDetail(token, batchId);
+        setBatchDetail(updated);
+      }
       loadData();
     } catch (err: any) { showToast(err.message ?? "Registration failed", "error"); }
     finally { setBatchImporting(false); }
@@ -981,9 +983,16 @@ export function AdminDashboardPage() {
                           <span className={`inline-flex rounded-full px-2 py-0.5 text-[10px] font-bold ${b.status === "IMPORTED" ? "bg-green-100 text-green-800" : b.status === "REJECTED" ? "bg-red-100 text-red-800" : "bg-yellow-100 text-yellow-800"}`}>{b.status === "IMPORTED" ? "Imported" : b.status === "REJECTED" ? "Rejected" : "Pending"}</span>
                         </td>
                         <td className="px-4 py-3">
-                          <button onClick={() => handleViewBatch(b.id)} className="rounded-lg px-3 py-1.5 text-sm font-bold text-primary hover:bg-primary-fixed/20 transition-colors">
-                            {b.status === "IMPORTED" ? "View" : "Review & Import"}
-                          </button>
+                          <div className="flex items-center gap-2">
+                            {b.status !== "IMPORTED" && (
+                              <button onClick={() => handleBatchImport(b.id)} disabled={batchImporting} className="rounded-lg px-3 py-1.5 text-sm font-bold bg-green-600 text-white hover:bg-green-700 shadow-sm transition-colors disabled:opacity-50 flex items-center gap-1">
+                                <span className="material-symbols-outlined text-sm">cloud_upload</span> Import
+                              </button>
+                            )}
+                            <button onClick={() => handleViewBatch(b.id)} className="rounded-lg px-3 py-1.5 text-sm font-bold text-primary hover:bg-primary-fixed/20 transition-colors">
+                              {b.status === "IMPORTED" ? "View" : "Review"}
+                            </button>
+                          </div>
                         </td>
                       </tr>
                     ))}
@@ -1002,7 +1011,7 @@ export function AdminDashboardPage() {
                   </div>
                   <div className="flex items-center gap-2">
                     {batchDetail.batch.status !== "IMPORTED" && (
-                      <button onClick={handleBatchImport} disabled={batchImporting} className="bg-green-600 text-white px-4 py-2 rounded-lg font-bold text-sm flex items-center gap-2 shadow-md hover:bg-green-700 transition-all disabled:opacity-50">
+                      <button onClick={() => handleBatchImport(batchDetail.batch.id)} disabled={batchImporting} className="bg-green-600 text-white px-4 py-2 rounded-lg font-bold text-sm flex items-center gap-2 shadow-md hover:bg-green-700 transition-all disabled:opacity-50">
                         <span className="material-symbols-outlined text-lg">cloud_upload</span>{batchImporting ? "Importing…" : "Import"}
                       </button>
                     )}

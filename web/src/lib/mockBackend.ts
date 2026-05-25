@@ -5,7 +5,7 @@
 // ─────────────────────────────────────────────────────────────────────────────
 import QRCode from "qrcode";
 
-const DB_KEY = "ugc_mock_db_v6";
+const DB_KEY = "ugc_mock_db_v7";
 const CHECK_CODES = ["LIBRARY", "PROCTOR", "CAFE", "DEPARTMENT_HEAD", "STUDENT_DEAN"] as const;
 type CheckCode = typeof CHECK_CODES[number];
 
@@ -391,6 +391,20 @@ function seed(db: Db): Db {
     { id: "d-cafe", code: "CAF", name: "Cafeteria", type: "CLEARANCE", campusId: TEWODROS, active: true },
     { id: "d-dean", code: "DEAN", name: "College Dean", type: "CLEARANCE", campusId: TEWODROS, active: true },
     { id: "d-proc", code: "PRO", name: "Proctor", type: "CLEARANCE", campusId: TEWODROS, active: true },
+  ];
+
+  // ── Sample student batches (for admin import testing)
+  db.batches = [
+    { id: "batch-tew-1", name: "Tewodros 2025 New Admits", campusId: TEWODROS, submittedBy: "registrar", submittedAt: isoNow(), status: "PENDING", studentCount: 3, importedAt: null, importedBy: null, importedCount: 0 },
+    { id: "batch-mar-1", name: "Maraki 2025 New Admits", campusId: MARAKI, submittedBy: "registrar_m", submittedAt: isoNow(), status: "PENDING", studentCount: 2, importedAt: null, importedBy: null, importedCount: 0 },
+  ];
+
+  db.prospectiveStudents = [
+    { id: "ps-1", batchId: "batch-tew-1", firstName: "Abebe", fatherName: "Kebede", lastName: "Tadesse", gender: "MALE", age: 22, email: "abebe.tadesse@uog.edu.et", department: "Computer Science", academicYear: 2025, campusId: TEWODROS },
+    { id: "ps-2", batchId: "batch-tew-1", firstName: "Meron", fatherName: "Haile", lastName: "Girma", gender: "FEMALE", age: 21, email: "meron.girma@uog.edu.et", department: "Electrical Engineering", academicYear: 2025, campusId: TEWODROS },
+    { id: "ps-3", batchId: "batch-tew-1", firstName: "Dawit", fatherName: "Bekele", lastName: "Molla", gender: "MALE", age: 23, email: "dawit.molla@uog.edu.et", department: "Computer Science", academicYear: 2025, campusId: TEWODROS },
+    { id: "ps-4", batchId: "batch-mar-1", firstName: "Selam", fatherName: "Abebe", lastName: "Negash", gender: "FEMALE", age: 20, email: "selam.negash@uog.edu.et", department: "Law", academicYear: 2025, campusId: MARAKI },
+    { id: "ps-5", batchId: "batch-mar-1", firstName: "Yonas", fatherName: "Tadesse", lastName: "Worku", gender: "MALE", age: 22, email: "yonas.worku@uog.edu.et", department: "Law", academicYear: 2025, campusId: MARAKI },
   ];
 
   db.initialized = true;
