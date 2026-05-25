@@ -23,7 +23,7 @@ export function FinanceLiabilityPage() {
 
   useEffect(() => {
     if (!token) return;
-    Promise.all([api.listStaffStudents(token), api.listStaffQueue(token)])
+    Promise.all([api.listStaffStudents(token), api.getFlaggedStudents(token)])
       .then(([studentItems, queue]) => {
         setStudents(studentItems);
         setQueueItems(queue);

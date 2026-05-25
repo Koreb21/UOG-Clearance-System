@@ -79,4 +79,14 @@ public class StaffClearanceController {
                                                     @PathVariable String checkId) {
         return clearanceWorkflowService.quickApproveCheck(principal, checkId);
     }
+
+    @PatchMapping("/checks/{checkId}/revoke-payment")
+    @PreAuthorize("hasAnyRole('FINANCE_OFFICER','SYSTEM_ADMIN')")
+    public ClearanceCheckResponse revokePaymentApproval(
+            @AuthenticationPrincipal UserPrincipal principal,
+            @PathVariable String checkId,
+            @RequestBody(required = false) java.util.Map<String, String> body) {
+        String reason = body != null ? body.get("reason") : null;
+        return clearanceWorkflowService.revokeFinanceApproval(principal, checkId, reason);
+    }
 }

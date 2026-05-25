@@ -451,6 +451,9 @@ export const api = {
       verifiedAt: string | null;
       receiptIssuedAt: string | null;
       departmentCheckCode: string | null;
+      clearanceRequestId: string | null;
+      checkId: string | null;
+      checkStatus: string | null;
       student: {
         studentId: string;
         fullName: string;
@@ -468,6 +471,15 @@ export const api = {
     request<StaffQueueItem[]>(
       `/staff/flagged?${campusId ? `campusId=${encodeURIComponent(campusId)}` : ""}`,
       { method: "GET" },
+      token
+    ),
+  revokeFinanceApproval: (token: string, checkId: string, reason?: string) =>
+    request(
+      `/staff/checks/${encodeURIComponent(checkId)}/revoke-payment`,
+      {
+        method: "PATCH",
+        body: JSON.stringify({ reason: reason ?? "" })
+      },
       token
     ),
   recordManualPayment: (

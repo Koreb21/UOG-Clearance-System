@@ -140,6 +140,55 @@ public class ClearanceWorkflowService {
         return toLiabilityResponse(liability);
     }
 
+    public ClearanceCheckResponse revokeFinanceApproval(UserPrincipal principal, String checkId, String reason) {
+        ClearanceCheck check = clearanceCheckRepository.findById(checkId)
+                .orElseThrow(() -> new IllegalArgumentException("Clearance check not found"));
+        campusAccessService.requireStudentAccess(principal, check.getStudentId());
+
+        UserRole role = principal.getUser().getRole();
+        if (role != UserRole.FINANCE_OFFICER && role != UserRole.SYSTEM_ADMIN) {
+            throw new org.springframework.security.access.AccessDeniedException("Only finance or system admin can revoke payment approval");
+        }
+
+        if (check.getStatus() != ClearanceCheckStatus.PAID_PENDING_DEPARTMENT_APPROVAL
+                && check.getStatus() != ClearanceCheckStatus.CLEARED) {
+            throw new IllegalArgumentException("Check must be in PAID_PENDING_DEPARTMENT_APPROVAL or CLEARED state to revoke");
+        }
+
+        List<Liability> liabilities = liabilityRepository.findByClearanceRequestIdAndDepartmentCheckCode(
+                check.getClearanceRequestId(), check.getCheckCode());
+        for (Liability liability : liabilities) {
+            if (liability.getStatus() == LiabilityStatus.PAID && liability.isPaymentRequired()) {
+                liability.setStatus(LiabilityStatus.PENDING);
+                liability.setUpdatedBy(principal.getId());
+                liabilityRepository.save(liability);
+            }
+        }
+
+        String revokeComment = "Finance has stopped clearance progress. Payment disputed."
+                + (reason != null && !reason.isBlank() ? " Reason: " + reason : "");
+        check.setStatus(ClearanceCheckStatus.AWAITING_FINANCE);
+        check.setComment(revokeComment);
+        check.setReviewedBy(principal.getId());
+        check.setReviewedAt(Instant.now());
+        check = clearanceCheckRepository.save(check);
+
+        ClearanceRequest request = getClearanceRequest(check.getClearanceRequestId());
+        request.setStatus(ClearanceRequestStatus.IN_REVIEW);
+        clearanceRequestRepository.save(request);
+
+        auditLogService.log(
+                principal,
+                AuditAction.FINANCE_PAYMENT_REVOKED,
+                "CLEARANCE_CHECK",
+                check.getId(),
+                check.getStudentId(),
+                "Finance revoked payment approval",
+                Map.of("checkCode", check.getCheckCode().name(), "reason", reason != null ? reason : ""));
+
+        return toCheckResponse(check);
+    }
+
     public ClearanceCheckResponse reviewCheck(UserPrincipal principal, String checkId, ReviewClearanceCheckRequest request) {
         ClearanceCheck check = clearanceCheckRepository.findById(checkId)
                 .orElseThrow(() -> new IllegalArgumentException("Clearance check not found"));

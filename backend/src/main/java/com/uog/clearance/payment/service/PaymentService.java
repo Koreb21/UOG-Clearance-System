@@ -206,6 +206,68 @@ public class PaymentService {
         return toResponse(payment);
     }
 
+    public java.util.Map<String, Object> lookupPaymentByRef(UserPrincipal principal, String ref) {
+        ensureFinanceOrAdmin(principal);
+        PaymentRecord payment = paymentRecordRepository.findByTxRef(ref)
+                .or(() -> paymentRecordRepository.findByReceiptNumber(ref))
+                .or(() -> paymentRecordRepository.findByProviderReference(ref))
+                .orElseThrow(() -> new IllegalArgumentException("Payment not found for reference: " + ref));
+
+        Student student = studentRepository.findByStudentId(payment.getStudentId()).orElse(null);
+
+        String checkId = null;
+        String checkStatus = null;
+        if (payment.getClearanceRequestId() != null && payment.getDepartmentCheckCode() != null) {
+            ClearanceCheck check = clearanceCheckRepository
+                    .findByClearanceRequestIdAndCheckCode(payment.getClearanceRequestId(), payment.getDepartmentCheckCode())
+                    .orElse(null);
+            if (check != null) {
+                checkId = check.getId();
+                checkStatus = check.getStatus().name();
+            }
+        }
+
+        java.util.Map<String, Object> studentInfo = null;
+        if (student != null) {
+            studentInfo = new java.util.LinkedHashMap<>();
+            studentInfo.put("studentId", student.getStudentId());
+            studentInfo.put("fullName", String.join(" ",
+                    Objects.toString(student.getFirstName(), ""),
+                    Objects.toString(student.getLastName(), "")).trim());
+            studentInfo.put("program", Objects.toString(student.getProgram(), ""));
+            studentInfo.put("academicYear", student.getAcademicYear() != null ? student.getAcademicYear() : "");
+            studentInfo.put("email", Objects.toString(student.getEmail(), ""));
+            studentInfo.put("campusId", Objects.toString(student.getCampusId(), ""));
+        }
+
+        String displayStatus;
+        if (payment.getStatus() == PaymentStatus.SUCCESS) {
+            displayStatus = "VERIFIED";
+        } else if (payment.getStatus() == PaymentStatus.PENDING_VERIFY) {
+            displayStatus = "PENDING";
+        } else {
+            displayStatus = payment.getStatus().name();
+        }
+
+        java.util.Map<String, Object> result = new java.util.LinkedHashMap<>();
+        result.put("id", payment.getId());
+        result.put("txRef", payment.getTxRef());
+        result.put("receiptNumber", payment.getReceiptNumber());
+        result.put("providerReference", payment.getProviderReference());
+        result.put("provider", payment.getProvider().name());
+        result.put("amount", payment.getAmount());
+        result.put("currency", payment.getCurrency());
+        result.put("status", displayStatus);
+        result.put("verifiedAt", payment.getVerifiedAt() != null ? payment.getVerifiedAt().toString() : null);
+        result.put("receiptIssuedAt", payment.getReceiptIssuedAt() != null ? payment.getReceiptIssuedAt().toString() : null);
+        result.put("departmentCheckCode", payment.getDepartmentCheckCode() != null ? payment.getDepartmentCheckCode().name() : null);
+        result.put("clearanceRequestId", payment.getClearanceRequestId());
+        result.put("checkId", checkId);
+        result.put("checkStatus", checkStatus);
+        result.put("student", studentInfo);
+        return result;
+    }
+
     public List<PaymentResponse> listPayments(UserPrincipal principal, String clearanceRequestId) {
         ClearanceRequest request = getRequest(clearanceRequestId);
         requireStudentOrCampusAccess(principal, request.getStudentId());

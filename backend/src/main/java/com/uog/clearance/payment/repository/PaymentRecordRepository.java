@@ -9,6 +9,10 @@ public interface PaymentRecordRepository extends JpaRepository<PaymentRecord, St
 
     Optional<PaymentRecord> findByTxRef(String txRef);
 
+    Optional<PaymentRecord> findByProviderReference(String providerReference);
+
+    Optional<PaymentRecord> findByReceiptNumber(String receiptNumber);
+
     List<PaymentRecord> findByClearanceRequestId(String clearanceRequestId);
 
     List<PaymentRecord> findByCampusIdOrderByVerifiedAtDesc(String campusId);

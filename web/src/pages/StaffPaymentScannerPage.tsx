@@ -4,6 +4,7 @@ import { useTranslation } from "react-i18next";
 import jsQR from "jsqr";
 import { SessionControls } from "../components/SessionControls";
 import { BackButton } from "../components/BackButton";
+import { useToast } from "../components/ToastContext";
 import { api } from "../lib/api";
 import { useAuth } from "../modules/auth/AuthContext";
 import { getCampusBySlug, getCampusByCode } from "../modules/campus/catalog";
@@ -17,6 +18,7 @@ export function StaffPaymentScannerPage() {
   const { token, user } = useAuth();
   const { campusSlug } = useParams();
   const navigate = useNavigate();
+  const { showToast } = useToast();
   const campus = getCampusBySlug(campusSlug) ?? getCampusByCode(user?.campusId ?? null);
 
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -31,6 +33,9 @@ export function StaffPaymentScannerPage() {
   const [lookupLoading, setLookupLoading] = useState(false);
   const [lookupError, setLookupError] = useState<string | null>(null);
   const [lastScannedRaw, setLastScannedRaw] = useState<string | null>(null);
+  const [showRevokeModal, setShowRevokeModal] = useState(false);
+  const [revokeReason, setRevokeReason] = useState("");
+  const [revoking, setRevoking] = useState(false);
 
   const stopCamera = useCallback(() => {
     cancelAnimationFrame(rafRef.current);
@@ -130,7 +135,26 @@ export function StaffPaymentScannerPage() {
     setLookupError(null);
     setLastScannedRaw(null);
     setManualRef("");
+    setShowRevokeModal(false);
+    setRevokeReason("");
     setScanState("idle");
+  }
+
+  async function handleRevokePayment() {
+    if (!token || !result?.checkId) return;
+    setRevoking(true);
+    try {
+      await api.revokeFinanceApproval(token, result.checkId, revokeReason);
+      showToast("Clearance progress stopped. Student returned to payment queue.", "success");
+      setShowRevokeModal(false);
+      setRevokeReason("");
+      const refreshed = await api.lookupPaymentByRef(token, result.txRef);
+      setResult(refreshed);
+    } catch (e) {
+      showToast(e instanceof Error ? e.message : "Unable to stop clearance progress", "error");
+    } finally {
+      setRevoking(false);
+    }
   }
 
   useEffect(() => {
@@ -144,6 +168,8 @@ export function StaffPaymentScannerPage() {
       ? { label: t("pendingVerification"), color: "bg-amber-100 text-amber-800", icon: "hourglass_top", ring: "ring-amber-400" }
       : { label: result.status, color: "bg-surface-container text-on-surface-variant", icon: "info", ring: "ring-outline-variant" }
     : null;
+
+  const canRevoke = result?.checkId && (result.checkStatus === "PAID_PENDING_DEPARTMENT_APPROVAL" || result.checkStatus === "CLEARED");
 
   return (
     <div className="flex min-h-screen flex-col bg-background font-body text-on-surface">
@@ -166,9 +192,46 @@ export function StaffPaymentScannerPage() {
         </div>
       </header>
 
+      {showRevokeModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4">
+          <div className="w-full max-w-md rounded-2xl bg-surface-container-lowest p-6 shadow-2xl">
+            <h3 className="mb-1 text-lg font-bold text-error">Stop Clearance Progress</h3>
+            <p className="mb-4 text-sm text-on-surface-variant">
+              This will revert the student's payment back to <strong>Awaiting Finance</strong> and liabilities to unpaid. The department cannot clear the student until finance re-approves.
+            </p>
+            <label className="block mb-4">
+              <span className="text-xs font-bold uppercase text-on-surface-variant">Reason (optional)</span>
+              <textarea
+                className="mt-1 w-full rounded-lg border border-outline-variant/40 bg-surface-container-high px-3 py-2 text-sm"
+                rows={3}
+                value={revokeReason}
+                onChange={(e) => setRevokeReason(e.target.value)}
+                placeholder="e.g., Payment not received, incorrect amount..."
+              />
+            </label>
+            <div className="flex gap-3">
+              <button
+                type="button"
+                onClick={() => { setShowRevokeModal(false); setRevokeReason(""); }}
+                className="flex-1 rounded-lg border border-outline-variant/40 py-2.5 text-sm font-bold"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={() => void handleRevokePayment()}
+                disabled={revoking}
+                className="flex-1 rounded-lg bg-error px-4 py-2.5 text-sm font-bold text-on-error disabled:opacity-50"
+              >
+                {revoking ? "Stopping…" : "Stop Progress"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       <main className="mx-auto w-full max-w-3xl flex-1 px-4 py-6">
 
-        {/* ── Idle state ── */}
         {scanState === "idle" && (
           <div className="flex flex-col items-center gap-6 py-10">
             <div className="flex size-24 items-center justify-center rounded-2xl bg-primary-fixed text-primary">
@@ -218,7 +281,6 @@ export function StaffPaymentScannerPage() {
           </div>
         )}
 
-        {/* ── Scanning state ── */}
         {scanState === "scanning" && (
           <div className="flex flex-col items-center gap-4">
             <div className="relative w-full max-w-md overflow-hidden rounded-2xl bg-black shadow-lg">
@@ -272,7 +334,6 @@ export function StaffPaymentScannerPage() {
           </div>
         )}
 
-        {/* ── Found / loading result ── */}
         {(scanState === "found") && (
           <div className="flex flex-col gap-4">
             {lookupLoading ? (
@@ -300,6 +361,15 @@ export function StaffPaymentScannerPage() {
                       </p>
                     </div>
                   </div>
+
+                  {result.checkStatus === "PAID_PENDING_DEPARTMENT_APPROVAL" && (
+                    <div className="mb-4 rounded-xl bg-green-50 border border-green-200 p-3">
+                      <div className="flex items-center gap-2">
+                        <span className="material-symbols-outlined text-green-700 text-[16px]">check_circle</span>
+                        <p className="text-sm font-semibold text-green-800">Clearance in progress — forwarded to department staff</p>
+                      </div>
+                    </div>
+                  )}
 
                   {result.student && (
                     <div className="mb-4 rounded-xl bg-primary-fixed/10 p-4">
@@ -351,7 +421,7 @@ export function StaffPaymentScannerPage() {
                   </div>
                 </div>
 
-                <div className="flex gap-3">
+                <div className="flex gap-3 flex-wrap">
                   <button
                     type="button"
                     onClick={handleReset}
@@ -360,6 +430,16 @@ export function StaffPaymentScannerPage() {
                     <span className="material-symbols-outlined text-[18px]">qr_code_scanner</span>
                     {t("scanAnother")}
                   </button>
+                  {canRevoke && (
+                    <button
+                      type="button"
+                      onClick={() => setShowRevokeModal(true)}
+                      className="flex items-center justify-center gap-2 rounded-xl bg-error/10 border border-error/20 px-4 py-3 text-sm font-bold text-error hover:bg-error/20"
+                    >
+                      <span className="material-symbols-outlined text-[18px]">block</span>
+                      Stop Progress
+                    </button>
+                  )}
                   <button
                     type="button"
                     onClick={() => navigate(-1)}
@@ -384,7 +464,6 @@ export function StaffPaymentScannerPage() {
           </div>
         )}
 
-        {/* ── Not found ── */}
         {scanState === "not_found" && (
           <div className="flex flex-col items-center gap-5 py-14">
             <div className="flex size-20 items-center justify-center rounded-2xl bg-error-container">
@@ -404,7 +483,6 @@ export function StaffPaymentScannerPage() {
           </div>
         )}
 
-        {/* ── Error ── */}
         {scanState === "error" && (
           <div className="flex flex-col items-center gap-5 py-14">
             <div className="flex size-20 items-center justify-center rounded-2xl bg-error-container">

@@ -828,7 +828,8 @@ function handleFinancePayments(token: string | null, clearanceRequestId: string,
 function handleFlaggedStudents(token: string | null, campusId: string, db: Db) {
   const user = requireAuth(token, db);
   const targetCampus = campusId || user.campusId || "";
-  const flaggedChecks = db.checks.filter((c) => c.status === "AWAITING_FINANCE");
+  const targetStatuses = ["AWAITING_FINANCE", "PAID_PENDING_DEPARTMENT_APPROVAL", "FLAGGED"];
+  const flaggedChecks = db.checks.filter((c) => targetStatuses.includes(c.status));
   const result: Array<{
     checkId: string; checkCode: string; checkStatus: string;
     clearanceRequestId: string; requestNumber: string; requestType: string;
@@ -865,6 +866,29 @@ function handleFlaggedStudents(token: string | null, campusId: string, db: Db) {
   return result;
 }
 
+function handleRevokePaymentApproval(token: string | null, checkId: string, body: { reason?: string }, db: Db) {
+  requireAuth(token, db);
+  const check = db.checks.find((c) => c.id === checkId);
+  if (!check) throw { status: 404, message: "Check not found." };
+  if (check.status !== "PAID_PENDING_DEPARTMENT_APPROVAL" && check.status !== "CLEARED") {
+    throw { status: 400, message: "Check must be in PAID_PENDING_DEPARTMENT_APPROVAL or CLEARED state to revoke." };
+  }
+  const liabilities = db.liabilities.filter((l) => l.clearanceRequestId === check.clearanceRequestId && l.departmentCheckCode === check.checkCode);
+  for (const l of liabilities) {
+    if (l.status === "PAID" && l.paymentRequired) {
+      l.status = "PENDING";
+    }
+  }
+  const reason = body?.reason ?? "";
+  check.status = "AWAITING_FINANCE";
+  check.comment = "Finance has stopped clearance progress. Payment disputed." + (reason ? " Reason: " + reason : "");
+  check.reviewedAt = new Date().toISOString();
+  const req = db.requests.find((r) => r.id === check.clearanceRequestId);
+  if (req) req.status = "IN_REVIEW";
+  writeDb(db);
+  return check;
+}
+
 function handlePaymentHistory(token: string | null, campusId: string, db: Db) {
   const user = requireAuth(token, db);
   const targetCampus = campusId || user.campusId || "";
@@ -883,10 +907,30 @@ function handleLookupPayment(token: string | null, ref: string, db: Db) {
   if (!ref) throw { status: 400, message: "ref is required" };
   const q = ref.trim().toUpperCase();
   const payment = db.payments.find(
-    (p) => p.txRef.toUpperCase() === q || (p.receiptNumber ?? "").toUpperCase() === q
+    (p) => p.txRef.toUpperCase() === q
+      || (p.receiptNumber ?? "").toUpperCase() === q
+      || (p.providerReference ?? "").toUpperCase() === q
   );
   if (!payment) throw { status: 404, message: "No payment found for that reference." };
   const student = db.students.find((s) => s.studentId === payment.studentId);
+
+  let checkId: string | null = null;
+  let checkStatus: string | null = null;
+  if (payment.clearanceRequestId && payment.departmentCheckCode) {
+    const check = db.checks.find((c) =>
+      c.clearanceRequestId === payment.clearanceRequestId &&
+      c.checkCode === payment.departmentCheckCode
+    );
+    if (check) {
+      checkId = check.id;
+      checkStatus = check.status;
+    }
+  }
+
+  const displayStatus = payment.status === "SUCCESS" ? "VERIFIED"
+    : payment.status === "PENDING" ? "PENDING"
+    : payment.status;
+
   return {
     id: payment.id,
     txRef: payment.txRef,
@@ -895,10 +939,13 @@ function handleLookupPayment(token: string | null, ref: string, db: Db) {
     provider: payment.provider,
     amount: payment.amount,
     currency: payment.currency,
-    status: payment.status,
+    status: displayStatus,
     verifiedAt: payment.verifiedAt,
     receiptIssuedAt: payment.receiptIssuedAt,
     departmentCheckCode: payment.departmentCheckCode,
+    clearanceRequestId: payment.clearanceRequestId ?? null,
+    checkId,
+    checkStatus,
     student: student
       ? {
           studentId: student.studentId,
@@ -1474,6 +1521,10 @@ async function dispatch(method: string, path: string, headers: Headers, bodyText
     if (method === "PATCH" && /^\/staff\/checks\/[^/]+\/quick-approve$/.test(pathOnly)) {
       const checkId = pathOnly.split("/")[3];
       return { status: 200, body: handleQuickApproveCheck(token, checkId, db) };
+    }
+    if (method === "PATCH" && /^\/staff\/checks\/[^/]+\/revoke-payment$/.test(pathOnly)) {
+      const checkId = pathOnly.split("/")[3];
+      return { status: 200, body: handleRevokePaymentApproval(token, checkId, body, db) };
     }
     if (method === "GET" && pathOnly === "/staff/inquiries") return { status: 200, body: handleStaffInquiries(token, db) };
     if (method === "PATCH" && /^\/staff\/inquiries\/[^/]+\/respond$/.test(pathOnly)) {

@@ -94,4 +94,12 @@ public class PaymentController {
                                                     @Valid @RequestBody com.uog.clearance.payment.dto.StandalonePaymentRequest request) {
         return paymentService.recordStandalonePayment(principal, request);
     }
+
+    @GetMapping("/finance/payments/lookup")
+    @PreAuthorize("hasAnyRole('FINANCE_OFFICER','SYSTEM_ADMIN')")
+    public java.util.Map<String, Object> lookupPaymentByRef(
+            @AuthenticationPrincipal UserPrincipal principal,
+            @RequestParam String ref) {
+        return paymentService.lookupPaymentByRef(principal, ref);
+    }
 }
