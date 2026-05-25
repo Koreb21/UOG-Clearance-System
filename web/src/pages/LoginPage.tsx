@@ -176,6 +176,8 @@ export function LoginPage() {
   const [resetPwVisible, setResetPwVisible] = useState(false);
   const [resetLoading, setResetLoading] = useState(false);
   const [resendCountdown, setResendCountdown] = useState(0);
+  const [debugOtp, setDebugOtp] = useState<string | null>(null);
+  const [showDebugOtp, setShowDebugOtp] = useState(false);
 
   const activeCampusName = useMemo(
     () => selectedCampus?.title ?? "Campus",
@@ -201,6 +203,8 @@ export function LoginPage() {
     setResetConfirmPw("");
     setResetPwVisible(false);
     setResendCountdown(0);
+    setDebugOtp(null);
+    setShowDebugOtp(false);
   }
 
   function closeForgot() {
@@ -212,7 +216,8 @@ export function LoginPage() {
     e.preventDefault();
     setResetLoading(true);
     try {
-      await api.requestPasswordReset(resetEmail);
+      const res = (await api.requestPasswordReset(resetEmail)) as { message: string; _debug_otp?: string };
+      if (res._debug_otp) setDebugOtp(res._debug_otp);
       setResetStep("code");
       showToast(`A verification code was sent to ${resetEmail}. Check your inbox and spam folder.`, "success");
       startResendCountdown();
@@ -256,7 +261,8 @@ export function LoginPage() {
   async function handleResendCode() {
     setResetLoading(true);
     try {
-      await api.requestPasswordReset(resetEmail);
+      const res = (await api.requestPasswordReset(resetEmail)) as { message: string; _debug_otp?: string };
+      if (res._debug_otp) setDebugOtp(res._debug_otp);
       showToast("A new verification code was sent to your email.", "success");
       startResendCountdown();
     } catch (err) {
@@ -489,8 +495,19 @@ export function LoginPage() {
                       />
                     </label>
                     <p className="text-xs text-slate-500 -mt-2">
-                      Code sent to <strong>{resetEmail}</strong>. It expires in 10 minutes.
+                      Code sent to <strong>{resetEmail}</strong>. It expires in 60 minutes.
                     </p>
+                    {debugOtp && (
+                      <div className="mt-2 p-2 bg-yellow-50 border border-yellow-200 rounded-lg">
+                        <p className="text-[10px] text-yellow-700 font-bold uppercase tracking-wider">Development Mode — OTP</p>
+                        <div className="flex items-center gap-2 mt-1">
+                          <span className="text-xl font-black text-yellow-800 tracking-widest font-mono">{showDebugOtp ? debugOtp : "••••••"}</span>
+                          <button type="button" onClick={() => setShowDebugOtp(!showDebugOtp)} className="text-[10px] font-bold text-yellow-700 hover:text-yellow-900">
+                            {showDebugOtp ? "Hide" : "Show"}
+                          </button>
+                        </div>
+                      </div>
+                    )}
                     <button
                       type="submit"
                       className="portal-login-submit"

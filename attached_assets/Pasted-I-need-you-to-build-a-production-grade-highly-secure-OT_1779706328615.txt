@@ -1,0 +1,32 @@
+I need you to build a production-grade, highly secure, OTP-based "Forgot Password" system for a java/maven and react and reactnative aproject. I do NOT want to use "reset links" because the project is not deployed yet. I want a single-page UI flow where the user receives a 6-digit One-Time Password (OTP) in their email and enters it on the same page.
+
+Here are the strict technical requirements:
+
+1. EMAIL CONFIGURATION (PHPMailer)
+- Use PHPMailer to send real emails via Gmail SMTP.
+- Use the following credentials directly in the Email configuration:
+  - SMTP Host: smtp.gmail.com
+  - Port: 587
+  - Encryption: STARTTLS
+  - Username: mulukenalebachew44@gmail.com
+  - App Password: zpmu frdp aqzg womm
+- The email should be a beautifully designed HTML template displaying the 6-digit OTP code in large, bold text.
+
+2. DATABASE SCHEMA
+- Create an on existing database for a password_reset_tokens table.
+- Do NOT store the raw OTP in the database. You must store a SHA-256 hash of the 6-digit OTP.
+- Include fields: id, user_id, token_hash, expires_at (1 hour limit), used_at, and ip_address.
+- Create a password_reset_rate_limit table to prevent brute-force or email-spamming attacks.
+
+3. BACKEND LOGIC (Controllers & Models)
+- Implement PasswordResetModel.php to handle secure OTP generation (random_int(100000, 999999)), hashing, and validation.
+- Implement PasswordResetController.php with two JSON API endpoints:
+  a) POST /api/forgot-password: Takes an email or identifier. If valid, generates the 6-digit OTP, stores the hash, and sends the email via java/use the necessary for this project . Always return a generic 200 OK message to prevent email enumeration.
+  b) POST /api/reset-password: Takes otp, new_password, and confirm_password. Validates the OTP hash, enforces password match/strength, updates the user's password using password_hash() (Bcrypt), and marks the OTP as used.
+
+4. FRONTEND UI/UX (Single Page Flow)
+- Create forgot-password.php and forgot-password.js.
+- The UI must handle 3 states seamlessly using JavaScript (no page reloads):
+  - STEP 1: A form asking for the user's Email address.
+  - STEP 2: Once Step 1 succeeds, hide Step 1 and show Step 2. This form requires the 6-digit OTP code, New Password, and Confirm Password. The OTP input should be styled to look like a code input (mono-spaced, letter-spacing).
+  - STEP 3: Once Step 2 succeeds, hide Step 2 and show a Success screen with a button to go back to the Login page.

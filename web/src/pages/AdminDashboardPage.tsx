@@ -93,6 +93,8 @@ export function AdminDashboardPage() {
   const [batchLoading, setBatchLoading] = useState(false);
   const [batchImporting, setBatchImporting] = useState(false);
   const [batchImportResult, setBatchImportResult] = useState<{ totalRows: number; importedCount: number; failedCount: number; errors: string[] } | null>(null);
+  const [batchPreview, setBatchPreview] = useState<{ batch: { id: string; name: string; campusId: string; studentCount: number; status: string }; preview: Array<{ id: string; firstName: string; fatherName: string | null; lastName: string; gender: string | null; age: number | null; email: string | null; department: string | null; academicYear: number | null; campusId: string; generatedStudentId: string; generatedPassword: string }> } | null>(null);
+  const [previewLoading, setPreviewLoading] = useState(false);
 
   /* ── Department Management state ──────────────────────────── */
   const [deptSearch, setDeptSearch] = useState("");
@@ -156,7 +158,19 @@ export function AdminDashboardPage() {
     if (!token) return;
     setSelectedBatchId(batchId);
     setBatchImportResult(null);
+    setBatchPreview(null);
     try { const detail = await api.getBatchDetail(token, batchId); setBatchDetail(detail); } catch (err: any) { showToast(err.message ?? "Failed to load batch", "error"); }
+  };
+
+  const handlePreviewBatch = async () => {
+    if (!token || !selectedBatchId || !batchDetail) return;
+    setPreviewLoading(true); setBatchPreview(null); setBatchImportResult(null);
+    try {
+      const preview = await api.previewBatch(token, selectedBatchId);
+      setBatchPreview(preview);
+      showToast(`${preview.preview.length} students preview loaded. Review before registering.`, "info");
+    } catch (err: any) { showToast(err.message ?? "Failed to generate preview", "error"); }
+    finally { setPreviewLoading(false); }
   };
 
   const handleBatchImport = async () => {
@@ -165,12 +179,13 @@ export function AdminDashboardPage() {
     try {
       const result = await api.importBatch(token, selectedBatchId);
       setBatchImportResult(result);
-      showToast(`${result.importedCount} students imported with auto-generated IDs.`, "success");
+      setBatchPreview(null);
+      showToast(`${result.importedCount} students registered with auto-generated IDs.`, "success");
       loadBatches();
       const updated = await api.getBatchDetail(token, selectedBatchId);
       setBatchDetail(updated);
       loadData();
-    } catch (err: any) { showToast(err.message ?? "Import failed", "error"); }
+    } catch (err: any) { showToast(err.message ?? "Registration failed", "error"); }
     finally { setBatchImporting(false); }
   };
 
@@ -999,9 +1014,18 @@ export function AdminDashboardPage() {
                   </div>
                   <div className="flex items-center gap-2">
                     {batchDetail.batch.status !== "IMPORTED" && (
-                      <button onClick={handleBatchImport} disabled={batchImporting} className="bg-primary text-white px-4 py-2 rounded-lg font-bold text-sm flex items-center gap-2 shadow-md hover:bg-primary-container hover:text-on-primary-container transition-all disabled:opacity-50">
-                        <span className="material-symbols-outlined text-lg">person_add</span>{batchImporting ? "Importing…" : "Generate IDs & Import"}
-                      </button>
+                      <>
+                        {!batchPreview && (
+                          <button onClick={handlePreviewBatch} disabled={previewLoading} className="bg-primary text-white px-4 py-2 rounded-lg font-bold text-sm flex items-center gap-2 shadow-md hover:bg-primary-container hover:text-on-primary-container transition-all disabled:opacity-50">
+                            <span className="material-symbols-outlined text-lg">preview</span>{previewLoading ? "Generating…" : "Preview IDs & Passwords"}
+                          </button>
+                        )}
+                        {batchPreview && (
+                          <button onClick={handleBatchImport} disabled={batchImporting} className="bg-green-600 text-white px-4 py-2 rounded-lg font-bold text-sm flex items-center gap-2 shadow-md hover:bg-green-700 transition-all disabled:opacity-50">
+                            <span className="material-symbols-outlined text-lg">app_registration</span>{batchImporting ? "Registering…" : "Register Students"}
+                          </button>
+                        )}
+                      </>
                     )}
                     <button onClick={handleDownloadBatchCsv} className="rounded-lg px-3 py-2 text-sm font-bold text-primary border border-primary/30 hover:border-primary hover:bg-primary-fixed/20 transition-colors flex items-center gap-1.5">
                       <span className="material-symbols-outlined text-base">download</span> Download CSV
@@ -1036,6 +1060,37 @@ export function AdminDashboardPage() {
                     </tbody>
                   </table>
                 </div>
+                {batchPreview && (
+                  <div className="overflow-x-auto border-t border-surface-container">
+                    <table className="w-full text-left text-sm">
+                      <thead className="bg-surface-container-low">
+                        <tr>
+                          <th className="px-4 py-2 text-xs font-bold uppercase tracking-wider text-on-surface-variant">Name</th>
+                          <th className="px-4 py-2 text-xs font-bold uppercase tracking-wider text-on-surface-variant">Gender</th>
+                          <th className="px-4 py-2 text-xs font-bold uppercase tracking-wider text-on-surface-variant">Department</th>
+                          <th className="px-4 py-2 text-xs font-bold uppercase tracking-wider text-on-surface-variant">Year</th>
+                          <th className="px-4 py-2 text-xs font-bold uppercase tracking-wider text-on-surface-variant">Student ID</th>
+                          <th className="px-4 py-2 text-xs font-bold uppercase tracking-wider text-on-surface-variant">Password</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-surface-container">
+                        {batchPreview.preview.map(s => (
+                          <tr key={s.id} className="hover:bg-primary-fixed/5">
+                            <td className="px-4 py-2 font-medium text-on-surface">{s.firstName} {s.fatherName ? "s/o " + s.fatherName + " " : ""}{s.lastName}</td>
+                            <td className="px-4 py-2 text-on-surface-variant">{s.gender ?? "—"}</td>
+                            <td className="px-4 py-2 text-on-surface-variant">{s.department ?? "—"}</td>
+                            <td className="px-4 py-2 text-on-surface-variant">{s.academicYear ?? "—"}</td>
+                            <td className="px-4 py-2 font-mono text-xs text-primary font-bold">{s.generatedStudentId}</td>
+                            <td className="px-4 py-2 font-mono text-xs text-green-700 font-bold">{s.generatedPassword}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                    <div className="px-6 py-3 bg-yellow-50 border-t border-yellow-100">
+                      <p className="text-xs text-yellow-800 flex items-center gap-1"><span className="material-symbols-outlined text-sm">warning</span> Review the generated credentials above. Click "Register Students" to permanently create accounts.</p>
+                    </div>
+                  </div>
+                )}
                 {batchImportResult && (
                   <div className="p-4 border-t border-surface-container bg-surface-container-low/30">
                     <div className="grid grid-cols-3 gap-3 mb-3">
@@ -1044,7 +1099,7 @@ export function AdminDashboardPage() {
                       <div className={`p-3 rounded-lg text-center ${batchImportResult.failedCount > 0 ? "bg-red-50" : "bg-surface-container"}`}><p className={`text-2xl font-black ${batchImportResult.failedCount > 0 ? "text-red-700" : "text-on-surface"}`}>{batchImportResult.failedCount}</p><p className={`text-[10px] font-bold uppercase ${batchImportResult.failedCount > 0 ? "text-red-600" : "text-on-surface-variant"}`}>Failed</p></div>
                     </div>
                     {batchImportResult.errors.length > 0 && <div className="bg-red-50 border border-red-200 rounded-lg p-3 max-h-40 overflow-y-auto"><p className="text-xs font-bold text-red-700 mb-2">Errors:</p>{batchImportResult.errors.map((e, i) => <p key={i} className="text-[11px] text-red-600 leading-relaxed">{e}</p>)}</div>}
-                    {batchImportResult.importedCount > 0 && <p className="text-xs text-green-700 font-medium text-center flex items-center justify-center gap-1"><span className="material-symbols-outlined text-base">check_circle</span>{batchImportResult.importedCount} students added with UGR/NNNNN/YY IDs.</p>}
+                    {batchImportResult.importedCount > 0 && <p className="text-xs text-green-700 font-medium text-center flex items-center justify-center gap-1"><span className="material-symbols-outlined text-base">check_circle</span>{batchImportResult.importedCount} students registered with UGR/NNNNN/YY IDs.</p>}
                   </div>
                 )}
               </div>

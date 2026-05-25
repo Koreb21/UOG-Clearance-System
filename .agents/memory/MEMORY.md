@@ -1,2 +1,5 @@
 - [Campus-department cascading dropdowns](campus-dept-dropdowns.md) — always use inline JSX with all 3 campuses and their departments; avoid dynamic `departments.filter()` which breaks when department list is loaded dynamically.
 - [fatherName vs middleName type mismatch](field-name-types.md) — when renaming fields in types, update both `api.ts` and `mockBackend.ts` return shapes, or TypeScript `tsc -b` will fail with "Two different types with this name exist."
+- [Vite proxy blocks mock backend](vite-proxy-mock.md) — if `/api` calls return HTML (DOCTYPE) errors instead of JSON, the Vite proxy is routing to a real backend. Remove `proxy: { '/api': ... }` from `vite.config.ts` to let the mock backend interceptor handle all API calls.
+- [OTP implementation notes](otp-impl.md) — mock backend stores SHA-256 hash of OTP (not raw), 1-hour expiry, rate limit 3/15min. Exposes `_debug_otp` in response for dev testing only.
+- [Admin batch import preview](batch-preview.md) — two-step flow: preview endpoint generates IDs/passwords without creating accounts; import endpoint actually registers. Keeps data consistent by clearing preview on import success.

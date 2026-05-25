@@ -186,6 +186,17 @@ interface DbStudentBatch {
   studentCount: number;
 }
 
+interface DbPasswordResetToken {
+  id: string;
+  userId: string;
+  email: string;
+  tokenHash: string;
+  expiresAt: string;
+  usedAt: string | null;
+  createdAt: string;
+  ipAddress: string | null;
+}
+
 interface Db {
   users: DbUser[];
   students: DbStudent[];
@@ -199,6 +210,7 @@ interface Db {
   departments: DbDepartment[];
   batches: DbStudentBatch[];
   prospectiveStudents: DbProspectiveStudent[];
+  passwordResetTokens: DbPasswordResetToken[];
   initialized: boolean;
 }
 
@@ -210,10 +222,11 @@ function readDb(): Db {
     if (raw) {
       const parsed = JSON.parse(raw) as Db;
       if (!parsed.messages) parsed.messages = [];
+      if (!parsed.passwordResetTokens) parsed.passwordResetTokens = [];
       return parsed;
     }
   } catch {/* */}
-  return { users: [], students: [], requests: [], checks: [], liabilities: [], certificates: [], inquiries: [], payments: [], messages: [], departments: [], batches: [], prospectiveStudents: [], initialized: false };
+  return { users: [], students: [], requests: [], checks: [], liabilities: [], certificates: [], inquiries: [], payments: [], messages: [], departments: [], batches: [], prospectiveStudents: [], passwordResetTokens: [], initialized: false };
 }
 
 function writeDb(db: Db) {
@@ -476,6 +489,71 @@ function handleChangePassword(token: string | null, body: { currentPassword: str
   user.mustChangePassword = false;
   writeDb(db);
   return {};
+}
+
+// ── SHA-256 helper (sync for mock backend) ───────────────────────────────────
+function sha256(text: string): string {
+  let h = 0;
+  for (let i = 0; i < text.length; i++) { h = ((h << 5) - h + text.charCodeAt(i)) | 0; }
+  return Math.abs(h).toString(16).padStart(16, "0");
+}
+
+function generateOtp(): string {
+  return String(Math.floor(100000 + Math.random() * 900000));
+}
+
+function nowPlusMs(ms: number): string {
+  return new Date(Date.now() + ms).toISOString();
+}
+
+// ── OTP Password Reset ──────────────────────────────────────────────────────
+function handleRequestPasswordReset(body: { email: string; identifier?: string }, db: Db) {
+  const email = (body.email ?? "").trim().toLowerCase();
+  const identifier = (body.identifier ?? "").trim().toLowerCase();
+  // Find user by email OR identifier (username/studentId)
+  const user = db.users.find((u) => (u.email && u.email.toLowerCase() === email) || u.username.toLowerCase() === identifier || u.studentId === identifier);
+  // Always return generic success to prevent enumeration
+  if (!user) return { message: "If an account exists, a verification code was sent." };
+  // Rate limiting: max 3 requests per user per 15 minutes
+  const recentRequests = db.passwordResetTokens.filter((t) => t.userId === user.id && t.createdAt > new Date(Date.now() - 15 * 60 * 1000).toISOString());
+  if (recentRequests.length >= 3) throw { status: 429, message: "Too many requests. Please try again in 15 minutes." };
+  const otp = generateOtp();
+  const tokenHash = sha256(otp);
+  const tokenRecord: DbPasswordResetToken = {
+    id: uid(), userId: user.id, email: user.email ?? email,
+    tokenHash, expiresAt: nowPlusMs(60 * 60 * 1000), usedAt: null,
+    createdAt: isoNow(), ipAddress: null,
+  };
+  db.passwordResetTokens.push(tokenRecord);
+  writeDb(db);
+  // In real backend, email would be sent here. In mock, we expose OTP in response for testing.
+  return { message: "If an account exists, a verification code was sent.", _debug_otp: otp };
+}
+
+function handleVerifyResetCode(body: { email: string; code: string }, db: Db) {
+  const email = (body.email ?? "").trim().toLowerCase();
+  const code = (body.code ?? "").trim();
+  const tokenHash = sha256(code);
+  const tokenRecord = db.passwordResetTokens.find((t) => t.email?.toLowerCase() === email && t.tokenHash === tokenHash && !t.usedAt && t.expiresAt > isoNow());
+  if (!tokenRecord) throw { status: 400, message: "Invalid or expired verification code." };
+  return { valid: true };
+}
+
+function handleResetPasswordComplete(body: { email: string; code: string; newPassword: string }, db: Db) {
+  const email = (body.email ?? "").trim().toLowerCase();
+  const code = (body.code ?? "").trim();
+  const newPassword = body.newPassword ?? "";
+  if (!newPassword || newPassword.length < 6) throw { status: 400, message: "Password must be at least 6 characters." };
+  const tokenHash = sha256(code);
+  const tokenRecord = db.passwordResetTokens.find((t) => t.email?.toLowerCase() === email && t.tokenHash === tokenHash && !t.usedAt && t.expiresAt > isoNow());
+  if (!tokenRecord) throw { status: 400, message: "Invalid or expired verification code." };
+  const user = db.users.find((u) => u.id === tokenRecord.userId);
+  if (!user) throw { status: 404, message: "User not found." };
+  user.password = newPassword;
+  user.mustChangePassword = false;
+  tokenRecord.usedAt = isoNow();
+  writeDb(db);
+  return { message: "Password reset successfully." };
 }
 
 // Student endpoints
@@ -1135,6 +1213,26 @@ function handleAdminGetBatchDetail(token: string | null, batchId: string, db: Db
   };
 }
 
+function handleAdminBatchPreview(token: string | null, batchId: string, db: Db) {
+  requireAuth(token, db);
+  const batch = db.batches.find((b) => b.id === batchId);
+  if (!batch) throw { status: 404, message: "Batch not found." };
+  const prospectives = db.prospectiveStudents.filter((s) => s.batchId === batchId);
+  const nextIndex = db.students.length + 1;
+  const preview = prospectives.map((p, i) => {
+    const year = p.academicYear ?? new Date().getFullYear();
+    const studentId = generateStudentId(nextIndex + i, year);
+    const password = generatePassword(year);
+    return {
+      id: p.id, firstName: p.firstName, fatherName: p.fatherName, lastName: p.lastName,
+      gender: p.gender, age: p.age, email: p.email, department: p.department,
+      academicYear: p.academicYear, campusId: p.campusId,
+      generatedStudentId: studentId, generatedPassword: password,
+    };
+  });
+  return { batch: { id: batch.id, name: batch.name, campusId: batch.campusId, studentCount: batch.studentCount, status: batch.status }, preview };
+}
+
 function handleAdminImportBatch(token: string | null, batchId: string, db: Db) {
   const user = requireAuth(token, db);
   const batch = db.batches.find((b) => b.id === batchId);
@@ -1305,9 +1403,9 @@ async function dispatch(method: string, path: string, headers: Headers, bodyText
     if (method === "GET" && pathOnly === "/auth/me") return { status: 200, body: handleGetMe(token, db) };
     if (method === "PUT" && pathOnly === "/auth/me/profile") return { status: 200, body: handleUpdateProfile(token, body, db) };
     if (method === "POST" && pathOnly === "/auth/change-password") { handleChangePassword(token, body, db); return { status: 204, body: null }; }
-    if (method === "POST" && pathOnly === "/auth/request-password-reset") return { status: 200, body: { message: "Reset code sent." } };
-    if (method === "POST" && pathOnly === "/auth/verify-reset-code") return { status: 200, body: { valid: true } };
-    if (method === "POST" && pathOnly === "/auth/reset-password-complete") return { status: 200, body: { message: "Password reset successfully." } };
+    if (method === "POST" && pathOnly === "/auth/request-password-reset") return { status: 200, body: handleRequestPasswordReset(body, db) };
+    if (method === "POST" && pathOnly === "/auth/verify-reset-code") return { status: 200, body: handleVerifyResetCode(body, db) };
+    if (method === "POST" && pathOnly === "/auth/reset-password-complete") return { status: 200, body: handleResetPasswordComplete(body, db) };
 
     // ── Student
     if (method === "GET" && pathOnly === "/students/me/clearance-requests") return { status: 200, body: handleListStudentRequests(token, db) };
@@ -1450,6 +1548,10 @@ async function dispatch(method: string, path: string, headers: Headers, bodyText
     if (method === "GET" && /^\/admin\/student-batches\//.test(pathOnly) && !pathOnly.endsWith("/import")) {
       const batchId = pathOnly.split("/")[3];
       return { status: 200, body: handleAdminGetBatchDetail(token, batchId, db) };
+    }
+    if (method === "GET" && /^\/admin\/student-batches\/[^/]+\/preview$/.test(pathOnly)) {
+      const batchId = pathOnly.split("/")[3];
+      return { status: 200, body: handleAdminBatchPreview(token, batchId, db) };
     }
     if (method === "POST" && /^\/admin\/student-batches\/[^/]+\/import$/.test(pathOnly)) {
       const batchId = pathOnly.split("/")[3];
