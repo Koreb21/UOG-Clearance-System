@@ -229,11 +229,15 @@ export function MessagingPage() {
       {/* Header */}
       <header className="sticky top-0 z-50 flex h-14 items-center justify-between border-b border-[#c3c6d1]/30 bg-[#003366] px-4 text-white shadow-md sm:px-6">
         <div className="flex items-center gap-3">
-          {selectedConv ? (
-            <button type="button" onClick={() => setSelectedConv(null)} className="flex items-center gap-1 rounded-lg p-1 hover:bg-white/10 md:hidden">
+          {!selectedConv ? (
+            <button type="button" onClick={() => navigate(`/campus/${campusSlug}/staff`)} className="flex items-center gap-1 rounded-lg p-1 hover:bg-white/10 transition-colors" title="Back to dashboard">
               <span className="material-symbols-outlined text-[20px]">arrow_back</span>
             </button>
-          ) : null}
+          ) : (
+            <button type="button" onClick={() => setSelectedConv(null)} className="flex items-center gap-1 rounded-lg p-1 hover:bg-white/10 md:hidden transition-colors">
+              <span className="material-symbols-outlined text-[20px]">arrow_back</span>
+            </button>
+          )}
           <span className="material-symbols-outlined text-[22px]">chat</span>
           <div>
             <h1 className="text-sm font-bold">{selectedConv ? selectedConv.contactName : "Messages"}</h1>
