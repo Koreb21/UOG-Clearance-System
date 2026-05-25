@@ -45,22 +45,6 @@ export function FinanceDashboardPage() {
       badge: null,
       color: "from-green-700 to-green-500",
     },
-    {
-      path: "liabilities",
-      icon: "receipt_long",
-      label: "Liability Ledger",
-      desc: "View campus liabilities and add financial obligations to student records",
-      badge: null,
-      color: "from-secondary to-secondary-container",
-    },
-    {
-      path: "inquiries",
-      icon: "forum",
-      label: "Student Inquiries",
-      desc: "Read and reply to inquiries submitted by students",
-      badge: null,
-      color: "from-[#4a5568] to-[#2d3748]",
-    },
   ];
 
   return (
@@ -93,8 +77,8 @@ export function FinanceDashboardPage() {
             <div className="relative z-10 max-w-2xl">
               <span className="mb-2 block text-xs font-bold uppercase tracking-widest text-secondary-fixed">Administrative terminal</span>
               <p className="mb-5 text-sm text-primary-fixed-dim">
-                Queues and liabilities scoped to <strong>{campus?.name ?? "your assigned campus"}</strong>.
-                Verify payments, manage liabilities, and respond to student inquiries.
+                Payment verification and records scoped to <strong>{campus?.name ?? "your assigned campus"}</strong>.
+                Scan QR receipts, record manual payments, and review flagged student queues.
               </p>
             </div>
             <div className="pointer-events-none absolute -right-10 -top-10 size-64 rounded-full bg-secondary-container/10 blur-3xl" />
@@ -203,8 +187,6 @@ export function FinanceDashboardPage() {
             { label: "Dashboard", icon: "dashboard", action: () => undefined },
             { label: "Scan QR", icon: "qr_code_scanner", action: () => go("scan") },
             { label: "Manual", icon: "payments", action: () => go("manual-payment") },
-            { label: "Liabilities", icon: "receipt_long", action: () => go("liabilities") },
-            { label: "Inquiries", icon: "forum", action: () => go("inquiries") },
           ].map((item) => (
             <button key={item.label} type="button" onClick={item.action} className="flex flex-1 flex-col items-center gap-1 rounded-lg py-2 text-on-surface-variant transition-colors hover:text-primary">
               <span className="material-symbols-outlined text-[22px]">{item.icon}</span>

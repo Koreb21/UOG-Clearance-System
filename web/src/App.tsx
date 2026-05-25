@@ -12,8 +12,6 @@ import { StudentSettingsPage } from "./pages/StudentSettingsPage";
 import { StaffDashboardPage } from "./pages/StaffDashboardPage";
 import { FinanceDashboardPage } from "./pages/FinanceDashboardPage";
 import { FinanceQueuePage } from "./pages/FinanceQueuePage";
-import { FinanceLiabilityPage } from "./pages/FinanceLiabilityPage";
-import { FinanceInquiriesPage } from "./pages/FinanceInquiriesPage";
 import { FinanceManualPaymentPage } from "./pages/FinanceRecordPaymentPage";
 import { RegistrarDashboardPage } from "./pages/RegistrarDashboardPage";
 import { RegistrarQueuePage } from "./pages/RegistrarQueuePage";
@@ -146,22 +144,6 @@ export default function App() {
         element={
           <CampusProtectedRoute allowedRoles={["FINANCE_OFFICER"]}>
             <FinanceQueuePage />
-          </CampusProtectedRoute>
-        }
-      />
-      <Route
-        path="/campus/:campusSlug/finance/liabilities"
-        element={
-          <CampusProtectedRoute allowedRoles={["FINANCE_OFFICER"]}>
-            <FinanceLiabilityPage />
-          </CampusProtectedRoute>
-        }
-      />
-      <Route
-        path="/campus/:campusSlug/finance/inquiries"
-        element={
-          <CampusProtectedRoute allowedRoles={["FINANCE_OFFICER"]}>
-            <FinanceInquiriesPage />
           </CampusProtectedRoute>
         }
       />
