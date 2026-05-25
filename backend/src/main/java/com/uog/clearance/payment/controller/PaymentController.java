@@ -80,4 +80,18 @@ public class PaymentController {
                                               @RequestParam String clearanceRequestId) {
         return paymentService.listPayments(principal, clearanceRequestId);
     }
+
+    @GetMapping("/finance/payments/history")
+    @PreAuthorize("hasAnyRole('FINANCE_OFFICER','SYSTEM_ADMIN')")
+    public List<PaymentResponse> listPaymentHistory(@AuthenticationPrincipal UserPrincipal principal,
+                                                     @RequestParam(required = false) String campusId) {
+        return paymentService.listPaymentHistory(principal, campusId);
+    }
+
+    @PostMapping("/finance/payments/record")
+    @PreAuthorize("hasAnyRole('FINANCE_OFFICER','SYSTEM_ADMIN')")
+    public PaymentResponse recordStandalonePayment(@AuthenticationPrincipal UserPrincipal principal,
+                                                    @Valid @RequestBody com.uog.clearance.payment.dto.StandalonePaymentRequest request) {
+        return paymentService.recordStandalonePayment(principal, request);
+    }
 }

@@ -182,6 +182,50 @@ public class ClearanceWorkflowService {
         return buildStatusResponse(request);
     }
 
+    public List<StaffQueueItemResponse> listFlaggedForFinance(UserPrincipal principal, String campusId) {
+        String resolvedCampusId = campusId != null && !campusId.isBlank()
+                ? campusId
+                : principal.getCampusId();
+
+        List<ClearanceCheckStatus> targetStatuses = List.of(
+                ClearanceCheckStatus.AWAITING_FINANCE,
+                ClearanceCheckStatus.PAID_PENDING_DEPARTMENT_APPROVAL,
+                ClearanceCheckStatus.FLAGGED);
+
+        List<ClearanceCheck> checks = principal.getUser().getRole() == UserRole.SYSTEM_ADMIN
+                ? clearanceCheckRepository.findAll()
+                : clearanceCheckRepository.findByCampusIdAndStatusIn(resolvedCampusId, targetStatuses);
+
+        return checks.stream()
+                .filter(check -> targetStatuses.contains(check.getStatus()))
+                .map(check -> {
+                    ClearanceRequest request = getClearanceRequest(check.getClearanceRequestId());
+                    Student student = studentRepository.findByStudentId(check.getStudentId())
+                            .orElse(null);
+                    String studentName = student == null
+                            ? check.getStudentId()
+                            : String.join(
+                                    " ",
+                                    Objects.toString(student.getFirstName(), "").trim(),
+                                    Objects.toString(student.getLastName(), "").trim()).trim();
+
+                    return new StaffQueueItemResponse(
+                            check.getId(),
+                            check.getCheckCode(),
+                            check.getStatus(),
+                            request.getId(),
+                            request.getRequestNumber(),
+                            request.getRequestType().name(),
+                            request.getStatus().name(),
+                            check.getStudentId(),
+                            studentName,
+                            request.getCampusId(),
+                            request.getSubmittedAt() == null ? null : request.getSubmittedAt().toString()
+                    );
+                })
+                .toList();
+    }
+
     public List<StaffQueueItemResponse> listQueueForStaff(UserPrincipal principal) {
         ClearanceCheckCode checkCode = mapRoleToCheckCode(principal.getUser().getRole());
         if (checkCode == null) {

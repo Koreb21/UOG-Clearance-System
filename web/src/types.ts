@@ -225,4 +225,5 @@ export type Inquiry = {
   response: string | null;
   status: InquiryStatus;
   respondedAt: string | null;
+  createdAt: string;
 };

@@ -70,6 +70,7 @@ export function RegistrarQueuePage() {
   const navigate = useNavigate();
   const { campusSlug } = useParams();
   const campus = getCampusBySlug(campusSlug) ?? getCampusByCode(user?.campusId ?? null);
+  const { showToast } = useToast();
 
   const [queue, setQueue] = useState<ClearanceRequest[]>([]);
   const [studentOverviews, setStudentOverviews] = useState<Array<{ request_id: string; request_number: string; student: { studentId: string; firstName: string; lastName: string; program?: string }; status: string; submitted_at: string; progress_percentage: number; checks: Array<{ id: string; checkCode: string; status: string }>; has_certificate: boolean }>>([]);

@@ -164,7 +164,7 @@ export default function App() {
         }
       />
       <Route
-        path="/campus/:campusSlug/finance/record-payment"
+        path="/campus/:campusSlug/finance/manual-payment"
         element={
           <CampusProtectedRoute allowedRoles={["FINANCE_OFFICER"]}>
             <FinanceRecordPaymentPage />

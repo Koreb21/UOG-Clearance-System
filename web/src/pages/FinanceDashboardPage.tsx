@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { SessionControls } from "../components/SessionControls";
 import { BackButton } from "../components/BackButton";
@@ -13,14 +13,17 @@ export function FinanceDashboardPage() {
   const navigate = useNavigate();
   const campus = getCampusBySlug(campusSlug) ?? getCampusByCode(user?.campusId ?? null);
 
-  const [queueItems, setQueueItems] = useState<StaffQueueItem[]>([]);
+  const [flaggedItems, setFlaggedItems] = useState<StaffQueueItem[]>([]);
+  const [loadingFlagged, setLoadingFlagged] = useState(true);
 
   useEffect(() => {
     if (!token) return;
-    api.listStaffQueue(token).then(setQueueItems).catch(() => undefined);
-  }, [token]);
-
-  const pendingCount = queueItems.filter((item) => item.checkStatus !== "CLEARED").length;
+    setLoadingFlagged(true);
+    api.getFlaggedStudents(token, campus?.code)
+      .then(setFlaggedItems)
+      .catch(() => undefined)
+      .finally(() => setLoadingFlagged(false));
+  }, [token, campus?.code]);
 
   function go(path: string) { navigate(`/campus/${campusSlug}/finance/${path}`); }
 
@@ -30,13 +33,13 @@ export function FinanceDashboardPage() {
       icon: "verified_user",
       label: "Payment Queue",
       desc: "Verify Chapa payments and record manual bank slip / cash payments",
-      badge: pendingCount > 0 ? `${pendingCount} pending` : null,
+      badge: null,
       color: "from-[#001e40] to-[#003366]",
     },
     {
-      path: "record-payment",
+      path: "manual-payment",
       icon: "payments",
-      label: "Record Payment",
+      label: "Manual Payment",
       desc: "Record standalone cash / bank payments and generate official receipts",
       badge: null,
       color: "from-green-700 to-green-500",
@@ -115,19 +118,73 @@ export function FinanceDashboardPage() {
           </div>
         </section>
 
-        <section className="mb-8 grid grid-cols-2 gap-4 lg:grid-cols-4">
-          {[
-            { label: "Finance queue", value: `${queueItems.length}`, sub: "This campus" },
-            { label: "Pending review", value: `${pendingCount}`, sub: "Awaiting action" },
-            { label: "Cleared", value: `${queueItems.length - pendingCount}`, sub: "Completed" },
-            { label: "Active requests", value: `${queueItems.length}`, sub: "All statuses" },
-          ].map((card) => (
-            <div key={card.label} className="rounded-xl border border-outline-variant/10 bg-surface-container-lowest p-5 shadow-sm">
-              <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-on-surface-variant">{card.label}</p>
-              <h3 className="text-2xl font-black text-on-surface">{card.value}</h3>
-              <p className="mt-2 text-xs text-on-surface-variant">{card.sub}</p>
+        <section className="mb-8 rounded-xl border border-outline-variant/20 bg-surface-container-lowest p-5 shadow-sm">
+          <div className="mb-4 flex items-center justify-between">
+            <div>
+              <h2 className="text-lg font-bold text-on-surface">Students Flagged by Staff</h2>
+              <p className="text-sm text-on-surface-variant">
+                Students with liabilities awaiting finance action on {campus?.name ?? "this campus"}
+              </p>
             </div>
-          ))}
+            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-error-container text-error">
+              <span className="material-symbols-outlined text-[20px]">flag</span>
+            </div>
+          </div>
+
+          {loadingFlagged ? (
+            <div className="py-8 text-center text-sm text-on-surface-variant">Loading flagged students…</div>
+          ) : flaggedItems.length === 0 ? (
+            <div className="py-8 text-center text-sm text-on-surface-variant">
+              No students currently flagged by staff for finance action.
+            </div>
+          ) : (
+            <div className="overflow-hidden rounded-xl border border-outline-variant/20">
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-sm">
+                  <thead className="bg-surface-container-low">
+                    <tr>
+                      <th className="px-4 py-3 text-xs font-bold uppercase tracking-wider text-on-surface-variant">Student ID</th>
+                      <th className="px-4 py-3 text-xs font-bold uppercase tracking-wider text-on-surface-variant">Name</th>
+                      <th className="px-4 py-3 text-xs font-bold uppercase tracking-wider text-on-surface-variant">Request #</th>
+                      <th className="px-4 py-3 text-xs font-bold uppercase tracking-wider text-on-surface-variant">Flagged By</th>
+                      <th className="px-4 py-3 text-xs font-bold uppercase tracking-wider text-on-surface-variant">Status</th>
+                      <th className="px-4 py-3 text-xs font-bold uppercase tracking-wider text-on-surface-variant">Action</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-surface-container">
+                    {flaggedItems.map((item) => (
+                      <tr key={item.checkId} className="hover:bg-primary-fixed/10">
+                        <td className="px-4 py-3 font-mono text-xs">{item.studentId}</td>
+                        <td className="px-4 py-3 font-semibold">{item.studentName}</td>
+                        <td className="px-4 py-3 text-on-surface-variant">{item.requestNumber}</td>
+                        <td className="px-4 py-3 text-on-surface-variant">{item.checkCode}</td>
+                        <td className="px-4 py-3">
+                          <span className={`inline-flex rounded-full px-2 py-0.5 text-[10px] font-bold ${
+                            item.checkStatus === "AWAITING_FINANCE"
+                              ? "bg-error-container text-error"
+                              : item.checkStatus === "PAID_PENDING_DEPARTMENT_APPROVAL"
+                              ? "bg-green-100 text-green-800"
+                              : "bg-secondary-container text-on-secondary-container"
+                          }`}>
+                            {item.checkStatus}
+                          </span>
+                        </td>
+                        <td className="px-4 py-3">
+                          <button
+                            type="button"
+                            onClick={() => navigate(`/campus/${campusSlug}/finance/queue`, { state: { selectedRequestId: item.clearanceRequestId } })}
+                            className="text-xs font-bold text-primary underline"
+                          >
+                            Review
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
         </section>
 
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
@@ -161,7 +218,7 @@ export function FinanceDashboardPage() {
           {[
             { label: "Dashboard", icon: "dashboard", action: () => undefined },
             { label: "Queue", icon: "groups", action: () => go("queue") },
-            { label: "Record", icon: "payments", action: () => go("record-payment") },
+            { label: "Manual", icon: "payments", action: () => go("manual-payment") },
             { label: "Liabilities", icon: "receipt_long", action: () => go("liabilities") },
             { label: "Inquiries", icon: "forum", action: () => go("inquiries") },
           ].map((item) => (

@@ -5,7 +5,7 @@
 // ─────────────────────────────────────────────────────────────────────────────
 import QRCode from "qrcode";
 
-const DB_KEY = "ugc_mock_db_v3";
+const DB_KEY = "ugc_mock_db_v4";
 const CHECK_CODES = ["LIBRARY", "PROCTOR", "CAFE", "DEPARTMENT_HEAD", "STUDENT_DEAN"] as const;
 type CheckCode = typeof CHECK_CODES[number];
 
@@ -111,6 +111,7 @@ interface DbInquiry {
   response: string | null;
   status: string;
   respondedAt: string | null;
+  createdAt: string;
 }
 
 interface DbPayment {
@@ -283,6 +284,7 @@ function seed(db: Db): Db {
       body: "Dear all staff, the clearance season for this semester has officially started. Please process student requests promptly and update your queue daily.",
       sentAt: new Date(Date.now() - 2 * 86400000).toISOString(),
       readAt: null, deletedBySender: false, deletedByRecipient: false, isBroadcast: true,
+      attachments: null,
     },
     {
       id: uid(), fromUserId: "u-lib", fromUsername: "librarian", fromRole: "LIBRARIAN",
@@ -291,7 +293,38 @@ function seed(db: Db): Db {
       body: "Hello Registrar, we have 3 students with outstanding book returns. I have flagged them in the system.",
       sentAt: new Date(Date.now() - 86400000).toISOString(),
       readAt: null, deletedBySender: false, deletedByRecipient: false, isBroadcast: false,
+      attachments: null,
     },
+  ];
+
+  // ── Sample clearance requests + checks + liabilities (for finance testing)
+  const req1: DbRequest = { id: "cr-1", requestNumber: "CLR-2026-001", studentId: "UGR/01234/15", campusId: TEWODROS, semester: "Second", academicYearLabel: "2025/26", requestType: "GRADUATION", status: "IN_REVIEW", submittedAt: new Date(Date.now() - 5 * 86400000).toISOString() };
+  const req2: DbRequest = { id: "cr-2", requestNumber: "CLR-2026-002", studentId: "UGR/01235/15", campusId: TEWODROS, semester: "Second", academicYearLabel: "2025/26", requestType: "SEMESTER", status: "IN_REVIEW", submittedAt: new Date(Date.now() - 3 * 86400000).toISOString() };
+  db.requests = [req1, req2];
+
+  db.checks = [
+    { id: "chk-lib-1", clearanceRequestId: "cr-1", checkCode: "LIBRARY", status: "AWAITING_FINANCE", reviewedBy: "u-lib", reviewedAt: new Date(Date.now() - 4 * 86400000).toISOString(), comment: "Outstanding book fee" },
+    { id: "chk-pro-1", clearanceRequestId: "cr-1", checkCode: "PROCTOR", status: "CLEARED", reviewedBy: "u-pro", reviewedAt: new Date(Date.now() - 4 * 86400000).toISOString(), comment: null },
+    { id: "chk-caf-1", clearanceRequestId: "cr-1", checkCode: "CAFE", status: "AWAITING_FINANCE", reviewedBy: "u-caf", reviewedAt: new Date(Date.now() - 2 * 86400000).toISOString(), comment: "Unpaid cafeteria bill" },
+    { id: "chk-dep-1", clearanceRequestId: "cr-1", checkCode: "DEPARTMENT_HEAD", status: "CLEARED", reviewedBy: "u-dep", reviewedAt: new Date(Date.now() - 4 * 86400000).toISOString(), comment: null },
+    { id: "chk-dea-1", clearanceRequestId: "cr-1", checkCode: "STUDENT_DEAN", status: "CLEARED", reviewedBy: "u-dea", reviewedAt: new Date(Date.now() - 4 * 86400000).toISOString(), comment: null },
+    { id: "chk-lib-2", clearanceRequestId: "cr-2", checkCode: "LIBRARY", status: "AWAITING_FINANCE", reviewedBy: "u-lib", reviewedAt: new Date(Date.now() - 2 * 86400000).toISOString(), comment: "Damaged book replacement fee" },
+    { id: "chk-pro-2", clearanceRequestId: "cr-2", checkCode: "PROCTOR", status: "CLEARED", reviewedBy: "u-pro", reviewedAt: new Date(Date.now() - 3 * 86400000).toISOString(), comment: null },
+    { id: "chk-caf-2", clearanceRequestId: "cr-2", checkCode: "CAFE", status: "CLEARED", reviewedBy: "u-caf", reviewedAt: new Date(Date.now() - 3 * 86400000).toISOString(), comment: null },
+    { id: "chk-dep-2", clearanceRequestId: "cr-2", checkCode: "DEPARTMENT_HEAD", status: "CLEARED", reviewedBy: "u-dep", reviewedAt: new Date(Date.now() - 3 * 86400000).toISOString(), comment: null },
+    { id: "chk-dea-2", clearanceRequestId: "cr-2", checkCode: "STUDENT_DEAN", status: "CLEARED", reviewedBy: "u-dea", reviewedAt: new Date(Date.now() - 3 * 86400000).toISOString(), comment: null },
+  ];
+
+  db.liabilities = [
+    { id: "liab-1", clearanceRequestId: "cr-1", studentId: "UGR/01234/15", campusId: TEWODROS, departmentCheckCode: "LIBRARY", category: "Book Fee", itemName: "Outstanding Book Return", description: "Late return fee for database textbook", amount: 250, currency: "ETB", status: "PENDING", paymentRequired: true },
+    { id: "liab-2", clearanceRequestId: "cr-1", studentId: "UGR/01234/15", campusId: TEWODROS, departmentCheckCode: "CAFE", category: "Cafeteria", itemName: "Cafeteria Balance", description: "Unpaid meal charges Feb 2026", amount: 480, currency: "ETB", status: "PENDING", paymentRequired: true },
+    { id: "liab-3", clearanceRequestId: "cr-2", studentId: "UGR/01235/15", campusId: TEWODROS, departmentCheckCode: "LIBRARY", category: "Book Fee", itemName: "Damaged Book Replacement", description: "Physics lab manual replacement", amount: 350, currency: "ETB", status: "PENDING", paymentRequired: true },
+  ];
+
+  db.payments = [
+    { id: "pay-1", clearanceRequestId: "cr-1", studentId: "UGR/01234/15", liabilityIds: ["liab-1"], provider: "MANUAL", txRef: "TXN-AB12CD", providerReference: "Bank Slip #8921", departmentCheckCode: "LIBRARY", amount: 250, currency: "ETB", status: "VERIFIED", verifiedAt: new Date(Date.now() - 1 * 86400000).toISOString(), receiptNumber: "RCP-XJ9K2M", receiptSignature: null, receiptIssuedAt: new Date(Date.now() - 1 * 86400000).toISOString() },
+    { id: "pay-2", clearanceRequestId: "standalone", studentId: "UGR/01235/15", liabilityIds: [], provider: "MANUAL", txRef: "TXN-EF34GH", providerReference: "Cash payment", departmentCheckCode: "FINANCE", amount: 1200, currency: "ETB", status: "VERIFIED", verifiedAt: new Date(Date.now() - 2 * 86400000).toISOString(), receiptNumber: "RCP-PL7QRS", receiptSignature: null, receiptIssuedAt: new Date(Date.now() - 2 * 86400000).toISOString() },
+    { id: "pay-3", clearanceRequestId: "cr-2", studentId: "UGR/01235/15", liabilityIds: ["liab-3"], provider: "MANUAL", txRef: "TXN-IJ56KL", providerReference: "Bank Transfer #4451", departmentCheckCode: "LIBRARY", amount: 350, currency: "ETB", status: "VERIFIED", verifiedAt: new Date(Date.now() - 0.5 * 86400000).toISOString(), receiptNumber: "RCP-NM3WXY", receiptSignature: null, receiptIssuedAt: new Date(Date.now() - 0.5 * 86400000).toISOString() },
   ];
 
   db.initialized = true;
@@ -469,7 +502,7 @@ function handleCreateStudentInquiry(token: string | null, body: { clearanceReque
   const user = requireAuth(token, db);
   const student = studentForUser(user, db);
   if (!student) throw { status: 403, message: "No student profile found." };
-  const inquiry: DbInquiry = { id: uid(), clearanceRequestId: body.clearanceRequestId, studentId: student.studentId, campusId: student.campusId, targetCheckCode: body.targetCheckCode, message: body.message, response: null, status: "OPEN", respondedAt: null };
+  const inquiry: DbInquiry = { id: uid(), clearanceRequestId: body.clearanceRequestId, studentId: student.studentId, campusId: student.campusId, targetCheckCode: body.targetCheckCode, message: body.message, response: null, status: "OPEN", respondedAt: null, createdAt: isoNow() };
   db.inquiries.push(inquiry);
   writeDb(db);
   return inquiry;
@@ -645,6 +678,51 @@ function handleRespondInquiry(token: string | null, inquiryId: string, body: { r
 function handleFinancePayments(token: string | null, clearanceRequestId: string, db: Db) {
   requireAuth(token, db);
   return db.payments.filter((p) => p.clearanceRequestId === clearanceRequestId);
+}
+
+function handleFlaggedStudents(token: string | null, campusId: string, db: Db) {
+  const user = requireAuth(token, db);
+  const targetCampus = campusId || user.campusId || "";
+  const flaggedChecks = db.checks.filter((c) => c.status === "AWAITING_FINANCE");
+  const result: Array<{
+    checkId: string; checkCode: string; checkStatus: string;
+    clearanceRequestId: string; requestNumber: string; requestType: string;
+    requestStatus: string; studentId: string; studentName: string;
+    campusId: string; submittedAt: string | null;
+  }> = [];
+  for (const check of flaggedChecks) {
+    const req = db.requests.find((r) => r.id === check.clearanceRequestId);
+    if (!req) continue;
+    if (targetCampus && req.campusId !== targetCampus) continue;
+    const student = db.students.find((s) => s.studentId === req.studentId);
+    result.push({
+      checkId: check.id,
+      checkCode: check.checkCode,
+      checkStatus: check.status,
+      clearanceRequestId: req.id,
+      requestNumber: req.requestNumber,
+      requestType: req.requestType,
+      requestStatus: req.status,
+      studentId: req.studentId,
+      studentName: student ? `${student.firstName} ${student.lastName}` : req.studentId,
+      campusId: req.campusId,
+      submittedAt: req.submittedAt,
+    });
+  }
+  return result;
+}
+
+function handlePaymentHistory(token: string | null, campusId: string, db: Db) {
+  const user = requireAuth(token, db);
+  const targetCampus = campusId || user.campusId || "";
+  const manual = db.payments.filter((p) => p.provider === "MANUAL" || p.provider === "STANDALONE");
+  if (!targetCampus) return manual;
+  return manual.filter((p) => {
+    const req = db.requests.find((r) => r.id === p.clearanceRequestId);
+    if (req) return req.campusId === targetCampus;
+    const student = db.students.find((s) => s.studentId === p.studentId);
+    return student?.campusId === targetCampus;
+  });
 }
 
 function handleInitiateChapa(token: string | null, body: { clearanceRequestId: string; liabilityIds: string[] }, db: Db) {
@@ -1011,8 +1089,10 @@ async function dispatch(method: string, path: string, headers: Headers, bodyText
       const txRef = decodeURIComponent(pathOnly.split("/").pop() ?? "");
       return { status: 200, body: handleVerifyChapa(token, txRef, body, db) };
     }
+    if (method === "GET" && pathOnly === "/staff/flagged") return { status: 200, body: handleFlaggedStudents(token, params.get("campusId") ?? "", db) };
     if (method === "POST" && pathOnly === "/finance/payments/manual") return { status: 200, body: handleRecordManualPayment(token, body, db) };
     if (method === "POST" && pathOnly === "/finance/payments/record") return { status: 200, body: handleRecordStandalonePayment(token, body, db) };
+    if (method === "GET" && pathOnly === "/finance/payments/history") return { status: 200, body: handlePaymentHistory(token, params.get("campusId") ?? "", db) };
 
     // ── Registrar
     if (method === "GET" && pathOnly === "/registrar/clearance-requests") return { status: 200, body: handleRegistrarQueue(token, db) };

@@ -65,6 +65,14 @@ public class StaffClearanceController {
         return clearanceWorkflowService.listClearanceQueue(principal);
     }
 
+    @GetMapping("/flagged")
+    @PreAuthorize("hasAnyRole('FINANCE_OFFICER','MAIN_REGISTRAR','SYSTEM_ADMIN')")
+    public java.util.List<StaffQueueItemResponse> listFlaggedStudents(
+            @AuthenticationPrincipal UserPrincipal principal,
+            @RequestParam(required = false) String campusId) {
+        return clearanceWorkflowService.listFlaggedForFinance(principal, campusId);
+    }
+
     @PatchMapping("/checks/{checkId}/quick-approve")
     @PreAuthorize("hasAnyRole('LIBRARIAN','PROCTOR','CAFE_STAFF','DEPARTMENT_HEAD','STUDENT_DEAN','MAIN_REGISTRAR','SYSTEM_ADMIN')")
     public ClearanceCheckResponse quickApproveCheck(@AuthenticationPrincipal UserPrincipal principal,

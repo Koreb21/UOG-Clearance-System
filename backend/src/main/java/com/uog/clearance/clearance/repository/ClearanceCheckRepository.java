@@ -20,4 +20,8 @@ public interface ClearanceCheckRepository extends JpaRepository<ClearanceCheck, 
     List<ClearanceCheck> findByCampusId(String campusId);
 
     List<ClearanceCheck> findByCampusIdAndCheckCode(String campusId, ClearanceCheckCode checkCode);
+
+    List<ClearanceCheck> findByCampusIdAndStatus(String campusId, ClearanceCheckStatus status);
+
+    List<ClearanceCheck> findByCampusIdAndStatusIn(String campusId, List<ClearanceCheckStatus> statuses);
 }

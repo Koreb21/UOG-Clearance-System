@@ -6,7 +6,9 @@ import { useToast } from "../components/ToastContext";
 import { api } from "../lib/api";
 import { useAuth } from "../modules/auth/AuthContext";
 import { getCampusByCode, getCampusBySlug } from "../modules/campus/catalog";
-import type { StudentSummary } from "../types";
+import type { StudentSummary, PaymentRecord } from "../types";
+
+type TabKey = "new" | "history";
 
 const YEARS = ["1st", "2nd", "3rd", "4th", "5th"];
 
@@ -41,6 +43,12 @@ export function FinanceRecordPaymentPage() {
   const { campusSlug } = useParams();
   const campus = getCampusBySlug(campusSlug) ?? getCampusByCode(user?.campusId ?? null);
 
+  const [activeTab, setActiveTab] = useState<TabKey>(() => {
+    const hash = window.location.hash;
+    if (hash === "#history") return "history";
+    return "new";
+  });
+
   const [students, setStudents] = useState<StudentSummary[]>([]);
   const [search, setSearch] = useState("");
   const [showSearchResults, setShowSearchResults] = useState(false);
@@ -73,10 +81,22 @@ export function FinanceRecordPaymentPage() {
     timestamp: string;
   } | null>(null);
 
+  const [paymentHistory, setPaymentHistory] = useState<PaymentRecord[]>([]);
+  const [historyLoading, setHistoryLoading] = useState(false);
+
   useEffect(() => {
     if (!token) return;
     api.listStaffStudents(token).then((data) => setStudents(data as StudentSummary[])).catch(() => undefined);
   }, [token]);
+
+  useEffect(() => {
+    if (!token || activeTab !== "history") return;
+    setHistoryLoading(true);
+    api.listPaymentHistory(token, campus?.code)
+      .then((data) => setPaymentHistory(data as PaymentRecord[]))
+      .catch(() => undefined)
+      .finally(() => setHistoryLoading(false));
+  }, [token, activeTab, campus?.code]);
 
   useEffect(() => {
     function onClick(e: MouseEvent) {
@@ -104,7 +124,7 @@ export function FinanceRecordPaymentPage() {
       const studentRequests = allRequests.filter((r) => r.studentId === studentId);
       if (studentRequests.length === 0) return;
       const mostRecent = studentRequests[studentRequests.length - 1];
-      const status = await api.getVisibleStudentStatus(token, studentId, mostRecent.requestId) as { request: { id: string }; liabilities: { id: string; itemName: string; amount: number; status: string; paymentRequired: boolean; departmentCheckCode: string }[] };
+      const status = await api.getVisibleStudentStatus(token, studentId, mostRecent.clearanceRequestId) as { request: { id: string }; liabilities: { id: string; itemName: string; amount: number; status: string; paymentRequired: boolean; departmentCheckCode: string }[] };
       const pending = status.liabilities.find((l) => l.paymentRequired && !["PAID", "CLEARED", "WAIVED"].includes(l.status));
       if (pending) {
         const recordedByName = pending.departmentCheckCode === "FINANCE" ? "Finance Office" : pending.departmentCheckCode;
@@ -281,6 +301,77 @@ export function FinanceRecordPaymentPage() {
     setReceiptData(null);
   }
 
+  function exportCSV() {
+    const rows = paymentHistory.map((p) => ({
+      "Student ID": p.studentId,
+      "Transaction ID": p.txRef,
+      "Receipt Number": p.receiptNumber ?? "",
+      "Amount": p.amount,
+      "Currency": p.currency,
+      "Status": p.status,
+      "Date": p.verifiedAt ? new Date(p.verifiedAt).toLocaleDateString() : "",
+    }));
+    if (rows.length === 0) { showToast("No data to export.", "error"); return; }
+    const headers = Object.keys(rows[0]);
+    const csv = [
+      headers.join(","),
+      ...rows.map((r) => headers.map((h) => `"${String(r[h as keyof typeof r]).replace(/"/g, '""')}"`).join(",")),
+    ].join("\n");
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `payment-history-${new Date().toISOString().slice(0, 10)}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+    showToast("CSV exported.", "success");
+  }
+
+  function exportPDF() {
+    if (paymentHistory.length === 0) { showToast("No data to export.", "error"); return; }
+    const printWindow = window.open("", "_blank");
+    if (!printWindow) return;
+    const rows = paymentHistory.map((p) => `
+      <tr>
+        <td style="padding:8px 12px;border-bottom:1px solid #edf2f7;font-size:13px;font-family:Inter,sans-serif;">${p.studentId}</td>
+        <td style="padding:8px 12px;border-bottom:1px solid #edf2f7;font-size:13px;font-family:Inter,sans-serif;">${p.txRef}</td>
+        <td style="padding:8px 12px;border-bottom:1px solid #edf2f7;font-size:13px;font-family:Inter,sans-serif;">${p.receiptNumber ?? "—"}</td>
+        <td style="padding:8px 12px;border-bottom:1px solid #edf2f7;font-size:13px;font-family:Inter,sans-serif;">${p.amount.toLocaleString()} ${p.currency}</td>
+        <td style="padding:8px 12px;border-bottom:1px solid #edf2f7;font-size:13px;font-family:Inter,sans-serif;">${p.status}</td>
+        <td style="padding:8px 12px;border-bottom:1px solid #edf2f7;font-size:13px;font-family:Inter,sans-serif;">${p.verifiedAt ? new Date(p.verifiedAt).toLocaleDateString() : "—"}</td>
+      </tr>
+    `).join("");
+    printWindow.document.write(`
+      <!DOCTYPE html>
+      <html><head><meta charset="utf-8"><title>Payment History</title>
+      <style>
+        @page { margin: 15mm; }
+        body { font-family: Inter, -apple-system, sans-serif; margin: 0; padding: 24px; color: #1a202c; background: #fff; }
+        h1 { margin: 0 0 8px; font-size: 22px; color: #001e40; }
+        p.meta { margin: 0 0 20px; font-size: 12px; color: #718096; }
+        table { width: 100%; border-collapse: collapse; }
+        th { text-align: left; font-size: 11px; text-transform: uppercase; color: #718096; letter-spacing: 0.5px; padding: 8px 12px; border-bottom: 2px solid #001e40; }
+        td { font-size: 13px; }
+        .footer { margin-top: 24px; font-size: 11px; color: #a0aec0; text-align: center; }
+      </style></head>
+      <body>
+        <h1>Manual Payment History</h1>
+        <p class="meta">${campus?.name ?? "Campus"} — ${new Date().toLocaleDateString()}</p>
+        <table>
+          <thead>
+            <tr>
+              <th>Student ID</th><th>Transaction ID</th><th>Receipt Number</th><th>Amount</th><th>Status</th><th>Date</th>
+            </tr>
+          </thead>
+          <tbody>${rows}</tbody>
+        </table>
+        <div class="footer"><p>Generated by UGClear Finance Office</p></div>
+      </body></html>
+    `);
+    printWindow.document.close();
+    setTimeout(() => printWindow.print(), 300);
+  }
+
   return (
     <div className="min-h-screen bg-background text-on-surface font-['Inter',sans-serif] antialiased pb-16">
       <header className="sticky top-0 z-50 flex h-16 items-center gap-3 border-b border-outline-variant/20 bg-white/70 px-4 shadow-sm backdrop-blur-xl sm:px-8">
@@ -290,13 +381,33 @@ export function FinanceRecordPaymentPage() {
           <span className="material-symbols-outlined text-[20px]">receipt_long</span>
         </div>
         <div className="flex-1">
-          <h1 className="text-base font-bold tracking-tight">Record Payment</h1>
+          <h1 className="text-base font-bold tracking-tight">Manual Payment</h1>
           <p className="text-[10px] font-bold uppercase tracking-wider text-on-surface-variant">Finance Office — {campus?.name ?? "Campus"}</p>
         </div>
         <SessionControls density="compact" />
       </header>
 
-      <main className="mx-auto max-w-3xl px-4 py-8 sm:px-8">
+      <main className="mx-auto max-w-4xl px-4 py-8 sm:px-8">
+        {/* Tabs */}
+        <div className="mb-6 flex items-center gap-2 rounded-xl bg-surface-container-low p-1.5">
+          {(["new", "history"] as TabKey[]).map((t) => (
+            <button
+              key={t}
+              type="button"
+              onClick={() => setActiveTab(t)}
+              className={`flex-1 rounded-lg py-2.5 text-sm font-bold transition-all ${
+                activeTab === t
+                  ? "bg-primary text-on-primary shadow-md"
+                  : "text-on-surface-variant hover:text-on-surface"
+              }`}
+            >
+              {t === "new" ? "New Payment Entry" : "Payment History"}
+            </button>
+          ))}
+        </div>
+
+        {activeTab === "new" && (
+        <>
         <div className="rounded-2xl bg-white shadow-sm border border-outline-variant/20 overflow-hidden">
           <div className="bg-gradient-to-r from-[#001e40] to-[#003a70] px-6 py-5">
             <h2 className="text-lg font-black tracking-tight text-white">New Payment Entry</h2>
@@ -492,7 +603,6 @@ export function FinanceRecordPaymentPage() {
           </form>
         </div>
 
-        {/* Receipt preview */}
         {showReceipt && receiptData && (
           <div className="mt-8 rounded-2xl bg-white shadow-sm border border-outline-variant/20 overflow-hidden">
             <div className="bg-gradient-to-r from-green-700 to-green-600 px-6 py-4 flex items-center justify-between">
@@ -535,6 +645,83 @@ export function FinanceRecordPaymentPage() {
                   Record Another Payment
                 </button>
               </div>
+            </div>
+          </div>
+        )}
+        </>
+        )}
+
+        {activeTab === "history" && (
+          <div className="rounded-2xl bg-white shadow-sm border border-outline-variant/20 overflow-hidden">
+            <div className="bg-gradient-to-r from-[#001e40] to-[#003a70] px-6 py-5 flex items-center justify-between">
+              <div>
+                <h2 className="text-lg font-black tracking-tight text-white">Payment History</h2>
+                <p className="text-xs text-primary-fixed-dim mt-1">Recently recorded manual payments on {campus?.name ?? "this campus"}.</p>
+              </div>
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={exportCSV}
+                  className="inline-flex items-center gap-2 rounded-lg bg-white/10 px-4 py-2 text-xs font-bold text-white border border-white/20 hover:bg-white/20 transition-colors"
+                >
+                  <span className="material-symbols-outlined text-[16px]">download</span>
+                  CSV
+                </button>
+                <button
+                  type="button"
+                  onClick={exportPDF}
+                  className="inline-flex items-center gap-2 rounded-lg bg-white/10 px-4 py-2 text-xs font-bold text-white border border-white/20 hover:bg-white/20 transition-colors"
+                >
+                  <span className="material-symbols-outlined text-[16px]">picture_as_pdf</span>
+                  PDF
+                </button>
+              </div>
+            </div>
+            <div className="p-6">
+              {historyLoading ? (
+                <div className="py-8 text-center text-sm text-on-surface-variant">Loading payment history…</div>
+              ) : paymentHistory.length === 0 ? (
+                <div className="py-8 text-center text-sm text-on-surface-variant">No manual payment records found for this campus.</div>
+              ) : (
+                <div className="overflow-hidden rounded-xl border border-outline-variant/20">
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-left text-sm">
+                      <thead className="bg-surface-container-low">
+                        <tr>
+                          <th className="px-4 py-3 text-xs font-bold uppercase tracking-wider text-on-surface-variant">Student ID</th>
+                          <th className="px-4 py-3 text-xs font-bold uppercase tracking-wider text-on-surface-variant">Transaction ID</th>
+                          <th className="px-4 py-3 text-xs font-bold uppercase tracking-wider text-on-surface-variant">Receipt #</th>
+                          <th className="px-4 py-3 text-xs font-bold uppercase tracking-wider text-on-surface-variant">Amount</th>
+                          <th className="px-4 py-3 text-xs font-bold uppercase tracking-wider text-on-surface-variant">Status</th>
+                          <th className="px-4 py-3 text-xs font-bold uppercase tracking-wider text-on-surface-variant">Date</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-surface-container">
+                        {paymentHistory.map((p) => (
+                          <tr key={p.id} className="hover:bg-primary-fixed/10">
+                            <td className="px-4 py-3 font-mono text-xs">{p.studentId}</td>
+                            <td className="px-4 py-3 text-xs">{p.txRef}</td>
+                            <td className="px-4 py-3 text-xs">{p.receiptNumber ?? "—"}</td>
+                            <td className="px-4 py-3 font-semibold">{p.amount.toLocaleString()} {p.currency}</td>
+                            <td className="px-4 py-3">
+                              <span className={`inline-flex rounded-full px-2 py-0.5 text-[10px] font-bold ${
+                                p.status === "SUCCESS" || p.status === "VERIFIED"
+                                  ? "bg-green-100 text-green-800"
+                                  : "bg-secondary-container text-on-secondary-container"
+                              }`}>
+                                {p.status}
+                              </span>
+                            </td>
+                            <td className="px-4 py-3 text-xs text-on-surface-variant">
+                              {p.verifiedAt ? new Date(p.verifiedAt).toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" }) : "—"}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         )}

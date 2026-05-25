@@ -60,8 +60,8 @@ function groupLabel(key: string, groupBy: GroupBy): string {
   return key.replace("-", " ");
 }
 
-function Skeleton({ className = "" }: { className?: string }) {
-  return <div className={`animate-pulse rounded-xl bg-gray-200 ${className}`} aria-hidden="true" />;
+function Skeleton({ className = "", style }: { className?: string; style?: React.CSSProperties }) {
+  return <div className={`animate-pulse rounded-xl bg-gray-200 ${className}`} style={style} aria-hidden="true" />;
 }
 
 export function RegistrarAnalyticsPage() {

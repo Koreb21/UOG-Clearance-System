@@ -54,6 +54,7 @@ export function CampusLandingPage() {
   const [adminUsername, setAdminUsername] = useState("");
   const [adminPassword, setAdminPassword] = useState("");
   const [adminSubmitting, setAdminSubmitting] = useState(false);
+  const { showToast } = useToast();
 
   function getPortalLink(portal: "student" | "staff") {
     if (!user || !mappedCampus) {

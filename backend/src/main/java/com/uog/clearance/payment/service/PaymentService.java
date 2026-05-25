@@ -215,6 +215,65 @@ public class PaymentService {
                 .toList();
     }
 
+    public List<PaymentResponse> listPaymentHistory(UserPrincipal principal, String campusId) {
+        ensureFinanceOrAdmin(principal);
+        String resolvedCampusId = campusId != null && !campusId.isBlank()
+                ? campusId
+                : principal.getCampusId();
+        return paymentRecordRepository.findByCampusIdAndProviderOrderByVerifiedAtDesc(resolvedCampusId, PaymentProvider.STANDALONE)
+                .stream()
+                .map(this::toResponse)
+                .toList();
+    }
+
+    public PaymentResponse recordStandalonePayment(UserPrincipal principal,
+                                                    com.uog.clearance.payment.dto.StandalonePaymentRequest request) {
+        campusAccessService.requireStudentAccess(principal, request.studentId());
+        ensureFinanceOrAdmin(principal);
+
+        PaymentRecord payment = new PaymentRecord();
+        payment.setClearanceRequestId(request.clearanceRequestId());
+        payment.setStudentId(request.studentId());
+        payment.setCampusId(request.campusId());
+        payment.setLiabilityIds(request.liabilityId() != null ? List.of(request.liabilityId()) : List.of());
+        payment.setProvider(PaymentProvider.STANDALONE);
+        payment.setDepartmentCheckCode(com.uog.clearance.clearance.model.ClearanceCheckCode.DEPARTMENT_HEAD);
+        payment.setTxRef(request.txId());
+        payment.setProviderReference(request.referenceNumber());
+        payment.setAmount(request.amountPaid());
+        payment.setStatus(PaymentStatus.SUCCESS);
+        payment.setCreatedBy(principal.getId());
+        payment.setVerifiedBy(principal.getId());
+        payment.setVerifiedAt(Instant.now());
+        payment.setReceiptNumber(request.receiptNumber());
+        payment.setVerificationPayload(Map.of(
+                "studentFullName", request.studentFullName(),
+                "yearOfStudy", request.yearOfStudy() == null ? "" : request.yearOfStudy(),
+                "department", request.department() == null ? "" : request.department(),
+                "recordedBy", request.recordedBy(),
+                "paymentDate", request.paymentDate()));
+        payment = paymentRecordRepository.save(payment);
+
+        issueFinanceReceipt(payment, principal.getId());
+        payment = paymentRecordRepository.save(payment);
+
+        if (request.liabilityId() != null && request.clearanceRequestId() != null) {
+            markPaidLiabilities(payment, principal.getId());
+            refreshAfterPayment(payment, principal.getId());
+        }
+
+        auditLogService.log(
+                principal,
+                com.uog.clearance.audit.model.AuditAction.MANUAL_PAYMENT_RECORDED,
+                "PAYMENT",
+                payment.getId(),
+                payment.getStudentId(),
+                "Recorded standalone payment",
+                Map.of("txRef", payment.getTxRef(), "amount", payment.getAmount()));
+
+        return toResponse(payment);
+    }
+
     private void markPaidLiabilities(PaymentRecord payment, String actorUserId) {
         List<Liability> liabilities = liabilityRepository.findAllById(payment.getLiabilityIds());
         for (Liability liability : liabilities) {

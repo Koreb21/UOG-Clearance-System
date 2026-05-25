@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useParams } from "react-router-dom";
 import { SessionControls } from "../components/SessionControls";
 import { BackButton } from "../components/BackButton";
+import { useToast } from "../components/ToastContext";
 import { api } from "../lib/api";
 import { useAuth } from "../modules/auth/AuthContext";
 import type { ClearanceStatus, Inquiry } from "../types";
@@ -24,6 +25,7 @@ const CHECK_META: Record<string, string> = {
 export function StudentHelpPage() {
   const { token } = useAuth();
   const { campusSlug } = useParams();
+  const { showToast } = useToast();
 
   const [status, setStatus] = useState<ClearanceStatus | null>(null);
   const [inquiries, setInquiries] = useState<Inquiry[]>([]);

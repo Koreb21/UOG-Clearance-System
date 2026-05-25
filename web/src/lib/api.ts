@@ -422,6 +422,18 @@ export const api = {
       { method: "GET" },
       token
     ),
+  listPaymentHistory: (token: string, campusId?: string) =>
+    request<PaymentRecord[]>(
+      `/finance/payments/history?${campusId ? `campusId=${encodeURIComponent(campusId)}` : ""}`,
+      { method: "GET" },
+      token
+    ),
+  getFlaggedStudents: (token: string, campusId?: string) =>
+    request<StaffQueueItem[]>(
+      `/staff/flagged?${campusId ? `campusId=${encodeURIComponent(campusId)}` : ""}`,
+      { method: "GET" },
+      token
+    ),
   recordManualPayment: (
     token: string,
     payload: {

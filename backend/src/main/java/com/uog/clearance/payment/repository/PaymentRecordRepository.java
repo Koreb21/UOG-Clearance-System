@@ -10,4 +10,8 @@ public interface PaymentRecordRepository extends JpaRepository<PaymentRecord, St
     Optional<PaymentRecord> findByTxRef(String txRef);
 
     List<PaymentRecord> findByClearanceRequestId(String clearanceRequestId);
+
+    List<PaymentRecord> findByCampusIdOrderByVerifiedAtDesc(String campusId);
+
+    List<PaymentRecord> findByCampusIdAndProviderOrderByVerifiedAtDesc(String campusId, com.uog.clearance.payment.model.PaymentProvider provider);
 }
