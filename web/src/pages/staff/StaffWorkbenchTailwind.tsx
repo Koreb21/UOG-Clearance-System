@@ -12,151 +12,6 @@ import { getStatusLabel, useStaffWorkspace } from "./useStaffWorkspace";
 type CampusInfo = (typeof campusCatalog)[number];
 type StaffRoleKey = keyof typeof roleConfigs;
 
-// ── Inline Fine/Liability Modal ─────────────────────────────────────────────
-type FineModalProps = {
-  studentId: string;
-  studentName: string;
-  requestId: string;
-  checkCode: string;
-  roleConfig: (typeof roleConfigs)[StaffRoleKey];
-  token: string;
-  onClose: () => void;
-  onSuccess: () => void;
-};
-
-function RecordFineModal({ studentId, studentName, requestId, checkCode, roleConfig, token, onClose, onSuccess }: FineModalProps) {
-  const [form, setForm] = useState({
-    itemName: "",
-    category: "",
-    description: "",
-    amount: "0",
-    paymentRequired: roleConfig.paymentDefault,
-  });
-  const [submitting, setSubmitting] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [success, setSuccess] = useState(false);
-
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault();
-    if (!form.itemName.trim()) { setError("Item name is required."); return; }
-    const amount = parseFloat(form.amount);
-    if (isNaN(amount) || amount < 0) { setError("Enter a valid amount."); return; }
-    setSubmitting(true);
-    setError(null);
-    try {
-      const payload: Parameters<typeof api.createLiability>[1] = {
-        studentId,
-        departmentCheckCode: checkCode,
-        itemName: form.itemName.trim(),
-        category: form.category.trim() || undefined,
-        description: form.description.trim() || undefined,
-        amount,
-        paymentRequired: form.paymentRequired,
-      };
-      if (requestId) payload.clearanceRequestId = requestId;
-      await api.createLiability(token, payload);
-      setSuccess(true);
-      setTimeout(() => { onSuccess(); onClose(); }, 1200);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to record fine.");
-    } finally {
-      setSubmitting(false);
-    }
-  }
-
-  return (
-    <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/60 p-4" onClick={e => { if (e.target === e.currentTarget) onClose(); }}>
-      <div className="w-full max-w-md rounded-2xl bg-surface-container-lowest shadow-2xl">
-        <div className="flex items-center justify-between rounded-t-2xl bg-error px-5 py-4">
-          <div className="flex items-center gap-3">
-            <span className="material-symbols-outlined text-white text-2xl" style={{ fontVariationSettings: "'FILL' 1" }}>receipt_long</span>
-            <div>
-              <h3 className="font-black text-white text-base">Record Fine / Liability</h3>
-              <p className="text-xs text-red-100">{studentName}</p>
-            </div>
-          </div>
-          <button type="button" onClick={onClose} className="flex size-8 items-center justify-center rounded-full bg-white/20 text-white hover:bg-white/30">
-            <span className="material-symbols-outlined text-[20px]">close</span>
-          </button>
-        </div>
-        <form onSubmit={handleSubmit} className="space-y-4 p-5">
-          {success && (
-            <div className="flex items-center gap-2 rounded-lg bg-green-50 border border-green-200 px-4 py-3 text-sm text-green-800 font-medium">
-              <span className="material-symbols-outlined text-base text-green-600" style={{ fontVariationSettings: "'FILL' 1" }}>check_circle</span>
-              Fine recorded successfully!
-            </div>
-          )}
-          {error && (
-            <div className="flex items-center gap-2 rounded-lg bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-800">
-              <span className="material-symbols-outlined text-base">error</span>
-              {error}
-            </div>
-          )}
-          <div>
-            <label className="block text-[10px] font-bold uppercase tracking-widest text-on-surface-variant mb-1">{roleConfig.liabilityItemLabel} *</label>
-            <input
-              value={form.itemName}
-              onChange={e => setForm(f => ({ ...f, itemName: e.target.value }))}
-              className="w-full rounded-lg bg-surface-container-high p-3 text-sm focus:ring-2 focus:ring-error border-none"
-              placeholder={`e.g. ${roleConfig.liabilityItemLabel}`}
-              required
-            />
-          </div>
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="block text-[10px] font-bold uppercase tracking-widest text-on-surface-variant mb-1">{roleConfig.liabilityCategoryLabel}</label>
-              <input
-                value={form.category}
-                onChange={e => setForm(f => ({ ...f, category: e.target.value }))}
-                className="w-full rounded-lg bg-surface-container-high p-3 text-sm focus:ring-2 focus:ring-error border-none"
-                placeholder="Category"
-              />
-            </div>
-            <div>
-              <label className="block text-[10px] font-bold uppercase tracking-widest text-on-surface-variant mb-1">Amount (ETB)</label>
-              <input
-                type="number"
-                min="0"
-                step="0.01"
-                value={form.amount}
-                onChange={e => setForm(f => ({ ...f, amount: e.target.value }))}
-                className="w-full rounded-lg bg-surface-container-high p-3 text-sm focus:ring-2 focus:ring-error border-none"
-              />
-            </div>
-          </div>
-          <div>
-            <label className="block text-[10px] font-bold uppercase tracking-widest text-on-surface-variant mb-1">{roleConfig.liabilityDescriptionLabel}</label>
-            <textarea
-              value={form.description}
-              onChange={e => setForm(f => ({ ...f, description: e.target.value }))}
-              rows={2}
-              className="w-full rounded-lg bg-surface-container-high p-3 text-sm focus:ring-2 focus:ring-error border-none resize-none"
-              placeholder={roleConfig.inquiryPlaceholder}
-            />
-          </div>
-          <label className="flex items-center gap-3 cursor-pointer rounded-lg bg-surface-container-high p-3">
-            <input
-              type="checkbox"
-              checked={form.paymentRequired}
-              onChange={e => setForm(f => ({ ...f, paymentRequired: e.target.checked }))}
-              className="size-4 rounded accent-error"
-            />
-            <span className="text-sm font-medium text-on-surface">Payment required from student</span>
-          </label>
-          <div className="flex gap-3 pt-1">
-            <button type="button" onClick={onClose} disabled={submitting} className="flex-1 rounded-xl border-2 border-outline-variant px-4 py-3 font-semibold text-on-surface hover:border-error hover:text-error disabled:opacity-50 transition-colors">
-              Cancel
-            </button>
-            <button type="submit" disabled={submitting || success} className="flex-1 rounded-xl bg-error px-4 py-3 font-bold text-white shadow-lg disabled:opacity-50 hover:brightness-110 transition-all">
-              {submitting ? "Recording…" : "Record Fine"}
-            </button>
-          </div>
-        </form>
-      </div>
-    </div>
-  );
-}
-
 // ── Status badge helpers ─────────────────────────────────────────────────────
 function statusBadgeClass(status: string) {
   switch (status) {
@@ -234,7 +89,6 @@ export function StaffWorkbenchTailwind({
   const [approving, setApproving] = useState<string | null>(null);
   const [approveError, setApproveError] = useState<string | null>(null);
   const [approveSuccess, setApproveSuccess] = useState<string | null>(null);
-  const [fineModal, setFineModal] = useState<{ studentId: string; studentName: string; requestId: string; checkId: string } | null>(null);
   const [queueSearch, setQueueSearch] = useState("");
 
   const fetchClearanceQueue = useCallback(async () => {
@@ -329,20 +183,6 @@ export function StaffWorkbenchTailwind({
 
   return (
     <div className="relative flex min-h-screen w-full flex-col overflow-x-hidden bg-background font-body text-on-surface">
-      {/* Fine Modal */}
-      {fineModal && token && (
-        <RecordFineModal
-          studentId={fineModal.studentId}
-          studentName={fineModal.studentName}
-          requestId={fineModal.requestId}
-          checkCode={roleConfig.targetCheckCode}
-          roleConfig={roleConfig}
-          token={token}
-          onClose={() => setFineModal(null)}
-          onSuccess={() => { fetchClearanceQueue(); }}
-        />
-      )}
-
       <header className="sticky top-0 z-50 flex items-center justify-between border-b border-outline-variant/20 bg-background/70 px-4 py-3 backdrop-blur-md">
         <div className="flex min-w-0 items-center gap-3">
           <BackButton />
@@ -453,7 +293,7 @@ export function StaffWorkbenchTailwind({
               <div>
                 <h3 className="text-lg font-bold text-on-surface">Clearance Approval Queue</h3>
                 <p className="text-xs text-on-surface-variant">
-                  All students requesting clearance through your office — approve or record a fine inline.
+                  All students requesting clearance through your office — approve or review.
                 </p>
               </div>
               <div className="flex items-center gap-2">
@@ -551,21 +391,6 @@ export function StaffWorkbenchTailwind({
                         <div className="flex shrink-0 items-center gap-2">
                           {!isCleared && (
                             <>
-                              {/* Record Fine button */}
-                              <button
-                                type="button"
-                                onClick={() => setFineModal({
-                                  studentId: item.studentId,
-                                  studentName: item.studentName,
-                                  requestId: item.clearanceRequestId,
-                                  checkId: item.checkId,
-                                })}
-                                className="flex items-center gap-1.5 rounded-xl border-2 border-error/40 bg-red-50 px-3 py-2 text-xs font-bold text-error hover:bg-error hover:text-white transition-all"
-                              >
-                                <span className="material-symbols-outlined text-[16px]">receipt_long</span>
-                                <span className="hidden sm:inline">Record Fine</span>
-                              </button>
-
                               {/* Quick Approve button */}
                               <button
                                 type="button"
