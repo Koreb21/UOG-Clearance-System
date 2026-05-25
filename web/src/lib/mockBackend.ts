@@ -17,7 +17,7 @@ const ROLE_TO_CHECK: Record<string, CheckCode> = {
   STUDENT_DEAN: "STUDENT_DEAN",
 };
 
-const MESSAGEABLE_ROLES = ["LIBRARIAN", "PROCTOR", "CAFE_STAFF", "DEPARTMENT_HEAD", "STUDENT_DEAN", "FINANCE_OFFICER", "MAIN_REGISTRAR", "SYSTEM_ADMIN"];
+const MESSAGEABLE_ROLES = ["LIBRARIAN", "PROCTOR", "CAFE_STAFF", "DEPARTMENT_HEAD", "STUDENT_DEAN", "FINANCE_OFFICER", "SYSTEM_ADMIN"];
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
