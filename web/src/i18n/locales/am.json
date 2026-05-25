@@ -312,5 +312,7 @@
   "receiptFooter": "ይህ ደረሰኝ የጎንደር ዩኒቨርሲቲ ፋይናንስ ቢሮ ያወጣዋል። ለሰነዶችዎ ይያዙ።",
   "paymentVerified": "ክፍያ ተረጋግጧል",
   "pendingVerification": "ማረጋገጫ በመጠባበቅ ላይ",
-  "generatedAt": "የተዘጋጀበት"
+  "generatedAt": "የተዘጋጀበት",
+  "scanToVerify": "ለማረጋገጥ ይቃኙ",
+  "scanToVerifyDesc": "ሰራተኞች ይህን QR ኮድ ቃኝተው ክፍያውን በ UGClear ስርዓት ውስጥ ወዲያውኑ ማረጋገጥ ይችላሉ።"
 }

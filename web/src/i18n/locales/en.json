@@ -313,5 +313,7 @@
   "receiptFooter": "This receipt is issued by the University of Gondar Finance Office. Keep this document for your records.",
   "paymentVerified": "Payment Verified",
   "pendingVerification": "Pending Verification",
-  "generatedAt": "Generated"
+  "generatedAt": "Generated",
+  "scanToVerify": "Scan to Verify",
+  "scanToVerifyDesc": "Staff can scan this QR code to instantly verify this payment in the UGClear system without manual lookup."
 }
