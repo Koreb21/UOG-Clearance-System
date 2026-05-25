@@ -31,7 +31,7 @@ const BLANK_CREATE = {
   academicYear: new Date().getFullYear()
 };
 
-type MainTab = "DASHBOARD" | "USER_REGISTRY" | "DEPARTMENTS" | "STUDENT_BATCHES";
+type MainTab = "DASHBOARD" | "STUDENTS" | "DEPARTMENTS" | "STUDENT_BATCHES";
 type RightTab = "EDIT" | "REGISTER_STUDENT" | "REGISTER_STAFF" | "IMPORT";
 
 export function AdminDashboardPage() {
@@ -46,6 +46,12 @@ export function AdminDashboardPage() {
   const [loading, setLoading] = useState(true);
 
   const [mainTab, setMainTab] = useState<MainTab>("DASHBOARD");
+
+  /* ── Students tab state ───────────────────────────────────── */
+  const [studentSearch, setStudentSearch] = useState("");
+  const [showStudentEditModal, setShowStudentEditModal] = useState(false);
+  const [showStudentAddModal, setShowStudentAddModal] = useState(false);
+  const [showStudentImportModal, setShowStudentImportModal] = useState(false);
 
   /* ── User Registry state ──────────────────────────────────── */
   const [searchQuery, setSearchQuery] = useState("");
@@ -397,7 +403,7 @@ export function AdminDashboardPage() {
 
   const sidebarItems: { tab: MainTab; icon: string; label: string }[] = [
     { tab: "DASHBOARD", icon: "dashboard", label: "Dashboard" },
-    { tab: "USER_REGISTRY", icon: "group", label: "User Registry" },
+    { tab: "STUDENTS", icon: "school", label: "Students" },
     { tab: "STUDENT_BATCHES", icon: "upload_file", label: "Student Batches" },
     { tab: "DEPARTMENTS", icon: "corporate_fare", label: "Departments" },
   ];
@@ -470,8 +476,8 @@ export function AdminDashboardPage() {
                 </p>
               </div>
               <div className="flex items-center gap-4 mt-8">
-                <button onClick={() => setMainTab("USER_REGISTRY")} className="bg-white/20 backdrop-blur-sm text-white px-6 py-3 rounded-xl font-bold text-sm flex items-center gap-2 transition-all hover:bg-white/30 shadow-lg border border-white/20">
-                  <span className="material-symbols-outlined text-lg">group</span> User Registry
+                <button onClick={() => setMainTab("STUDENTS")} className="bg-white/20 backdrop-blur-sm text-white px-6 py-3 rounded-xl font-bold text-sm flex items-center gap-2 transition-all hover:bg-white/30 shadow-lg border border-white/20">
+                  <span className="material-symbols-outlined text-lg">school</span> Students
                 </button>
                 <button onClick={() => setMainTab("DEPARTMENTS")} className="bg-secondary-container text-on-secondary-container px-6 py-3 rounded-xl font-bold text-sm flex items-center gap-2 transition-all hover:brightness-105 shadow-lg">
                   <span className="material-symbols-outlined text-lg">corporate_fare</span> Departments
@@ -525,183 +531,184 @@ export function AdminDashboardPage() {
           </section>
         )}
 
-        {/* ════════════════════════ USER REGISTRY TAB ════════════════════════ */}
-        {mainTab === "USER_REGISTRY" && (
-          <>
-            <section className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-              <div className="md:col-span-2 bg-gradient-to-br from-primary to-primary-container p-8 rounded-2xl text-white shadow-lg flex flex-col justify-between">
+        {/* ════════════════════════ STUDENTS TAB ════════════════════════ */}
+        {mainTab === "STUDENTS" && (() => {
+          const filteredStudents = students.filter(s => {
+            if (!studentSearch) return true;
+            const q = studentSearch.toLowerCase();
+            return `${s.firstName} ${s.lastName}`.toLowerCase().includes(q) || s.studentId.toLowerCase().includes(q) || (s.email ?? "").toLowerCase().includes(q);
+          });
+          return (
+            <div className="space-y-6">
+              {/* Header */}
+              <section className="flex items-center justify-between">
                 <div>
-                  <h2 className="text-2xl font-bold tracking-tight mb-2">User Registry Management</h2>
-                  <p className="text-primary-fixed opacity-80 text-sm">Manage students and staff across all campuses.</p>
+                  <h2 className="text-2xl font-bold text-primary tracking-tight">Student Management</h2>
+                  <p className="text-sm text-on-surface-variant mt-1">View and manage all registered students across campuses.</p>
                 </div>
-                <div className="flex items-center gap-4 mt-6">
-                  <button onClick={() => { setRightPanelTab(createUserType === "STAFF" ? "REGISTER_STAFF" : "REGISTER_STUDENT"); }} className="bg-white/20 backdrop-blur-sm text-white px-6 py-3 rounded-xl font-bold text-sm flex items-center gap-2 transition-all hover:bg-white/30 shadow-lg border border-white/20">
-                    <span className="material-symbols-outlined text-lg">person_add</span> Register New User
+                <div className="flex items-center gap-3">
+                  <button onClick={() => { setImportResult(null); setShowStudentImportModal(true); }} className="bg-surface-container-lowest border border-outline-variant/30 text-on-surface px-5 py-3 rounded-xl font-bold text-sm flex items-center gap-2 shadow-sm hover:bg-surface-container transition-all">
+                    <span className="material-symbols-outlined text-base">upload_file</span> Import CSV
                   </button>
-                  <button onClick={() => setRightPanelTab("IMPORT")} className="bg-secondary-container text-on-secondary-container px-6 py-3 rounded-xl font-bold text-sm flex items-center gap-2 transition-all hover:brightness-105 shadow-lg">
-                    <span className="material-symbols-outlined text-lg">upload_file</span> Bulk Import
+                  <button onClick={() => { setCreateUserType("STUDENT"); setCreateData({ ...BLANK_CREATE }); setShowStudentAddModal(true); }} className="bg-primary text-white px-5 py-3 rounded-xl font-bold text-sm flex items-center gap-2 shadow-md hover:bg-primary-container hover:text-on-primary-container transition-all">
+                    <span className="material-symbols-outlined text-base">person_add</span> Add Student
                   </button>
                 </div>
-              </div>
-              <div className="bg-surface-container-lowest p-6 rounded-2xl flex flex-col justify-between shadow-sm border border-surface-container">
-                <span className="material-symbols-outlined text-primary text-3xl">groups</span>
-                <div>
-                  <p className="text-[10px] font-bold uppercase tracking-widest text-on-surface-variant">Total Students</p>
-                  <p className="text-4xl font-black text-primary">{students.length.toLocaleString()}</p>
-                </div>
-              </div>
-              <div className="bg-surface-container-lowest p-6 rounded-2xl flex flex-col justify-between shadow-sm border border-surface-container">
-                <span className="material-symbols-outlined text-secondary text-3xl">badge</span>
-                <div>
-                  <p className="text-[10px] font-bold uppercase tracking-widest text-on-surface-variant">Total Staff</p>
-                  <p className="text-4xl font-black text-primary">{staffUsers.length.toLocaleString()}</p>
-                </div>
-              </div>
-            </section>
+              </section>
 
-            <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-              {/* ── User list ── */}
-              <div className="lg:col-span-8 flex flex-col gap-6">
-                <div className="bg-surface-container-low p-4 rounded-2xl flex flex-col md:flex-row gap-4 items-center">
-                  <div className="relative flex-grow w-full">
-                    <span className="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-on-surface-variant">search</span>
-                    <input value={searchQuery} onChange={e => setSearchQuery(e.target.value)} type="text" placeholder="Search by Name, ID, or Role..." className="w-full pl-12 pr-4 py-3 bg-white border-none rounded-xl focus:ring-2 focus:ring-primary/40 text-sm shadow-sm transition-shadow" />
-                  </div>
+              {/* Search */}
+              <div className="bg-surface-container-low p-4 rounded-2xl flex gap-4 items-center">
+                <div className="relative flex-grow">
+                  <span className="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-on-surface-variant">search</span>
+                  <input value={studentSearch} onChange={e => setStudentSearch(e.target.value)} type="text" placeholder="Search by Name, ID, or Email..." className="w-full pl-12 pr-4 py-3 bg-white border-none rounded-xl focus:ring-2 focus:ring-primary/40 text-sm shadow-sm transition-shadow" />
                 </div>
+              </div>
 
-                <div className="bg-surface-container-lowest rounded-2xl overflow-hidden shadow-sm border border-surface-container">
-                  <div className="px-6 py-4 border-b border-surface-container flex justify-between items-center bg-surface-container-low/30">
-                    <h3 className="text-sm font-bold text-on-primary-fixed-variant uppercase tracking-wider">Active Registry</h3>
-                    <span className="text-xs text-on-surface-variant">{loading ? "Loading..." : `Showing ${unifiedList.length} users`}</span>
-                  </div>
-                  <div className="divide-y divide-surface-container max-h-[600px] overflow-y-auto">
-                    {unifiedList.map(u => {
-                      const isSelected = selectedUser?.data.id === u.data.id && selectedUser?.type === u.type;
-                      const name = getDisplayName(u); const identifier = getIdentifier(u);
-                      const roleBadge = u.type === "STUDENT" ? "Student" : u.data.role;
-                      const deptInfo = departments.find(d => d.id === getDepartmentId(u));
-                      const campusInfo = campuses.find(c => c.code === getCampusId(u));
-                      const imgUrl = getProfileImageUrl(u);
-                      return (
-                        <div key={`${u.type}-${u.data.id}`} onClick={() => { setSelectedUser(u); setRightPanelTab("EDIT"); }} className={`px-6 py-5 flex items-center justify-between cursor-pointer transition-colors group ${isSelected ? "bg-primary-fixed/20 border-l-4 border-primary" : "hover:bg-primary-fixed/10 border-l-4 border-transparent"}`}>
-                          <div className="flex items-center gap-4">
-                            <div className={`w-12 h-12 rounded-lg bg-surface-container-high flex items-center justify-center overflow-hidden border ${u.type === "STAFF" ? "border-secondary border-2" : "border-outline-variant/10"}`}>
-                              {imgUrl ? <img src={toApiUrl(imgUrl) ?? undefined} alt={name} className="w-full h-full object-cover" /> : <span className="material-symbols-outlined text-on-surface-variant">{u.type === "STUDENT" ? "person" : "badge"}</span>}
-                            </div>
-                            <div>
-                              <p className="font-bold text-on-surface text-sm flex items-center gap-2">{name}{!isActive(u) && <span className="w-2 h-2 rounded-full bg-error" title="Inactive" />}</p>
-                              <p className="text-xs text-on-surface-variant">ID: {identifier}</p>
-                            </div>
+              {/* Students Table */}
+              <div className="bg-surface-container-lowest rounded-2xl overflow-hidden shadow-sm border border-surface-container">
+                <div className="px-6 py-4 border-b border-surface-container flex justify-between items-center bg-surface-container-low/30">
+                  <h3 className="text-sm font-bold text-on-primary-fixed-variant uppercase tracking-wider">Active Registry</h3>
+                  <span className="text-xs text-on-surface-variant">{loading ? "Loading..." : `Showing ${filteredStudents.length} students`}</span>
+                </div>
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left text-sm">
+                    <thead className="bg-surface-container-low">
+                      <tr>
+                        <th className="px-4 py-3 text-xs font-bold uppercase tracking-wider text-on-surface-variant">Student</th>
+                        <th className="px-4 py-3 text-xs font-bold uppercase tracking-wider text-on-surface-variant">Role</th>
+                        <th className="px-4 py-3 text-xs font-bold uppercase tracking-wider text-on-surface-variant">Campus</th>
+                        <th className="px-4 py-3 text-xs font-bold uppercase tracking-wider text-on-surface-variant">Department</th>
+                        <th className="px-4 py-3 text-xs font-bold uppercase tracking-wider text-on-surface-variant">Year</th>
+                        <th className="px-4 py-3 text-xs font-bold uppercase tracking-wider text-on-surface-variant">Status</th>
+                        <th className="px-4 py-3 text-xs font-bold uppercase tracking-wider text-on-surface-variant">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-surface-container">
+                      {filteredStudents.map(s => {
+                        const campusInfo = campuses.find(c => c.code === s.campusId);
+                        const deptInfo = departments.find(d => d.id === s.academicDepartmentId);
+                        const imgUrl = s.profileImageUrl;
+                        const active = s.status === "ACTIVE";
+                        return (
+                          <tr key={s.id} className="hover:bg-primary-fixed/10">
+                            <td className="px-4 py-3">
+                              <div className="flex items-center gap-3">
+                                <div className="w-10 h-10 rounded-lg bg-surface-container-high flex items-center justify-center overflow-hidden border border-outline-variant/10 shrink-0">
+                                  {imgUrl ? <img src={toApiUrl(imgUrl) ?? undefined} alt={s.firstName} className="w-full h-full object-cover" /> : <span className="material-symbols-outlined text-on-surface-variant">person</span>}
+                                </div>
+                                <div>
+                                  <p className="font-bold text-on-surface text-sm">{s.firstName} {s.lastName}</p>
+                                  <p className="text-xs text-on-surface-variant">ID: {s.studentId}</p>
+                                </div>
+                              </div>
+                            </td>
+                            <td className="px-4 py-3">
+                              <span className="inline-flex rounded-full px-2 py-0.5 text-[10px] font-bold bg-primary-fixed text-on-primary-fixed-variant uppercase tracking-tighter">Student</span>
+                            </td>
+                            <td className="px-4 py-3 text-on-surface-variant text-xs">{campusInfo?.name ?? s.campusId ?? "---"}</td>
+                            <td className="px-4 py-3 text-on-surface-variant text-xs">{deptInfo?.name ?? "---"}</td>
+                            <td className="px-4 py-3 text-on-surface-variant text-xs">{s.academicYear ?? "---"}</td>
+                            <td className="px-4 py-3">
+                              <span className={`inline-flex rounded-full px-2 py-0.5 text-[10px] font-bold ${active ? "bg-green-100 text-green-800" : "bg-error-container text-error"}`}>{active ? "Active" : "Inactive"}</span>
+                            </td>
+                            <td className="px-4 py-3">
+                              <div className="flex items-center gap-1">
+                                <button onClick={() => { setSelectedUser({ type: "STUDENT", data: s }); setShowStudentEditModal(true); }} className="rounded-lg p-1.5 text-primary hover:bg-primary-fixed/20 transition-colors" title="Edit">
+                                  <span className="material-symbols-outlined text-[18px]">edit</span>
+                                </button>
+                                <button onClick={async () => { setSelectedUser({ type: "STUDENT", data: s }); await new Promise(r => setTimeout(r, 0)); handleToggleActive(); }} className={`rounded-lg p-1.5 transition-colors ${active ? "text-error hover:bg-error-container" : "text-green-700 hover:bg-green-50"}`} title={active ? "Deactivate" : "Activate"}>
+                                  <span className="material-symbols-outlined text-[18px]">{active ? "block" : "check_circle"}</span>
+                                </button>
+                                <button onClick={async () => { setSelectedUser({ type: "STUDENT", data: s }); await new Promise(r => setTimeout(r, 0)); handleDeleteUser(); }} className="rounded-lg p-1.5 text-error hover:bg-error-container transition-colors" title="Delete">
+                                  <span className="material-symbols-outlined text-[18px]">delete</span>
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                  {filteredStudents.length === 0 && !loading && (
+                    <div className="p-8 text-center text-on-surface-variant text-sm">No students found.</div>
+                  )}
+                </div>
+              </div>
+
+              {/* Edit Student Modal */}
+              {showStudentEditModal && selectedUser && selectedUser.type === "STUDENT" && (
+                <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+                  <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={() => setShowStudentEditModal(false)} />
+                  <div className="relative z-10 w-full max-w-lg rounded-2xl bg-surface-container-lowest shadow-2xl overflow-hidden">
+                    <div className="h-20 bg-gradient-to-r from-primary-container to-primary" />
+                    <div className="px-6 pb-6 -mt-10">
+                      <div className="flex items-end gap-4 mb-5">
+                        <div className="w-20 h-20 rounded-full border-4 border-white shadow-md overflow-hidden bg-white flex items-center justify-center">
+                          {getProfileImageUrl(selectedUser) ? <img src={toApiUrl(getProfileImageUrl(selectedUser)) ?? undefined} alt="Student" className="w-full h-full object-cover" /> : <span className="material-symbols-outlined text-3xl text-on-surface-variant">person</span>}
+                        </div>
+                        <div className="pb-1">
+                          <h3 className="text-lg font-black text-on-surface">{editFirstName} {editLastName}</h3>
+                          <p className="text-xs text-on-surface-variant">{getIdentifier(selectedUser)}</p>
+                        </div>
+                        <button onClick={() => setShowStudentEditModal(false)} className="ml-auto rounded-lg p-2 text-on-surface-variant hover:bg-surface-container"><span className="material-symbols-outlined">close</span></button>
+                      </div>
+                      <div className="space-y-4">
+                        <div className="grid grid-cols-3 gap-2">
+                          <div><label className="text-[10px] font-bold uppercase tracking-widest text-on-surface-variant mb-1 block">First</label><input type="text" value={editFirstName} onChange={e => setEditFirstName(e.target.value)} className={inputCls} /></div>
+                          <div><label className="text-[10px] font-bold uppercase tracking-widest text-on-surface-variant mb-1 block">Middle</label><input type="text" value={editMiddleName} onChange={e => setEditMiddleName(e.target.value)} className={inputCls} /></div>
+                          <div><label className="text-[10px] font-bold uppercase tracking-widest text-on-surface-variant mb-1 block">Last</label><input type="text" value={editLastName} onChange={e => setEditLastName(e.target.value)} className={inputCls} /></div>
+                        </div>
+                        <div className="grid grid-cols-2 gap-3">
+                          <div><label className="text-[10px] font-bold uppercase tracking-widest text-on-surface-variant mb-1 block">Campus</label>
+                            <select value={editCampusId} onChange={e => { setEditCampusId(e.target.value); setEditDepartmentId(""); }} className={inputCls}>
+                              <option value="">Select Campus</option>{campuses.map(c => <option key={c.id} value={c.code}>{c.name}</option>)}
+                            </select>
                           </div>
-                          <div className="flex items-center gap-12">
-                            <div className="hidden md:block">
-                              <span className={`px-3 py-1 text-[10px] font-bold rounded-full uppercase tracking-tighter ${u.type === "STUDENT" ? "bg-primary-fixed text-on-primary-fixed-variant" : "bg-secondary-fixed text-on-secondary-fixed-variant"}`}>{roleBadge}</span>
-                            </div>
-                            <div className="hidden md:block text-right w-32">
-                              <p className="text-xs font-medium text-on-surface truncate">{campusInfo?.name || "---"}</p>
-                              <p className="text-[10px] text-on-surface-variant truncate">{deptInfo?.name || "---"}</p>
-                            </div>
-                            <span className={`material-symbols-outlined transition-opacity ${isSelected ? "text-primary opacity-100" : "text-on-surface-variant opacity-0 group-hover:opacity-100"}`}>{isSelected ? "edit_square" : "chevron_right"}</span>
+                          <div><label className="text-[10px] font-bold uppercase tracking-widest text-on-surface-variant mb-1 block">Academic Year</label>
+                            <input type="number" value={editAcademicYear} onChange={e => setEditAcademicYear(parseInt(e.target.value))} className={inputCls} min="2000" max={new Date().getFullYear() + 10} />
                           </div>
                         </div>
-                      );
-                    })}
-                    {unifiedList.length === 0 && !loading && <div className="p-8 text-center text-on-surface-variant text-sm">No users found matching query.</div>}
+                        <div><label className="text-[10px] font-bold uppercase tracking-widest text-on-surface-variant mb-1 block">Email</label><input type="email" value={editEmail} onChange={e => setEditEmail(e.target.value)} className={inputCls} placeholder="student@uog.edu.et" /></div>
+                        <div><label className="text-[10px] font-bold uppercase tracking-widest text-on-surface-variant mb-1 block">Academic Department</label>
+                          <select value={editDepartmentId} onChange={e => setEditDepartmentId(e.target.value)} className={inputCls}>
+                            <option value="">Select Department</option>{editDeptOptions.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
+                          </select>
+                        </div>
+                        <div className="border-t border-surface-container pt-4">
+                          <button onClick={() => setShowResetPw(v => !v)} className="flex items-center gap-2 text-xs font-bold text-on-surface-variant hover:text-primary transition-colors">
+                            <span className="material-symbols-outlined text-base">lock_reset</span>{showResetPw ? "Cancel Password Reset" : "Reset Password"}
+                          </button>
+                          {showResetPw && <div className="mt-3 flex gap-2">
+                            <input type="password" placeholder="New password" value={newPassword} onChange={e => setNewPassword(e.target.value)} className={`${inputCls} flex-1`} />
+                            <button onClick={handleResetPassword} disabled={pwSaving || !newPassword.trim()} className="px-4 py-2 bg-primary text-white rounded-lg text-sm font-bold disabled:opacity-50 transition-opacity">{pwSaving ? "..." : "Set"}</button>
+                          </div>}
+                        </div>
+                      </div>
+                      <div className="flex gap-2 mt-5">
+                        <button onClick={async () => { await handleUpdateUser(); setShowStudentEditModal(false); }} className="flex-1 bg-primary hover:bg-primary-container hover:text-on-primary-container text-white py-3 rounded-xl font-bold text-sm shadow-md transition-all">Save Changes</button>
+                        <button onClick={() => setShowStudentEditModal(false)} className="flex-1 py-3 text-sm font-bold text-on-surface-variant bg-surface-container hover:bg-surface-container-high rounded-xl transition-colors">Cancel</button>
+                      </div>
+                    </div>
                   </div>
                 </div>
-              </div>
+              )}
 
-              {/* ── Right Panel ── */}
-              <div className="lg:col-span-4 flex flex-col gap-4">
-                <div className="bg-surface-container-low p-1.5 rounded-2xl flex gap-1 shadow-sm">
-                  {([
-                    { tab: "EDIT", icon: "manage_accounts", label: "Edit" },
-                    { tab: "REGISTER_STUDENT", icon: "person_add", label: "Student" },
-                    { tab: "REGISTER_STAFF", icon: "badge", label: "Staff" },
-                    { tab: "IMPORT", icon: "upload_file", label: "Import" },
-                  ] as { tab: RightTab; icon: string; label: string }[]).map(({ tab, icon, label }) => (
-                    <button key={tab} onClick={() => { setRightPanelTab(tab); if (tab === "REGISTER_STUDENT") setCreateUserType("STUDENT"); if (tab === "REGISTER_STAFF") setCreateUserType("STAFF"); if (tab === "IMPORT") setImportResult(null); }}
-                      className={`flex-1 py-2.5 text-[11px] font-bold rounded-xl transition-all flex items-center justify-center gap-1.5 ${rightPanelTab === tab ? "bg-white text-primary shadow-sm" : "text-on-surface-variant hover:bg-surface-container hover:text-on-surface"}`}>
-                      <span className="material-symbols-outlined text-[17px]">{icon}</span>{label}
-                    </button>
-                  ))}
-                </div>
-
-                {/* EDIT tab */}
-                {rightPanelTab === "EDIT" && (selectedUser ? (
-                  <div className="bg-surface-container-lowest rounded-2xl shadow-[0_12px_32px_-4px_rgba(0,30,64,0.08)] overflow-hidden relative">
-                    <div className="absolute top-0 left-0 w-full h-24 bg-gradient-to-r from-primary-container to-primary" />
-                    <div className="relative pt-8 mb-6 flex flex-col items-center px-6 pb-4">
-                      <div className="w-24 h-24 rounded-full border-4 border-white shadow-md overflow-hidden bg-white mb-4 flex items-center justify-center">
-                        {getProfileImageUrl(selectedUser) ? <img src={toApiUrl(getProfileImageUrl(selectedUser)) ?? undefined} alt="User" className="w-full h-full object-cover" /> : <span className="material-symbols-outlined text-4xl text-on-surface-variant">{selectedUser.type === "STUDENT" ? "person" : "badge"}</span>}
+              {/* Add Student Modal */}
+              {showStudentAddModal && (
+                <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+                  <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={() => setShowStudentAddModal(false)} />
+                  <div className="relative z-10 w-full max-w-lg rounded-2xl bg-surface-container-lowest shadow-2xl p-6">
+                    <div className="flex items-center justify-between mb-6">
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-xl bg-primary-fixed text-on-primary-fixed flex items-center justify-center">
+                          <span className="material-symbols-outlined">school</span>
+                        </div>
+                        <div>
+                          <h3 className="text-lg font-black text-on-surface">Register Student</h3>
+                          <p className="text-xs text-on-surface-variant">Add a new student to the registry.</p>
+                        </div>
                       </div>
-                      <h4 className="text-xl font-bold text-primary">{editFirstName} {editLastName}</h4>
-                      <p className="text-on-surface-variant text-sm flex items-center gap-2">{getIdentifier(selectedUser)}{!isActive(selectedUser) && <span className="text-error font-bold text-xs uppercase border border-error px-1 rounded">Inactive</span>}</p>
-                    </div>
-                    <div className="space-y-4 px-6 pb-6">
-                      <div className="grid grid-cols-3 gap-2">
-                        <div><label className="text-[10px] font-bold uppercase tracking-widest text-on-surface-variant mb-1 block">First</label><input type="text" value={editFirstName} onChange={e => setEditFirstName(e.target.value)} className={inputCls} /></div>
-                        <div><label className="text-[10px] font-bold uppercase tracking-widest text-on-surface-variant mb-1 block">Middle</label><input type="text" value={editMiddleName} onChange={e => setEditMiddleName(e.target.value)} className={inputCls} /></div>
-                        <div><label className="text-[10px] font-bold uppercase tracking-widest text-on-surface-variant mb-1 block">Last</label><input type="text" value={editLastName} onChange={e => setEditLastName(e.target.value)} className={inputCls} /></div>
-                      </div>
-                      <div><label className="text-[10px] font-bold uppercase tracking-widest text-on-surface-variant mb-1 block">Campus</label>
-                        <select value={editCampusId} onChange={e => { setEditCampusId(e.target.value); setEditDepartmentId(""); }} className={inputCls}>
-                          <option value="">Select Campus</option>{campuses.map(c => <option key={c.id} value={c.code}>{c.name}</option>)}
-                        </select>
-                      </div>
-                      <div><label className="text-[10px] font-bold uppercase tracking-widest text-on-surface-variant mb-1 block">Email</label><input type="email" value={editEmail} onChange={e => setEditEmail(e.target.value)} className={inputCls} placeholder="user@uog.edu.et" /></div>
-                      <div><label className="text-[10px] font-bold uppercase tracking-widest text-on-surface-variant mb-1 block">{selectedUser.type === "STUDENT" ? "Academic Department" : "Clearance Office"}</label>
-                        <select value={editDepartmentId} onChange={e => setEditDepartmentId(e.target.value)} className={inputCls}>
-                          <option value="">Select Department</option>{editDeptOptions.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
-                        </select>
-                      </div>
-                      {selectedUser.type === "STUDENT" && <div><label className="text-[10px] font-bold uppercase tracking-widest text-on-surface-variant mb-1 block">Academic Year</label><input type="number" value={editAcademicYear} onChange={e => setEditAcademicYear(parseInt(e.target.value))} className={inputCls} min="2000" max={new Date().getFullYear() + 10} /></div>}
-                      {selectedUser.type === "STAFF" && <div><label className="text-[10px] font-bold uppercase tracking-widest text-on-surface-variant mb-1 block">Role</label>
-                        <select value={editRole} onChange={e => setEditRole(e.target.value)} className={inputCls}>
-                          <option value="PROCTOR">Proctor</option><option value="DEPARTMENT_HEAD">Department Head</option><option value="LIBRARIAN">Librarian</option><option value="STUDENT_DEAN">Student Dean</option><option value="CAFE_STAFF">Cafe Staff</option><option value="FINANCE_OFFICER">Finance Officer</option><option value="MAIN_REGISTRAR">Main Registrar</option><option value="SYSTEM_ADMIN">System Admin</option>
-                        </select>
-                      </div>}
-                      <div className="flex gap-2 pt-2">
-                        <button onClick={handleUpdateUser} className="flex-1 bg-primary hover:bg-primary-container hover:text-on-primary-container text-white py-3 rounded-lg font-bold text-sm shadow-md active:scale-95 transition-all">Save Changes</button>
-                        <button onClick={handleToggleActive} title={isActive(selectedUser) ? "Deactivate User" : "Activate User"} className={`px-4 py-3 rounded-lg font-bold text-sm shadow-sm transition-colors ${isActive(selectedUser) ? "bg-error-container text-on-error-container hover:bg-error hover:text-white" : "bg-outline-variant text-on-surface-variant hover:bg-primary hover:text-white"}`}>
-                          <span className="material-symbols-outlined text-lg leading-none">{isActive(selectedUser) ? "block" : "check_circle"}</span>
-                        </button>
-                        <button onClick={handleDeleteUser} disabled={deletingUser} title="Delete User" className="px-4 py-3 rounded-lg font-bold text-sm shadow-sm transition-colors bg-error-container text-on-error-container hover:bg-error hover:text-white disabled:opacity-50">
-                          <span className="material-symbols-outlined text-lg leading-none">delete</span>
-                        </button>
-                      </div>
-                      <div className="border-t border-surface-container pt-4">
-                        <button onClick={() => setShowResetPw(v => !v)} className="flex items-center gap-2 text-xs font-bold text-on-surface-variant hover:text-primary transition-colors">
-                          <span className="material-symbols-outlined text-base">lock_reset</span>{showResetPw ? "Cancel Password Reset" : "Reset Password"}
-                        </button>
-                        {showResetPw && <div className="mt-3 flex gap-2">
-                          <input type="password" placeholder="New password" value={newPassword} onChange={e => setNewPassword(e.target.value)} className={`${inputCls} flex-1`} />
-                          <button onClick={handleResetPassword} disabled={pwSaving || !newPassword.trim()} className="px-4 py-2 bg-primary text-white rounded-lg text-sm font-bold disabled:opacity-50 transition-opacity">{pwSaving ? "..." : "Set"}</button>
-                        </div>}
-                      </div>
-                    </div>
-                  </div>
-                ) : (
-                  <div className="bg-surface-container-lowest rounded-2xl p-10 border border-outline-variant/10 text-center flex flex-col items-center justify-center text-on-surface-variant h-80 shadow-[0_12px_32px_-4px_rgba(0,30,64,0.08)]">
-                    <div className="w-16 h-16 rounded-full bg-primary-fixed/30 flex items-center justify-center mb-4">
-                      <span className="material-symbols-outlined text-3xl text-primary opacity-60">manage_accounts</span>
-                    </div>
-                    <p className="font-bold text-sm uppercase tracking-wider">No Selection</p>
-                    <p className="text-xs mt-2 opacity-80">Select a user from the registry to view &amp; edit their profile.</p>
-                  </div>
-                ))}
-
-                {/* REGISTER tabs */}
-                {(rightPanelTab === "REGISTER_STUDENT" || rightPanelTab === "REGISTER_STAFF") && (
-                  <div className="bg-surface-container-lowest rounded-2xl shadow-[0_12px_32px_-4px_rgba(0,30,64,0.08)] p-6">
-                    <div className="flex items-center gap-3 mb-6 pb-4 border-b border-surface-container">
-                      <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${createUserType === "STUDENT" ? "bg-primary-fixed text-on-primary-fixed" : "bg-secondary-fixed text-on-secondary-fixed"}`}>
-                        <span className="material-symbols-outlined">{createUserType === "STUDENT" ? "school" : "badge"}</span>
-                      </div>
-                      <div>
-                        <h3 className="text-lg font-bold text-primary">Register {createUserType === "STUDENT" ? "Student" : "Staff"}</h3>
-                        <p className="text-xs text-on-surface-variant">Add a single new user to the registry.</p>
-                      </div>
+                      <button onClick={() => setShowStudentAddModal(false)} className="rounded-lg p-2 text-on-surface-variant hover:bg-surface-container"><span className="material-symbols-outlined">close</span></button>
                     </div>
                     <div className="space-y-4">
                       <div className="grid grid-cols-3 gap-2">
@@ -709,11 +716,11 @@ export function AdminDashboardPage() {
                         <div><label className="text-[10px] font-bold uppercase tracking-widest text-on-surface-variant mb-1 block">Middle</label><input type="text" value={createData.middleName} onChange={e => setCreateData({ ...createData, middleName: e.target.value })} className={inputCls} placeholder="(opt)" /></div>
                         <div><label className="text-[10px] font-bold uppercase tracking-widest text-on-surface-variant mb-1 block">Last</label><input type="text" value={createData.lastName} onChange={e => setCreateData({ ...createData, lastName: e.target.value })} className={inputCls} placeholder="Last" /></div>
                       </div>
-                      <div><label className="text-[10px] font-bold uppercase tracking-widest text-on-surface-variant mb-1 block">{createUserType === "STUDENT" ? "Student ID" : "Staff Username"}</label>
-                        <input type="text" value={createData.identifier} onChange={e => setCreateData({ ...createData, identifier: e.target.value })} className={inputCls} placeholder={createUserType === "STUDENT" ? "UGR/1234/15" : "STAFF/001"} />
+                      <div><label className="text-[10px] font-bold uppercase tracking-widest text-on-surface-variant mb-1 block">Student ID</label>
+                        <input type="text" value={createData.identifier} onChange={e => setCreateData({ ...createData, identifier: e.target.value })} className={inputCls} placeholder="UGR/1234/15" />
                       </div>
                       <div className="grid grid-cols-2 gap-3">
-                        <div><label className="text-[10px] font-bold uppercase tracking-widest text-on-surface-variant mb-1 block">Email</label><input type="email" value={createData.email} onChange={e => setCreateData({ ...createData, email: e.target.value })} className={inputCls} placeholder="user@uog.edu.et" /></div>
+                        <div><label className="text-[10px] font-bold uppercase tracking-widest text-on-surface-variant mb-1 block">Email</label><input type="email" value={createData.email} onChange={e => setCreateData({ ...createData, email: e.target.value })} className={inputCls} placeholder="student@uog.edu.et" /></div>
                         <div><label className="text-[10px] font-bold uppercase tracking-widest text-on-surface-variant mb-1 block">Password</label><input type="password" value={createData.password} onChange={e => setCreateData({ ...createData, password: e.target.value })} className={inputCls} placeholder="(default: ID)" /></div>
                       </div>
                       <div className="grid grid-cols-2 gap-3">
@@ -722,46 +729,46 @@ export function AdminDashboardPage() {
                             <option value="">Select...</option>{campuses.map(c => <option key={c.id} value={c.code}>{c.name}</option>)}
                           </select>
                         </div>
-                        <div><label className="text-[10px] font-bold uppercase tracking-widest text-on-surface-variant mb-1 block">{createUserType === "STUDENT" ? "Department" : "Office"}</label>
+                        <div><label className="text-[10px] font-bold uppercase tracking-widest text-on-surface-variant mb-1 block">Department</label>
                           <select value={createData.departmentId} onChange={e => setCreateData({ ...createData, departmentId: e.target.value })} className={inputCls}>
                             <option value="">{createData.campusId ? "Select..." : "Campus first"}</option>{createDeptOptions.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
                           </select>
                         </div>
                       </div>
-                      {createUserType === "STUDENT" && <div><label className="text-[10px] font-bold uppercase tracking-widest text-on-surface-variant mb-1 block">Academic Year</label>
+                      <div><label className="text-[10px] font-bold uppercase tracking-widest text-on-surface-variant mb-1 block">Academic Year</label>
                         <input type="number" value={createData.academicYear || new Date().getFullYear()} onChange={e => setCreateData({ ...createData, academicYear: parseInt(e.target.value) })} className={inputCls} min="2000" max={new Date().getFullYear() + 10} />
-                      </div>}
-                      {createUserType === "STAFF" && <div><label className="text-[10px] font-bold uppercase tracking-widest text-on-surface-variant mb-1 block">Role</label>
-                        <select value={createData.role} onChange={e => setCreateData({ ...createData, role: e.target.value })} className={inputCls}>
-                          <option value="PROCTOR">Proctor</option><option value="DEPARTMENT_HEAD">Department Head</option><option value="LIBRARIAN">Librarian</option><option value="STUDENT_DEAN">Student Dean</option><option value="CAFE_STAFF">Cafe Staff</option><option value="FINANCE_OFFICER">Finance Officer</option><option value="MAIN_REGISTRAR">Main Registrar</option><option value="SYSTEM_ADMIN">System Admin</option>
-                        </select>
-                      </div>}
+                      </div>
                     </div>
-                    <div className="mt-6 flex gap-3">
-                      <button onClick={() => setCreateData({ ...BLANK_CREATE })} className="flex-1 py-3 text-sm font-bold text-on-surface-variant bg-surface-container hover:bg-surface-container-high rounded-lg transition-colors">Clear</button>
-                      <button onClick={handleCreate} className="flex-1 py-3 text-sm font-bold bg-primary text-white rounded-lg hover:bg-primary-container hover:text-on-primary-container shadow-md transition-colors">Register</button>
+                    <div className="flex gap-3 mt-6">
+                      <button onClick={() => setCreateData({ ...BLANK_CREATE })} className="flex-1 py-3 text-sm font-bold text-on-surface-variant bg-surface-container hover:bg-surface-container-high rounded-xl transition-colors">Clear</button>
+                      <button onClick={async () => { await handleCreate(); setShowStudentAddModal(false); }} className="flex-1 py-3 text-sm font-bold bg-primary text-white rounded-xl hover:bg-primary-container hover:text-on-primary-container shadow-md transition-colors">Register</button>
                     </div>
                   </div>
-                )}
+                </div>
+              )}
 
-                {/* IMPORT tab */}
-                {rightPanelTab === "IMPORT" && (
-                  <div className="bg-surface-container-lowest rounded-2xl shadow-[0_12px_32px_-4px_rgba(0,30,64,0.08)] p-6">
-                    <div className="flex items-center gap-3 mb-5 pb-4 border-b border-surface-container">
-                      <div className="w-10 h-10 rounded-xl bg-tertiary flex items-center justify-center"><span className="material-symbols-outlined text-white">upload_file</span></div>
-                      <div>
-                        <h3 className="text-lg font-bold text-primary">Bulk Student Import</h3>
-                        <p className="text-xs text-on-surface-variant">Upload CSV with student data.</p>
+              {/* Import Modal */}
+              {showStudentImportModal && (
+                <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+                  <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={() => setShowStudentImportModal(false)} />
+                  <div className="relative z-10 w-full max-w-lg rounded-2xl bg-surface-container-lowest shadow-2xl p-6 max-h-[90vh] overflow-y-auto">
+                    <div className="flex items-center justify-between mb-5">
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-xl bg-tertiary flex items-center justify-center"><span className="material-symbols-outlined text-white">upload_file</span></div>
+                        <div>
+                          <h3 className="text-lg font-black text-on-surface">Bulk Student Import</h3>
+                          <p className="text-xs text-on-surface-variant">Upload CSV with student data.</p>
+                        </div>
                       </div>
+                      <button onClick={() => setShowStudentImportModal(false)} className="rounded-lg p-2 text-on-surface-variant hover:bg-surface-container"><span className="material-symbols-outlined">close</span></button>
                     </div>
                     <div className="bg-primary-fixed/30 rounded-lg p-4 mb-5 text-xs text-on-primary-fixed-variant space-y-1.5">
                       <p className="font-bold text-sm mb-2 flex items-center gap-1.5"><span className="material-symbols-outlined text-base">info</span>Required Columns (in order)</p>
                       {[["A","studentId","e.g. UGR/001/16"],["B","firstName",""],["C","middleName","(optional)"],["D","lastName",""],["E","gender","MALE or FEMALE"],["F","phone","(optional)"],["G","email","(optional)"],["H","campusId","TEWODROS / MARAKI / FASIL"],["I","academicDepartmentId","(optional dept ID)"],["J","program","(optional)"],["K","academicYear","e.g. 2024"],["L","graduationYear","e.g. 2028"],["M","password","(optional)"]].map(([col,field,hint]) => (
                         <div key={col} className="flex gap-2"><span className="w-5 font-black text-primary shrink-0">{col}</span><span className="font-semibold w-36 shrink-0">{field}</span><span className="opacity-70">{hint}</span></div>
                       ))}
-                      <p className="text-[10px] opacity-70 pt-1">Row 1 must be the header. Each campus value in column H determines which campus the student belongs to.</p>
                     </div>
-                    <button onClick={downloadTemplate} className="w-full mb-4 py-2.5 text-sm font-bold text-primary border-2 border-primary/30 hover:border-primary hover:bg-primary-fixed/20 rounded-lg transition-colors flex items-center justify-center gap-2">
+                    <button onClick={downloadTemplate} className="w-full mb-4 py-2.5 text-sm font-bold text-primary border-2 border-primary/30 hover:border-primary hover:bg-primary-fixed/20 rounded-xl transition-colors flex items-center justify-center gap-2">
                       <span className="material-symbols-outlined text-base">download</span>Download CSV Template
                     </button>
                     <div className="border-2 border-dashed border-outline-variant rounded-xl p-6 text-center cursor-pointer hover:border-primary hover:bg-primary-fixed/10 transition-colors mb-4" onClick={() => fileInputRef.current?.click()}>
@@ -769,7 +776,7 @@ export function AdminDashboardPage() {
                       {importFile ? <p className="text-sm font-bold text-primary">{importFile.name}</p> : <><p className="text-sm font-medium text-on-surface-variant">Click to select file</p><p className="text-xs text-on-surface-variant opacity-70 mt-1">Supports .csv and .xlsx</p></>}
                       <input ref={fileInputRef} type="file" accept=".xlsx,.xls,.csv" className="hidden" onChange={e => { const f = e.target.files?.[0] ?? null; setImportFile(f); setImportResult(null); }} />
                     </div>
-                    <button onClick={handleImport} disabled={!importFile || importing} className="w-full py-3 text-sm font-bold bg-primary text-white rounded-lg hover:bg-primary-container hover:text-on-primary-container shadow-md transition-colors disabled:opacity-50 flex items-center justify-center gap-2">
+                    <button onClick={async () => { await handleImport(); }} disabled={!importFile || importing} className="w-full py-3 text-sm font-bold bg-primary text-white rounded-xl hover:bg-primary-container hover:text-on-primary-container shadow-md transition-colors disabled:opacity-50 flex items-center justify-center gap-2">
                       {importing ? <><span className="material-symbols-outlined text-base animate-spin">progress_activity</span> Importing…</> : <><span className="material-symbols-outlined text-base">cloud_upload</span> Upload &amp; Import</>}
                     </button>
                     {importResult && (
@@ -780,15 +787,15 @@ export function AdminDashboardPage() {
                           <div className={`p-3 rounded-lg text-center ${importResult.failedCount > 0 ? "bg-red-50" : "bg-surface-container"}`}><p className={`text-2xl font-black ${importResult.failedCount > 0 ? "text-red-700" : "text-on-surface"}`}>{importResult.failedCount}</p><p className={`text-[10px] font-bold uppercase ${importResult.failedCount > 0 ? "text-red-600" : "text-on-surface-variant"}`}>Failed</p></div>
                         </div>
                         {importResult.errors.length > 0 && <div className="bg-red-50 border border-red-200 rounded-lg p-3 max-h-40 overflow-y-auto"><p className="text-xs font-bold text-red-700 mb-2">Row Errors:</p>{importResult.errors.map((e, i) => <p key={i} className="text-[11px] text-red-600 leading-relaxed">{e}</p>)}</div>}
-                        {importResult.importedCount > 0 && <p className="text-xs text-green-700 font-medium text-center flex items-center justify-center gap-1"><span className="material-symbols-outlined text-base">check_circle</span>{importResult.importedCount} students added to the registry.</p>}
+                        {importResult.importedCount > 0 && <p className="text-xs text-green-700 font-medium text-center flex items-center justify-center gap-1"><span className="material-symbols-outlined text-base">check_circle</span>{importResult.importedCount} students added.</p>}
                       </div>
                     )}
                   </div>
-                )}
-              </div>
+                </div>
+              )}
             </div>
-          </>
-        )}
+          );
+        })()}
 
         {/* ════════════════════════ STUDENT BATCHES TAB ════════════════════════ */}
         {mainTab === "STUDENT_BATCHES" && (
