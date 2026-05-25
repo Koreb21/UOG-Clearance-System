@@ -293,8 +293,6 @@ export function useStaffWorkspace(roleConfig: RoleConfig) {
     inquiries,
     search,
     setSearch,
-    error,
-    setError,
     submittingLiability,
     submittingDecision,
     respondingInquiryId,

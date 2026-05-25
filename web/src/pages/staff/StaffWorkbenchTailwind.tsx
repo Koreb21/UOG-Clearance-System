@@ -67,7 +67,7 @@ export function StaffWorkbenchTailwind({
   campus, roleConfig, staffRole, user,
   queueItems, students, selectedStudentId, setSelectedStudentId,
   selectedRequestId, setSelectedRequestId,
-  status, search, setSearch, error, setError,
+  status, search, setSearch,
   submittingLiability, submittingDecision, respondingInquiryId,
   replyDraft, setReplyDraft, decisionState, setDecisionState,
   liabilityState, setLiabilityState, relevantCheck, latestInquiry,
