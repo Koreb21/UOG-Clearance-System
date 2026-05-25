@@ -1,0 +1,76 @@
+Update the university clearance management system with the following features and workflow improvements:
+
+1. Registrar Final QR Certificate System
+
+* The registrar must only generate the final QR code after the student has successfully received approval/clearance from all required departmental staff.
+* The QR code must be cryptographically hashed and uniquely tied to each student.
+* The QR code should securely contain or reference:
+
+  * Student ID
+  * Full name
+  * Clearance status
+  * Timestamp
+  * Unique hashed verification token
+* The system should prevent duplicate or fake QR generation.
+* The QR code must serve as the student's final clearance certificate.
+* After generation, the QR code/certificate should automatically appear on the student dashboard.
+* Students must be able to:
+
+  * View the QR certificate
+  * Download it as a PDF
+  * Re-download it anytime from their dashboard
+
+2. Fine and Student Record Management
+   Create dedicated management pages for:
+
+* Cafeteria staff
+* Student dean
+* Proctor office
+* Library staff
+
+Each department page should allow authorized staff to:
+
+* Register student fines
+* Add disciplinary records or notes
+* Update payment/clearance status
+* Search students by ID or name
+* View previous records
+
+3. Clearance Validation and Red Flag System
+
+* When a student requests departmental approval, the system must automatically check the database for:
+
+  * Unpaid fines
+  * Active disciplinary records
+  * Pending obligations
+* If issues exist:
+
+  * Display a visible red flag or warning badge beside the student's name
+  * Prevent approval until the issue is resolved
+  * Show the reason for the flag to authorized staff
+
+4. Logout Confirmation Dialog
+   Add a logout confirmation popup/modal across the system.
+
+When users click logout:
+
+* Show warning message:
+  “Are you sure you want to logout?”
+* Provide two buttons:
+
+  * Yes → logout user
+  * No → cancel logout and remain logged in
+
+5. Security and Database Requirements
+
+* Use secure hashing/encryption for QR generation.
+* Ensure role-based access control for all staff pages.
+* Store all fines, approvals, QR hashes, and records in the database.
+* Log all important actions for auditing purposes.
+
+6 . Suggested Technical Implementation
+
+* Generate QR codes dynamically after full approval.
+* Use PDF generation libraries to export the certificate.
+* Add backend verification endpoint for QR validation.
+* Ensure the QR can later be scanned to verify authenticity.

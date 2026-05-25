@@ -1,0 +1,24 @@
+# Local MongoDB for ClearanceSystem (Spring Boot default URI matches port 27017).
+# From repo root: npm run dev:mongo
+# Then: npm run dev:backend  and  npm run dev:web
+
+services:
+  mongo:
+    image: mongo:7.0
+    container_name: clearance-mongo
+    restart: unless-stopped
+    ports:
+      - "27017:27017"
+    environment:
+      MONGO_INITDB_DATABASE: clearance_system
+    healthcheck:
+      test: ["CMD", "mongosh", "--quiet", "--eval", "db.adminCommand('ping').ok"]
+      interval: 5s
+      timeout: 5s
+      retries: 8
+      start_period: 15s
+    volumes:
+      - clearance_mongo_data:/data/db
+
+volumes:
+  clearance_mongo_data:

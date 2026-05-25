@@ -1,0 +1,11 @@
+{
+  "name": "clearance-system",
+  "private": true,
+  "scripts": {
+    "dev:mongo": "docker compose up -d mongo",
+    "dev:mongo:down": "docker compose down",
+    "dev:web": "npm --prefix web run dev",
+    "dev:backend": "mvn -f backend spring-boot:run -DskipTests",
+    "dev:backend-quiet": "mvn -f backend -q spring-boot:run -DskipTests"
+  }
+}

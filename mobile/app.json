@@ -1,0 +1,13 @@
+{
+  "expo": {
+    "name": "UoG Clearance",
+    "slug": "uog-clearance-mobile",
+    "scheme": "uog-clearance",
+    "version": "0.0.1",
+    "orientation": "portrait",
+    "userInterfaceStyle": "light",
+    "assetBundlePatterns": [
+      "**/*"
+    ]
+  }
+}
