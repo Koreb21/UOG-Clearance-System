@@ -268,5 +268,23 @@
   "paymentHistory": "የክፍያ ታሪክ",
   "noPaymentsYet": "እስካሁን ምንም ክፍያ አልተመዘገበም።",
   "unableToLoadRequests": "ጥያቄዎችን መጫን አልተቻለም",
-  "unableToStartPayment": "ክፍያ መጀመር አልተቻለም"
+  "unableToStartPayment": "ክፍያ መጀመር አልተቻለም",
+
+  "idOrEmail": "የዩኒቨርሲቲ መታወቂያ ወይም ኢሜይል",
+  "usernamePlaceholder": "ለምሳሌ፦ UGR/1234/15",
+
+  "payManually": "በእጅ ይክፈሉ",
+  "manualPaymentTitle": "ባንክ / የእጅ ክፍያ",
+  "manualPaymentDesc": "ከፋይናንስ ቢሮ የተሰጠዎትን የባንክ ወይም ደረሰኝ ቁጥር ያስገቡ።",
+  "bankReference": "የባንክ / ደረሰኝ ቁጥር",
+  "bankReferencePlaceholder": "ለምሳሌ፦ CBE-20260525-0034",
+  "optionalNote": "ማስታወሻ (አማራጭ)",
+  "optionalNotePlaceholder": "ለምሳሌ፦ በቅርንጫፍ ተከፍሏል",
+  "submitManualPayment": "ክፍያ አስገባ",
+  "manualPaymentSuccess": "የእጅ ክፍያ ቀርቧል። ፋይናንስ ያረጋግጣል።",
+  "manualPaymentError": "የእጅ ክፍያ ማስገባት አልተቻለም።",
+  "choosePaymentMethod": "እንዴት መክፈል ይፈልጋሉ?",
+  "payOnline": "በቻፓ ኦንላይን ይክፈሉ",
+  "payOffline": "ባንክ / የእጅ ክፍያ",
+  "back": "ተመለስ"
 }

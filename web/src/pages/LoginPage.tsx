@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { SessionControls } from "../components/SessionControls";
 import { LanguageToggle } from "../components/LanguageToggle";
+import { VoiceInput } from "../components/VoiceInput";
 import { useToast } from "../components/ToastContext";
 import { useAuth } from "../modules/auth/AuthContext";
 import { api } from "../lib/api";
@@ -635,14 +636,23 @@ export function LoginPage() {
                   <label className="portal-login-field">
                     <span className="portal-login-field-label">
                       <BadgeIcon />
-                      ID or University Email
+                      {t("idOrEmail")}
                     </span>
-                    <input
-                      value={username}
-                      onChange={(event) => setUsername(event.target.value)}
-                      placeholder="e.g. UGR/1234/15"
-                      required
-                    />
+                    <div style={{ position: "relative" }}>
+                      <input
+                        value={username}
+                        onChange={(event) => setUsername(event.target.value)}
+                        placeholder={t("usernamePlaceholder")}
+                        required
+                        style={{ paddingRight: "44px" }}
+                      />
+                      <div style={{ position: "absolute", right: "6px", top: "50%", transform: "translateY(-50%)", zIndex: 2 }}>
+                        <VoiceInput
+                          onTranscript={(text) => setUsername((prev) => (prev ? prev + text : text))}
+                          disabled={submitting}
+                        />
+                      </div>
+                    </div>
                   </label>
 
                   <label className="portal-login-field">
@@ -659,8 +669,14 @@ export function LoginPage() {
                         onChange={(event) => setPassword(event.target.value)}
                         placeholder="••••••••"
                         required
-                        style={{ paddingRight: "44px" }}
+                        style={{ paddingRight: "80px" }}
                       />
+                      <div style={{ position: "absolute", right: "38px", top: "50%", transform: "translateY(-50%)", zIndex: 2 }}>
+                        <VoiceInput
+                          onTranscript={(text) => { setPassword(text); setPasswordVisible(true); }}
+                          disabled={submitting}
+                        />
+                      </div>
                       <button
                         type="button"
                         onClick={() => setPasswordVisible((v) => !v)}

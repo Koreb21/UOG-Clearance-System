@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useParams, useSearchParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { SessionControls } from "../components/SessionControls";
@@ -17,8 +17,10 @@ function formatDisplayDate(value?: string | null) {
   return date.toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" });
 }
 
+type PaymentModal = "choose" | "chapa" | "manual" | null;
+
 export function StudentFinancePage() {
-  const { token } = useAuth();
+  const { token, user } = useAuth();
   const { campusSlug } = useParams();
   const [searchParams, setSearchParams] = useSearchParams();
   const campus = getCampusBySlug(campusSlug);
@@ -29,6 +31,12 @@ export function StudentFinancePage() {
   const [selectedRequestId, setSelectedRequestId] = useState<string>("");
   const [status, setStatus] = useState<ClearanceStatus | null>(null);
   const [paymentLoading, setPaymentLoading] = useState(false);
+
+  const [paymentModal, setPaymentModal] = useState<PaymentModal>(null);
+  const [manualRef, setManualRef] = useState("");
+  const [manualNote, setManualNote] = useState("");
+  const [manualSubmitting, setManualSubmitting] = useState(false);
+  const modalRef = useRef<HTMLDivElement>(null);
 
   const loadRequests = useCallback(() => {
     if (!token) return;
@@ -59,6 +67,14 @@ export function StudentFinancePage() {
     api.getStudentStatus(token, selectedRequestId).then(setStatus).catch(() => setStatus(null));
   }, [selectedRequestId, token]);
 
+  useEffect(() => {
+    function onKeyDown(e: KeyboardEvent) {
+      if (e.key === "Escape") setPaymentModal(null);
+    }
+    if (paymentModal) document.addEventListener("keydown", onKeyDown);
+    return () => document.removeEventListener("keydown", onKeyDown);
+  }, [paymentModal]);
+
   const payableLiabilities = useMemo(
     () => status?.liabilities.filter((item) => item.paymentRequired && item.status !== "PAID" && item.status !== "CLEARED" && item.status !== "WAIVED") ?? [],
     [status]
@@ -66,9 +82,10 @@ export function StudentFinancePage() {
   const totalDue = payableLiabilities.reduce((sum, item) => sum + item.amount, 0);
   const firstLiabilityHint = payableLiabilities[0]?.itemName ?? null;
 
-  async function handlePayNow() {
+  async function handleChapaPayNow() {
     if (!token || !status || payableLiabilities.length === 0) return;
     setPaymentLoading(true);
+    setPaymentModal(null);
     try {
       const response = await api.initiateChapaPayment(token, {
         clearanceRequestId: status.request.id,
@@ -79,6 +96,34 @@ export function StudentFinancePage() {
       showToast(e instanceof Error ? e.message : t("unableToStartPayment"), "error");
       setPaymentLoading(false);
     }
+  }
+
+  async function handleManualPayment(e: React.FormEvent) {
+    e.preventDefault();
+    if (!token || !status || !user?.studentId) return;
+    setManualSubmitting(true);
+    try {
+      await api.recordManualPayment(token, {
+        clearanceRequestId: status.request.id,
+        studentId: user.studentId,
+        liabilityIds: payableLiabilities.map((item) => item.id),
+        providerReference: manualRef.trim(),
+        note: manualNote.trim() || undefined
+      });
+      showToast(t("manualPaymentSuccess"), "success");
+      setPaymentModal(null);
+      setManualRef("");
+      setManualNote("");
+      loadRequests();
+    } catch (e) {
+      showToast(e instanceof Error ? e.message : t("manualPaymentError"), "error");
+    } finally {
+      setManualSubmitting(false);
+    }
+  }
+
+  function openPaymentChoice() {
+    setPaymentModal("choose");
   }
 
   return (
@@ -125,15 +170,17 @@ export function StudentFinancePage() {
                   </p>
                 </div>
               </div>
-              <button
-                type="button"
-                onClick={handlePayNow}
-                disabled={paymentLoading}
-                className="flex items-center gap-2 rounded-full bg-error px-6 py-3 font-black text-white shadow-xl shadow-error/30 transition-transform hover:scale-105 disabled:opacity-50"
-              >
-                <span className="material-symbols-outlined text-lg" style={{ fontVariationSettings: "'FILL' 1" }}>payments</span>
-                {paymentLoading ? t("redirecting") : t("payViaChapa", { amount: totalDue.toFixed(2) })}
-              </button>
+              <div className="flex flex-col gap-2 sm:items-end">
+                <button
+                  type="button"
+                  onClick={openPaymentChoice}
+                  disabled={paymentLoading}
+                  className="flex items-center gap-2 rounded-full bg-error px-6 py-3 font-black text-white shadow-xl shadow-error/30 transition-transform hover:scale-105 disabled:opacity-50"
+                >
+                  <span className="material-symbols-outlined text-lg" style={{ fontVariationSettings: "'FILL' 1" }}>payments</span>
+                  {paymentLoading ? t("redirecting") : t("payNow")}
+                </button>
+              </div>
             </div>
           </div>
         )}
@@ -178,14 +225,16 @@ export function StudentFinancePage() {
                 <span className="text-sm font-bold text-on-surface-variant">{t("totalDue")}</span>
                 <strong className="ml-0 block text-lg text-primary sm:ml-2 sm:inline">{totalDue.toFixed(2)} ETB</strong>
               </div>
-              <button
-                type="button"
-                onClick={handlePayNow}
-                disabled={paymentLoading || payableLiabilities.length === 0}
-                className="rounded-full bg-error px-5 py-2 text-xs font-bold text-white shadow-md disabled:cursor-not-allowed disabled:opacity-40"
-              >
-                {paymentLoading ? t("redirecting") : t("payNow")}
-              </button>
+              {payableLiabilities.length > 0 && (
+                <button
+                  type="button"
+                  onClick={openPaymentChoice}
+                  disabled={paymentLoading}
+                  className="rounded-full bg-error px-5 py-2 text-xs font-bold text-white shadow-md disabled:cursor-not-allowed disabled:opacity-40"
+                >
+                  {paymentLoading ? t("redirecting") : t("payNow")}
+                </button>
+              )}
             </div>
 
             <div className="border-t border-surface-container-high pt-6">
@@ -215,6 +264,144 @@ export function StudentFinancePage() {
           </div>
         </div>
       </main>
+
+      {/* ── Payment method chooser modal ──────────────────────────────────── */}
+      {paymentModal && (
+        <div
+          className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/40 backdrop-blur-sm p-4"
+          onClick={(e) => { if (e.target === e.currentTarget) setPaymentModal(null); }}
+        >
+          <div
+            ref={modalRef}
+            className="w-full max-w-md rounded-2xl bg-white shadow-2xl overflow-hidden"
+          >
+            {paymentModal === "choose" && (
+              <>
+                <div className="flex items-center justify-between border-b border-slate-100 px-6 py-4">
+                  <h3 className="text-base font-black text-slate-800">{t("choosePaymentMethod")}</h3>
+                  <button
+                    type="button"
+                    onClick={() => setPaymentModal(null)}
+                    className="flex h-8 w-8 items-center justify-center rounded-full hover:bg-slate-100 text-slate-500"
+                    aria-label="Close"
+                  >
+                    <span className="material-symbols-outlined text-lg">close</span>
+                  </button>
+                </div>
+                <div className="flex flex-col gap-3 p-6">
+                  <p className="text-sm text-slate-500 -mt-1 mb-1">
+                    {t("totalDue")}: <strong className="text-error">{totalDue.toFixed(2)} ETB</strong>
+                  </p>
+                  <button
+                    type="button"
+                    onClick={handleChapaPayNow}
+                    disabled={paymentLoading}
+                    className="flex items-center gap-3 rounded-xl border-2 border-error/20 bg-gradient-to-r from-red-50 to-orange-50 px-5 py-4 text-left transition-all hover:border-error/50 hover:shadow-md disabled:opacity-50"
+                  >
+                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-error text-white shadow shadow-error/30">
+                      <span className="material-symbols-outlined text-lg" style={{ fontVariationSettings: "'FILL' 1" }}>credit_card</span>
+                    </div>
+                    <div>
+                      <p className="font-black text-error text-sm">{t("payOnline")}</p>
+                      <p className="text-xs text-slate-500 mt-0.5">{t("payViaChapa", { amount: totalDue.toFixed(2) })}</p>
+                    </div>
+                    <span className="material-symbols-outlined ml-auto text-outline text-lg">chevron_right</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setPaymentModal("manual")}
+                    className="flex items-center gap-3 rounded-xl border-2 border-slate-200 bg-slate-50 px-5 py-4 text-left transition-all hover:border-slate-400 hover:shadow-md"
+                  >
+                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-slate-200 text-slate-600">
+                      <span className="material-symbols-outlined text-lg" style={{ fontVariationSettings: "'FILL' 1" }}>account_balance</span>
+                    </div>
+                    <div>
+                      <p className="font-black text-slate-700 text-sm">{t("payOffline")}</p>
+                      <p className="text-xs text-slate-500 mt-0.5">{t("manualPaymentDesc")}</p>
+                    </div>
+                    <span className="material-symbols-outlined ml-auto text-outline text-lg">chevron_right</span>
+                  </button>
+                </div>
+              </>
+            )}
+
+            {paymentModal === "manual" && (
+              <>
+                <div className="flex items-center gap-2 border-b border-slate-100 px-6 py-4">
+                  <button
+                    type="button"
+                    onClick={() => setPaymentModal("choose")}
+                    className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full hover:bg-slate-100 text-slate-500"
+                    aria-label="Back"
+                  >
+                    <span className="material-symbols-outlined text-lg">arrow_back</span>
+                  </button>
+                  <div>
+                    <h3 className="text-base font-black text-slate-800 leading-tight">{t("manualPaymentTitle")}</h3>
+                    <p className="text-[11px] text-slate-500">{totalDue.toFixed(2)} ETB · {payableLiabilities.length} {t("items")}</p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setPaymentModal(null)}
+                    className="ml-auto flex h-8 w-8 items-center justify-center rounded-full hover:bg-slate-100 text-slate-500"
+                    aria-label="Close"
+                  >
+                    <span className="material-symbols-outlined text-lg">close</span>
+                  </button>
+                </div>
+
+                <form onSubmit={handleManualPayment} className="flex flex-col gap-4 p-6">
+                  <div className="rounded-lg bg-blue-50 border border-blue-200 px-4 py-3 text-xs text-blue-700">
+                    <span className="font-bold">ℹ️ </span>{t("manualPaymentDesc")}
+                  </div>
+
+                  <label className="flex flex-col gap-1.5">
+                    <span className="text-xs font-bold uppercase tracking-wider text-slate-600">{t("bankReference")} *</span>
+                    <input
+                      type="text"
+                      required
+                      value={manualRef}
+                      onChange={(e) => setManualRef(e.target.value)}
+                      placeholder={t("bankReferencePlaceholder")}
+                      className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
+                    />
+                  </label>
+
+                  <label className="flex flex-col gap-1.5">
+                    <span className="text-xs font-bold uppercase tracking-wider text-slate-600">{t("optionalNote")}</span>
+                    <textarea
+                      rows={2}
+                      value={manualNote}
+                      onChange={(e) => setManualNote(e.target.value)}
+                      placeholder={t("optionalNotePlaceholder")}
+                      className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm resize-none focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
+                    />
+                  </label>
+
+                  <div className="flex gap-3 pt-1">
+                    <button
+                      type="button"
+                      onClick={() => setPaymentModal("choose")}
+                      className="flex-1 rounded-full border border-slate-200 py-2.5 text-xs font-bold text-slate-600 hover:bg-slate-50"
+                    >
+                      {t("back")}
+                    </button>
+                    <button
+                      type="submit"
+                      disabled={manualSubmitting || !manualRef.trim()}
+                      className="flex-1 flex items-center justify-center gap-2 rounded-full bg-primary px-4 py-2.5 text-xs font-black text-white shadow-md disabled:cursor-not-allowed disabled:opacity-40"
+                    >
+                      <span className="material-symbols-outlined text-sm" style={{ fontVariationSettings: "'FILL' 1" }}>check_circle</span>
+                      {manualSubmitting ? "…" : t("submitManualPayment")}
+                    </button>
+                  </div>
+                </form>
+              </>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

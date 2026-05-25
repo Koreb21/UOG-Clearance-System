@@ -269,5 +269,23 @@
   "paymentHistory": "Payment history",
   "noPaymentsYet": "No payments recorded yet.",
   "unableToLoadRequests": "Unable to load requests",
-  "unableToStartPayment": "Unable to start payment"
+  "unableToStartPayment": "Unable to start payment",
+
+  "idOrEmail": "ID or University Email",
+  "usernamePlaceholder": "e.g. UGR/1234/15",
+
+  "payManually": "Pay Manually",
+  "manualPaymentTitle": "Manual / Bank Payment",
+  "manualPaymentDesc": "Enter the bank deposit or cash receipt reference given to you by the Finance Office.",
+  "bankReference": "Bank / Receipt Reference",
+  "bankReferencePlaceholder": "e.g. CBE-20260525-0034",
+  "optionalNote": "Note (optional)",
+  "optionalNotePlaceholder": "e.g. Paid at branch, receipt attached",
+  "submitManualPayment": "Submit Payment",
+  "manualPaymentSuccess": "Manual payment submitted. Finance will verify and clear your liability.",
+  "manualPaymentError": "Failed to submit manual payment.",
+  "choosePaymentMethod": "How would you like to pay?",
+  "payOnline": "Pay Online via Chapa",
+  "payOffline": "Manual / Bank Payment",
+  "back": "Back"
 }

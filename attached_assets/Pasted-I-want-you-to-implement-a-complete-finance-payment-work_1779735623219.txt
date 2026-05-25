@@ -1,0 +1,182 @@
+I want you to implement a complete finance payment workflow for my University Automated Clearance System.
+
+Project Stack:
+
+* Backend: Java (Spring Boot)
+* Web Frontend: React
+* Mobile App: React Native
+* Database: MySQL/PostgreSQL
+
+System Context:
+In the clearance system, different staff departments can place liabilities on students (for example finance liabilities, library penalties, dorm penalties, etc.).
+
+When a student has a liability:
+
+* Their clearance process stops
+* The liability status is shown in red
+* The student cannot complete clearance until the liability is resolved
+
+Current Situation:
+I already have a manual payment method in the finance page.
+
+New Requirement:
+I want to integrate Chapa Payment Gateway using Sandbox/Test Mode for demonstration purposes to examiners.
+
+Important:
+Use Chapa Sandbox/Test Environment only.
+No real money should be used.
+
+The system should demonstrate:
+
+* Payment initialization
+* Chapa checkout page
+* Fake/test payment
+* Payment verification
+* Success/failure handling
+* Automatic clearance continuation
+
+Required Features:
+
+1. Finance Page
+   Create or improve the finance page to include:
+
+* Student liabilities list
+* Liability amount
+* Liability reason
+* Liability status
+* Payment status
+* “Pay with Chapa” button
+
+2. Chapa Integration
+   Implement Chapa payment gateway integration using:
+
+* Chapa Sandbox/Test Mode
+* Secure backend API integration
+* Proper transaction verification
+
+Supported flow:
+
+* Student clicks “Pay with Chapa”
+* Backend initializes payment
+* Generate unique tx_ref
+* Redirect student to Chapa checkout page
+* Student completes fake/test payment
+* Chapa redirects back to system
+* Backend verifies transaction using Chapa verification API
+
+3. Automatic Liability Clearing
+   After successful payment:
+
+* Automatically remove/clear the liability from the student
+* Update liability status to CLEARED
+* Continue the student clearance process automatically
+* Mark the related department clearance as approved
+
+4. Student Dashboard Updates
+   In the student page/dashboard:
+
+* Show liability status as “Liability Cleared”
+* Change status indicator from red to green
+* Show successful payment message
+* Show updated clearance progress
+
+5. Staff Notification & Receipt
+   When payment succeeds:
+
+* Generate digital receipt/invoice
+* Send receipt information to the staff member who originally placed the liability
+* Staff should see:
+
+  * Student name
+  * Student ID
+  * Amount paid
+  * Payment date
+  * Transaction reference
+  * Payment status
+
+6. Database Requirements
+   Create/update entities and tables for:
+
+* Payments
+* Transactions
+* Liabilities
+* Payment receipts
+* Payment status history
+
+Include:
+
+* tx_ref
+* amount
+* student_id
+* liability_id
+* payment_status
+* payment_method
+* payment_date
+
+7. Backend Requirements (Spring Boot)
+   Implement:
+
+* REST APIs
+* Service layer
+* DTOs
+* Entity relationships
+* Chapa API integration service
+* Transaction verification logic
+* Webhook/callback handling
+* Exception handling
+* Secure secret key usage via environment variables
+
+Suggested APIs:
+
+* POST /api/payments/initialize
+* GET /api/payments/verify/{tx_ref}
+* POST /api/payments/webhook
+
+8. Frontend Requirements (React)
+   Implement:
+
+* Responsive finance/payment page
+* Payment status components
+* Chapa checkout redirection
+* Success/failure UI
+* Clearance progress updates
+* Green/red status indicators
+
+9. Mobile App Requirements (React Native)
+   Implement:
+
+* Mobile payment flow
+* Payment status screen
+* Clearance progress updates
+* Receipt display
+
+10. Security Requirements
+
+* Never expose Chapa secret key in frontend
+* Verify all transactions from backend
+* Prevent duplicate payments
+* Validate tx_ref uniqueness
+
+11. UI/UX Requirements
+    Use:
+
+* Modern university dashboard design
+* Clean finance page
+* Green indicators for cleared liabilities
+* Red indicators for pending liabilities
+* Toast notifications for payment results
+* Loading states during verification
+
+12. Additional Requirement
+    Please provide:
+
+* Clean folder structure
+* Complete backend and frontend implementation
+* Code comments
+* Integration explanation
+* Environment variable setup
+* Sandbox testing instructions
+* Example fake payment flow for demonstration
+
+Goal:
+The final system should simulate a real university finance clearance workflow using Chapa sandbox payments, automatically clear liabilities after successful payment, notify staff, and allow the student clearance process to continue seamlessly.
