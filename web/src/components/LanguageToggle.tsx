@@ -17,8 +17,10 @@ export function LanguageToggle({ className = "" }: { className?: string }) {
       aria-label={t("language")}
     >
       <span className="material-symbols-outlined text-sm">translate</span>
-      <span>{current === "en" ? "EN" : "AM"}</span>
-      <span className="text-[10px] text-outline">{current === "en" ? t("english") : t("amharic")}</span>
+      <span className="font-mono tracking-wider">{current === "en" ? "EN" : "አማ"}</span>
+      <span className="hidden text-[10px] text-outline sm:inline">
+        {current === "en" ? t("english") : t("amharic")}
+      </span>
     </button>
   );
 }

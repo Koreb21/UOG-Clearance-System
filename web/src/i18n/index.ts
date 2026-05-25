@@ -4,6 +4,16 @@ import LanguageDetector from "i18next-browser-languagedetector";
 import en from "./locales/en.json";
 import am from "./locales/am.json";
 
+function applyLangToDocument(lng: string) {
+  const isAmharic = lng.startsWith("am");
+  document.documentElement.lang = isAmharic ? "am" : "en";
+  if (isAmharic) {
+    document.documentElement.classList.add("lang-am");
+  } else {
+    document.documentElement.classList.remove("lang-am");
+  }
+}
+
 i18n
   .use(LanguageDetector)
   .use(initReactI18next)
@@ -21,5 +31,11 @@ i18n
       caches: ["localStorage"],
     },
   });
+
+i18n.on("languageChanged", (lng) => {
+  applyLangToDocument(lng);
+});
+
+applyLangToDocument(i18n.language ?? "en");
 
 export default i18n;

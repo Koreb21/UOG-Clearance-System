@@ -1,7 +1,10 @@
 import { useEffect, useMemo, useState } from "react";
 import { useParams } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { SessionControls } from "../components/SessionControls";
 import { BackButton } from "../components/BackButton";
+import { LanguageToggle } from "../components/LanguageToggle";
+import { VoiceInput } from "../components/VoiceInput";
 import { useToast } from "../components/ToastContext";
 import { api } from "../lib/api";
 import { useAuth } from "../modules/auth/AuthContext";
@@ -14,18 +17,19 @@ function formatDisplayDate(value?: string | null) {
   return date.toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" });
 }
 
-const CHECK_META: Record<string, string> = {
-  LIBRARY: "Library",
-  PROCTOR: "Proctor / Dormitory",
-  CAFE: "Cafe / Food Services",
-  DEPARTMENT_HEAD: "Department Head",
-  STUDENT_DEAN: "Dean of Students",
-};
-
 export function StudentHelpPage() {
   const { token } = useAuth();
   const { campusSlug } = useParams();
   const { showToast } = useToast();
+  const { t } = useTranslation();
+
+  const CHECK_META: Record<string, string> = useMemo(() => ({
+    LIBRARY: t("checkLibrary"),
+    PROCTOR: t("checkProctor"),
+    CAFE: t("checkCafe"),
+    DEPARTMENT_HEAD: t("checkDepartmentHead"),
+    STUDENT_DEAN: t("checkStudentDean"),
+  }), [t]);
 
   const [status, setStatus] = useState<ClearanceStatus | null>(null);
   const [inquiries, setInquiries] = useState<Inquiry[]>([]);
@@ -74,9 +78,9 @@ export function StudentHelpPage() {
       });
       setInquiries((cur) => [created, ...cur]);
       setInquiryForm((cur) => ({ ...cur, subject: "", message: "" }));
-      showToast("Inquiry sent successfully.", "success");
+      showToast(t("inquirySent"), "success");
     } catch (e) {
-      showToast(e instanceof Error ? e.message : "Unable to send inquiry", "error");
+      showToast(e instanceof Error ? e.message : t("unableToSendInquiry"), "error");
     } finally {
       setSubmittingInquiry(false);
     }
@@ -87,8 +91,9 @@ export function StudentHelpPage() {
       <header className="sticky top-0 z-50 flex h-16 items-center gap-3 border-b border-outline-variant/20 bg-white/70 px-4 shadow-sm backdrop-blur-xl sm:px-8">
         <BackButton />
         <div className="h-5 w-px bg-outline-variant/40" />
-        <span className="text-base font-bold tracking-tight text-primary">Inquiry Center</span>
-        <div className="ml-auto">
+        <span className="text-base font-bold tracking-tight text-primary">{t("inquiryCenter")}</span>
+        <div className="ml-auto flex items-center gap-3">
+          <LanguageToggle />
           <SessionControls density="compact" />
         </div>
       </header>
@@ -96,20 +101,22 @@ export function StudentHelpPage() {
       <main className="mx-auto max-w-3xl px-4 py-6 sm:px-8">
         <div className="rounded-2xl bg-surface-container-lowest p-6 shadow-sm sm:p-8">
           <div className="mb-6 flex items-center justify-between">
-            <h3 className="text-lg font-black tracking-tight text-on-surface">Inquiry Center</h3>
-            <span className="text-[10px] font-black uppercase tracking-widest text-outline">{currentInquiries.length} messages</span>
+            <h3 className="text-lg font-black tracking-tight text-on-surface">{t("inquiryCenter")}</h3>
+            <span className="text-[10px] font-black uppercase tracking-widest text-outline">
+              {currentInquiries.length} {t("messages").toLowerCase()}
+            </span>
           </div>
 
           <div className="no-scrollbar mb-6 max-h-[300px] overflow-y-auto rounded-xl bg-surface-container-low p-4">
             <div className="space-y-4">
               {currentInquiries.length === 0 ? (
-                <p className="text-center text-xs text-on-surface-variant">No messages for this request yet. Send an inquiry below.</p>
+                <p className="text-center text-xs text-on-surface-variant">{t("noMessagesYet")}</p>
               ) : (
                 currentInquiries.map((item) => (
                   <div key={item.id} className="space-y-3 border-b border-outline-variant/20 pb-4 last:border-0">
                     <div className="flex flex-col items-start gap-1">
                       <span className="text-[10px] font-bold text-outline">
-                        You · {formatDisplayDate(item.createdAt)} → {CHECK_META[item.targetCheckCode] ?? item.targetCheckCode}
+                        {t("you")} · {formatDisplayDate(item.createdAt)} → {CHECK_META[item.targetCheckCode] ?? item.targetCheckCode}
                       </span>
                       <div className="max-w-[85%] rounded-xl rounded-tl-none bg-white p-3 text-xs text-on-surface-variant shadow-sm">{item.message}</div>
                     </div>
@@ -122,7 +129,7 @@ export function StudentHelpPage() {
                         <div className="max-w-[85%] rounded-xl rounded-tr-none bg-primary-container p-3 text-xs text-on-primary shadow-sm">{item.response}</div>
                       </div>
                     ) : (
-                      <p className="text-end text-[10px] text-on-surface-variant">Awaiting reply…</p>
+                      <p className="text-end text-[10px] text-on-surface-variant">{t("awaitingReply")}</p>
                     )}
                   </div>
                 ))
@@ -133,7 +140,7 @@ export function StudentHelpPage() {
           <form onSubmit={handleCreateInquiry} className="space-y-4">
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <select
-                aria-label="Target office for inquiry"
+                aria-label={t("inquiryCenter")}
                 className="rounded-lg border-none bg-surface-container-high p-3 text-xs font-bold text-on-surface"
                 value={inquiryForm.targetCheckCode}
                 onChange={(e) => setInquiryForm((c) => ({ ...c, targetCheckCode: e.target.value }))}
@@ -149,27 +156,38 @@ export function StudentHelpPage() {
                     ))
                 }
               </select>
-              <input
-                className="rounded-lg border-none bg-surface-container-high p-3 text-xs"
-                placeholder="Subject (optional)"
-                value={inquiryForm.subject}
-                onChange={(e) => setInquiryForm((c) => ({ ...c, subject: e.target.value }))}
-              />
+              <div className="relative flex items-center">
+                <input
+                  className="w-full rounded-lg border-none bg-surface-container-high p-3 pr-12 text-xs"
+                  placeholder={t("subjectOptional")}
+                  value={inquiryForm.subject}
+                  onChange={(e) => setInquiryForm((c) => ({ ...c, subject: e.target.value }))}
+                />
+                <VoiceInput
+                  onTranscript={(text) => setInquiryForm((c) => ({ ...c, subject: c.subject ? `${c.subject} ${text}` : text }))}
+                  className="absolute right-2"
+                />
+              </div>
             </div>
             <div className="relative">
               <textarea
-                className="min-h-[100px] w-full rounded-lg border-none bg-surface-container-high p-4 text-xs focus:ring-2 focus:ring-primary/20"
-                placeholder="Message the office about a flag or delay…"
+                className="min-h-[100px] w-full rounded-lg border-none bg-surface-container-high p-4 pr-20 text-xs focus:ring-2 focus:ring-primary/20"
+                placeholder={t("messageOffice")}
                 value={inquiryForm.message}
                 onChange={(e) => setInquiryForm((c) => ({ ...c, message: e.target.value }))}
                 required
                 rows={4}
               />
+              <div className="absolute bottom-4 right-14">
+                <VoiceInput
+                  onTranscript={(text) => setInquiryForm((c) => ({ ...c, message: c.message ? `${c.message} ${text}` : text }))}
+                />
+              </div>
               <button
                 type="submit"
                 disabled={submittingInquiry}
                 className="absolute bottom-4 right-4 flex items-center justify-center rounded-lg bg-primary p-2 text-on-primary shadow-lg shadow-primary/20 disabled:opacity-50"
-                aria-label="Send"
+                aria-label={t("messages")}
               >
                 <span className="material-symbols-outlined text-sm">send</span>
               </button>

@@ -1,7 +1,9 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useParams, useSearchParams } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { SessionControls } from "../components/SessionControls";
 import { BackButton } from "../components/BackButton";
+import { LanguageToggle } from "../components/LanguageToggle";
 import { useToast } from "../components/ToastContext";
 import { api } from "../lib/api";
 import { useAuth } from "../modules/auth/AuthContext";
@@ -21,6 +23,7 @@ export function StudentFinancePage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const campus = getCampusBySlug(campusSlug);
   const { showToast } = useToast();
+  const { t } = useTranslation();
 
   const [requests, setRequests] = useState<ClearanceRequest[]>([]);
   const [selectedRequestId, setSelectedRequestId] = useState<string>("");
@@ -37,8 +40,8 @@ export function StudentFinancePage() {
           return items[0]?.id ?? "";
         });
       })
-      .catch((e) => showToast(e instanceof Error ? e.message : "Unable to load requests", "error"));
-  }, [token, showToast]);
+      .catch((e) => showToast(e instanceof Error ? e.message : t("unableToLoadRequests"), "error"));
+  }, [token, showToast, t]);
 
   useEffect(() => { loadRequests(); }, [loadRequests]);
 
@@ -73,7 +76,7 @@ export function StudentFinancePage() {
       });
       window.location.assign(response.checkoutUrl);
     } catch (e) {
-      showToast(e instanceof Error ? e.message : "Unable to start payment", "error");
+      showToast(e instanceof Error ? e.message : t("unableToStartPayment"), "error");
       setPaymentLoading(false);
     }
   }
@@ -83,8 +86,9 @@ export function StudentFinancePage() {
       <header className="sticky top-0 z-50 flex h-16 items-center gap-3 border-b border-outline-variant/20 bg-white/70 px-4 shadow-sm backdrop-blur-xl sm:px-8">
         <BackButton />
         <div className="h-5 w-px bg-outline-variant/40" />
-        <span className="text-base font-bold tracking-tight text-primary">Finance & Payments</span>
-        <div className="ml-auto">
+        <span className="text-base font-bold tracking-tight text-primary">{t("financePayments")}</span>
+        <div className="ml-auto flex items-center gap-3">
+          <LanguageToggle />
           <SessionControls density="compact" />
         </div>
       </header>
@@ -92,9 +96,9 @@ export function StudentFinancePage() {
       <main className="mx-auto max-w-4xl px-4 py-6 sm:px-8">
         {requests.length > 1 && (
           <div className="mb-6">
-            <label className="block text-xs font-bold uppercase tracking-widest text-on-surface-variant mb-2">Select Request</label>
+            <label className="block text-xs font-bold uppercase tracking-widest text-on-surface-variant mb-2">{t("selectRequest")}</label>
             <select
-              aria-label="Select clearance request"
+              aria-label={t("selectRequest")}
               className="w-full max-w-sm rounded-lg border-none bg-surface-container-high px-3 py-2 text-sm"
               value={selectedRequestId}
               onChange={(e) => setSelectedRequestId(e.target.value)}
@@ -114,11 +118,10 @@ export function StudentFinancePage() {
                   <span className="material-symbols-outlined text-xl" style={{ fontVariationSettings: "'FILL' 1" }}>payments</span>
                 </div>
                 <div>
-                  <p className="text-base font-black text-error">Finance action required</p>
+                  <p className="text-base font-black text-error">{t("financeActionRequired")}</p>
                   <p className="text-sm text-on-surface-variant mt-0.5">
-                    You have <strong>{payableLiabilities.length} unpaid {payableLiabilities.length === 1 ? "liability" : "liabilities"}</strong> totalling{" "}
-                    <strong className="text-error">{totalDue.toFixed(2)} ETB</strong>.
-                    {firstLiabilityHint && <span> First: <em>{firstLiabilityHint}</em>.</span>}
+                    {t("unpaidLiabilitiesDesc", { count: payableLiabilities.length, total: totalDue.toFixed(2) })}
+                    {firstLiabilityHint && <span> {t("firstLiability")}: <em>{firstLiabilityHint}</em>.</span>}
                   </p>
                 </div>
               </div>
@@ -129,7 +132,7 @@ export function StudentFinancePage() {
                 className="flex items-center gap-2 rounded-full bg-error px-6 py-3 font-black text-white shadow-xl shadow-error/30 transition-transform hover:scale-105 disabled:opacity-50"
               >
                 <span className="material-symbols-outlined text-lg" style={{ fontVariationSettings: "'FILL' 1" }}>payments</span>
-                {paymentLoading ? "Redirecting…" : `Pay ${totalDue.toFixed(2)} ETB via Chapa`}
+                {paymentLoading ? t("redirecting") : t("payViaChapa", { amount: totalDue.toFixed(2) })}
               </button>
             </div>
           </div>
@@ -137,9 +140,9 @@ export function StudentFinancePage() {
 
         <div className="rounded-2xl bg-surface-container-lowest p-6 shadow-sm sm:p-8">
           <div className="mb-6 flex items-center justify-between">
-            <h3 className="text-lg font-black tracking-tight text-on-surface">Liabilities &amp; payments</h3>
+            <h3 className="text-lg font-black tracking-tight text-on-surface">{t("liabilitiesAndPayments")}</h3>
             <span className="text-[10px] font-black uppercase tracking-widest text-outline">
-              {(status?.liabilities.length ?? 0) + (status?.payments.length ?? 0)} items
+              {(status?.liabilities.length ?? 0) + (status?.payments.length ?? 0)} {t("items")}
             </span>
           </div>
           <div className="space-y-4">
@@ -154,7 +157,7 @@ export function StudentFinancePage() {
                       </div>
                       <div>
                         <p className="text-sm font-bold text-on-surface">{item.itemName}</p>
-                        <p className="text-xs text-on-surface-variant">{item.description ?? item.status} · {campus?.name ?? "Campus"}</p>
+                        <p className="text-xs text-on-surface-variant">{item.description ?? item.status} · {campus?.name ?? t("campus")}</p>
                       </div>
                     </div>
                     <div className="text-left sm:text-right">
@@ -167,12 +170,12 @@ export function StudentFinancePage() {
                 );
               })
             ) : (
-              <p className="text-sm text-on-surface-variant">No liabilities for this request.</p>
+              <p className="text-sm text-on-surface-variant">{t("noLiabilities")}</p>
             )}
 
             <div className="flex flex-col gap-3 border-t border-surface-container-high pt-6 sm:flex-row sm:items-center sm:justify-between">
               <div>
-                <span className="text-sm font-bold text-on-surface-variant">Total due (payable)</span>
+                <span className="text-sm font-bold text-on-surface-variant">{t("totalDue")}</span>
                 <strong className="ml-0 block text-lg text-primary sm:ml-2 sm:inline">{totalDue.toFixed(2)} ETB</strong>
               </div>
               <button
@@ -181,12 +184,12 @@ export function StudentFinancePage() {
                 disabled={paymentLoading || payableLiabilities.length === 0}
                 className="rounded-full bg-error px-5 py-2 text-xs font-bold text-white shadow-md disabled:cursor-not-allowed disabled:opacity-40"
               >
-                {paymentLoading ? "Redirecting…" : "Pay now"}
+                {paymentLoading ? t("redirecting") : t("payNow")}
               </button>
             </div>
 
             <div className="border-t border-surface-container-high pt-6">
-              <h4 className="mb-4 text-xs font-black uppercase tracking-widest text-outline">Payment history</h4>
+              <h4 className="mb-4 text-xs font-black uppercase tracking-widest text-outline">{t("paymentHistory")}</h4>
               {status?.payments.length ? (
                 <div className="space-y-3">
                   {status.payments.map((p) => (
@@ -206,7 +209,7 @@ export function StudentFinancePage() {
                   ))}
                 </div>
               ) : (
-                <p className="text-sm text-on-surface-variant">No payments recorded yet.</p>
+                <p className="text-sm text-on-surface-variant">{t("noPaymentsYet")}</p>
               )}
             </div>
           </div>

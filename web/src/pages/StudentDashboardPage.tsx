@@ -1,7 +1,9 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams, useSearchParams } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { SessionControls } from "../components/SessionControls";
 import { BackButton } from "../components/BackButton";
+import { LanguageToggle } from "../components/LanguageToggle";
 import { api, toApiUrl } from "../lib/api";
 import { useAuth } from "../modules/auth/AuthContext";
 import type { CampusCode } from "../modules/campus/catalog";
@@ -16,8 +18,6 @@ function initials(first?: string | null, last?: string | null, fallback?: string
   return (fallback?.[0] ?? "S").toUpperCase();
 }
 
-function formatStatus(value: string) { return value.replace(/_/g, " "); }
-
 function campusHeroGradient(code: CampusCode | undefined) {
   switch (code) {
     case "MARAKI": return "from-[#0d2834] to-[#1a4558]";
@@ -30,10 +30,11 @@ export function StudentDashboardPage() {
   const { token, user } = useAuth();
   const { campusSlug } = useParams();
   const navigate = useNavigate();
+  const { t } = useTranslation();
   const [searchParams, setSearchParams] = useSearchParams();
   const currentCampus = getCampusBySlug(campusSlug);
   const campusCode = currentCampus?.code;
-  const campusLabel = currentCampus?.name ?? "Campus";
+  const campusLabel = currentCampus?.name ?? t("campus");
   const heroGradient = campusHeroGradient(campusCode);
 
   const [requests, setRequests] = useState<ClearanceRequest[]>([]);
@@ -69,20 +70,58 @@ export function StudentDashboardPage() {
 
   const displayName = status
     ? `${status.student.firstName} ${status.student.lastName}`.trim()
-    : user?.username ?? "Student";
+    : user?.username ?? t("students");
   const displayStudentId = status?.student.studentId ?? user?.studentId ?? "—";
   const programLine = status?.student.program
-    ? `${status.student.program}${status.student.academicYear != null ? ` • Year ${status.student.academicYear}` : ""}`
-    : "Program";
+    ? `${status.student.program}${status.student.academicYear != null ? ` • ${t("year")} ${status.student.academicYear}` : ""}`
+    : t("program");
 
   function go(path: string) { navigate(`/campus/${campusSlug}/student/${path}`); }
 
-  const navCards = [
-    { path: "status", icon: "fact_check", label: "Clearance Status", desc: "Track your departmental approvals and view your QR certificate", color: "from-primary to-primary-container", badge: totalChecks ? `${clearedChecks}/${totalChecks} cleared` : null },
-    { path: "finance", icon: "account_balance_wallet", label: "Finance & Payments", desc: "View liabilities, pay fees, and check payment history", color: "from-secondary to-secondary-container", badge: outstandingLiabilities > 0 ? `${outstandingLiabilities} action needed` : "All clear" },
-    { path: "help", icon: "help_outline", label: "Inquiry Center", desc: "Send messages and get replies from department offices", color: "from-[#4a5568] to-[#2d3748]", badge: null },
-    { path: "settings", icon: "manage_accounts", label: "Profile & Settings", desc: "Update your email address and change your password", color: "from-[#2d6a4f] to-[#1b4332]", badge: null },
-  ];
+  const navCards = useMemo(() => [
+    {
+      path: "status",
+      icon: "fact_check",
+      label: t("clearanceStatusLabel"),
+      desc: t("trackDepartmental"),
+      color: "from-primary to-primary-container",
+      badge: totalChecks ? t("clearedBadge", { cleared: clearedChecks, total: totalChecks }) : null
+    },
+    {
+      path: "finance",
+      icon: "account_balance_wallet",
+      label: t("financePayments"),
+      desc: t("viewLiabilities"),
+      color: "from-secondary to-secondary-container",
+      badge: outstandingLiabilities > 0
+        ? (outstandingLiabilities === 1 ? t("outstandingLiability", { count: outstandingLiabilities }) : t("outstandingLiabilities", { count: outstandingLiabilities }))
+        : t("allClear")
+    },
+    {
+      path: "help",
+      icon: "help_outline",
+      label: t("inquiryCenter"),
+      desc: t("sendMessages"),
+      color: "from-[#4a5568] to-[#2d3748]",
+      badge: null
+    },
+    {
+      path: "settings",
+      icon: "manage_accounts",
+      label: t("profileSettingsLabel"),
+      desc: t("updateYourProfile"),
+      color: "from-[#2d6a4f] to-[#1b4332]",
+      badge: null
+    },
+  ], [t, clearedChecks, totalChecks, outstandingLiabilities]);
+
+  const bottomNavItems = useMemo(() => [
+    { path: "", icon: "home", label: t("home") },
+    { path: "status", icon: "fact_check", label: t("status") },
+    { path: "finance", icon: "account_balance_wallet", label: t("finance") },
+    { path: "help", icon: "help_outline", label: t("help") },
+    { path: "settings", icon: "manage_accounts", label: t("settings") },
+  ], [t]);
 
   return (
     <div className="min-h-screen bg-background text-on-surface font-['Inter',sans-serif] antialiased pb-20 md:pb-12">
@@ -90,9 +129,10 @@ export function StudentDashboardPage() {
         <div className="flex items-center gap-3">
           <BackButton />
           <div className="h-5 w-px bg-outline-variant/40" />
-          <span className="text-lg font-bold tracking-tight text-primary sm:text-xl">Gondar Clearance System</span>
+          <span className="text-lg font-bold tracking-tight text-primary sm:text-xl">{t("gondarClearanceSystem")}</span>
         </div>
         <div className="flex items-center gap-2 sm:gap-4">
+          <LanguageToggle />
           <div className="flex items-center gap-1 sm:gap-2">
             <SessionControls density="compact" />
           </div>
@@ -114,13 +154,13 @@ export function StudentDashboardPage() {
 
       <aside className="fixed left-0 top-0 z-40 hidden h-screen w-64 flex-col gap-2 overflow-y-auto bg-surface-container-low pb-8 pl-4 pr-4 pt-20 text-sm tracking-tight md:flex">
         <div className="mb-6 px-4">
-          <h2 className="text-lg font-black text-primary">Student Portal</h2>
-          <p className="text-xs text-on-surface-variant">UGClear</p>
+          <h2 className="text-lg font-black text-primary">{t("studentPortal")}</h2>
+          <p className="text-xs text-on-surface-variant">{t("ugclear")}</p>
           <p className="mt-2 text-[10px] font-bold uppercase tracking-wider text-secondary">{campusLabel}</p>
         </div>
         <nav className="flex-1 space-y-1">
           <button type="button" className="ml-2 flex w-full items-center gap-3 rounded-lg bg-white px-4 py-3 font-semibold text-primary-container shadow-sm">
-            <span className="material-symbols-outlined">dashboard</span>Dashboard
+            <span className="material-symbols-outlined">dashboard</span>{t("dashboard")}
           </button>
           {navCards.map((card) => (
             <button key={card.path} type="button" onClick={() => go(card.path)} className="ml-2 flex w-full items-center gap-3 rounded-lg px-4 py-3 text-on-surface-variant transition-transform hover:translate-x-1 hover:bg-primary-fixed/10">
@@ -135,7 +175,7 @@ export function StudentDashboardPage() {
           className="mx-2 mt-auto flex items-center justify-center gap-2 rounded-lg bg-gradient-to-br from-primary to-primary-container py-3 px-4 font-bold text-on-primary shadow-lg shadow-primary/10"
         >
           <span className="material-symbols-outlined text-sm">add</span>
-          Request Clearance
+          {t("requestClearance")}
         </button>
       </aside>
 
@@ -146,27 +186,29 @@ export function StudentDashboardPage() {
               <span className="rounded bg-secondary-container px-2 py-1 text-[10px] font-bold uppercase tracking-widest text-on-secondary-container">{campusLabel}</span>
               <span className="flex items-center gap-1 rounded bg-white/10 px-2 py-1 text-[10px] text-primary-fixed">
                 <span className="material-symbols-outlined text-xs" style={{ fontVariationSettings: "'FILL' 1" }}>verified</span>
-                Student Portal
+                {t("studentPortal")}
               </span>
             </div>
             <h1 className="mb-2 text-2xl font-black tracking-tight sm:text-3xl md:text-4xl">
-              Welcome, {status?.student.firstName ?? user?.username ?? "Student"}
+              {t("welcomeUser", { name: status?.student.firstName ?? user?.username ?? t("students") })}
             </h1>
             <p className="mb-1 text-sm text-primary-fixed/80">{programLine}</p>
 
             {status && (
               <div className="mt-4 flex flex-wrap gap-2">
                 <span className="rounded bg-white/15 px-3 py-1.5 text-xs font-bold">
-                  {totalChecks ? `${clearedChecks}/${totalChecks} departments cleared` : "No active request"}
+                  {totalChecks ? t("departmentsClearedCount", { cleared: clearedChecks, total: totalChecks }) : t("noActiveRequest")}
                 </span>
                 {outstandingLiabilities > 0 && (
                   <span className="rounded bg-error/80 px-3 py-1.5 text-xs font-bold text-white">
-                    {outstandingLiabilities} outstanding {outstandingLiabilities === 1 ? "liability" : "liabilities"}
+                    {outstandingLiabilities === 1
+                      ? t("outstandingLiability", { count: outstandingLiabilities })
+                      : t("outstandingLiabilities", { count: outstandingLiabilities })}
                   </span>
                 )}
                 {status.certificate && (
                   <span className="rounded bg-green-500/80 px-3 py-1.5 text-xs font-bold text-white">
-                    Certificate ready
+                    {t("certificateReady")}
                   </span>
                 )}
               </div>
@@ -177,26 +219,28 @@ export function StudentDashboardPage() {
 
         <div className="mb-8 grid grid-cols-1 gap-4 sm:grid-cols-3">
           <div className="rounded-xl bg-surface-container-lowest p-5 shadow-sm">
-            <span className="text-xs font-bold uppercase tracking-wider text-outline">Current request</span>
+            <span className="text-xs font-bold uppercase tracking-wider text-outline">{t("currentRequest")}</span>
             <p className="mt-1 text-lg font-bold text-primary">{status?.request.requestNumber ?? "—"}</p>
             <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-surface-container-high">
               <div className="h-full bg-secondary transition-all" style={{ width: `${requestProgress}%` }} />
             </div>
           </div>
           <div className="rounded-xl bg-surface-container-lowest p-5 shadow-sm">
-            <span className="text-xs font-bold uppercase tracking-wider text-outline">Departments cleared</span>
+            <span className="text-xs font-bold uppercase tracking-wider text-outline">{t("departmentsCleared")}</span>
             <p className="mt-1 text-3xl font-black text-on-surface">{totalChecks ? `${clearedChecks} / ${totalChecks}` : "—"}</p>
           </div>
           <div className={`rounded-xl bg-surface-container-lowest p-5 shadow-sm ${outstandingLiabilities > 0 ? "border-l-4 border-error" : ""}`}>
-            <span className="text-xs font-bold uppercase tracking-wider text-outline">Liabilities</span>
+            <span className="text-xs font-bold uppercase tracking-wider text-outline">{t("liabilitiesLabel")}</span>
             <p className={`mt-1 text-lg font-bold ${outstandingLiabilities > 0 ? "text-error" : "text-on-surface"}`}>
-              {outstandingLiabilities > 0 ? `${outstandingLiabilities} action needed` : "All clear"}
+              {outstandingLiabilities > 0
+                ? (outstandingLiabilities === 1 ? t("outstandingLiability", { count: outstandingLiabilities }) : t("outstandingLiabilities", { count: outstandingLiabilities }))
+                : t("allClear")}
             </p>
           </div>
         </div>
 
         <div className="rounded-2xl bg-surface-container-lowest p-6 shadow-sm ring-1 ring-outline-variant/20 w-full">
-          <h3 className="text-base font-bold text-on-surface mb-3">Department Clearance Progress</h3>
+          <h3 className="text-base font-bold text-on-surface mb-3">{t("departmentClearanceProgress")}</h3>
           {status?.checks && status.checks.length > 0 ? (
             <div className="space-y-2">
               {status.checks.map((check) => (
@@ -212,19 +256,13 @@ export function StudentDashboardPage() {
               ))}
             </div>
           ) : (
-            <p className="text-sm text-on-surface-variant py-4 text-center">No active clearance request. Use the sidebar button to get started.</p>
+            <p className="text-sm text-on-surface-variant py-4 text-center">{t("noActiveRequestSidebar")}</p>
           )}
         </div>
       </main>
 
       <nav className="fixed bottom-0 left-0 right-0 z-50 flex border-t border-outline-variant/30 bg-white/95 px-2 py-2 backdrop-blur-md md:hidden">
-        {[
-          { path: "", icon: "home", label: "Home" },
-          { path: "status", icon: "fact_check", label: "Status" },
-          { path: "finance", icon: "account_balance_wallet", label: "Finance" },
-          { path: "help", icon: "help_outline", label: "Help" },
-          { path: "settings", icon: "manage_accounts", label: "Settings" },
-        ].map((item) => (
+        {bottomNavItems.map((item) => (
           <button
             key={item.path}
             type="button"
