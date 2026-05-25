@@ -156,6 +156,7 @@ export function LoginPage() {
   const [adminTapCount, setAdminTapCount] = useState(0);
   const [showAdminGate, setShowAdminGate] = useState(false);
   const [showHelp, setShowHelp] = useState(false);
+  const [infoModal, setInfoModal] = useState<null | "privacy" | "terms" | "support" | "faq">(null);
   const [adminUsername, setAdminUsername] = useState("");
   const [adminPassword, setAdminPassword] = useState("");
   const [adminPasswordVisible, setAdminPasswordVisible] = useState(false);
@@ -721,9 +722,10 @@ export function LoginPage() {
             <span>Excellence Through Digital Transformation</span>
           </div>
           <div className="portal-login-footer-links">
-            <button type="button" onClick={() => setShowHelp(true)} className="portal-login-footer-link">Privacy</button>
-            <button type="button" onClick={() => setShowHelp(true)} className="portal-login-footer-link">Terms</button>
-            <button type="button" onClick={() => setShowHelp(true)} className="portal-login-footer-link">Support</button>
+            <button type="button" onClick={() => setInfoModal("privacy")} className="portal-login-footer-link">Privacy</button>
+            <button type="button" onClick={() => setInfoModal("terms")} className="portal-login-footer-link">Terms</button>
+            <button type="button" onClick={() => setInfoModal("support")} className="portal-login-footer-link">Support</button>
+            <button type="button" onClick={() => setInfoModal("faq")} className="portal-login-footer-link">FAQs</button>
           </div>
         </div>
       </footer>
@@ -808,6 +810,146 @@ export function LoginPage() {
           </div>
         </div>
       ) : null}
+
+      {/* ── Info Modals (Privacy / Terms / Support / FAQ) ─────────── */}
+      {infoModal && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          className="role-navigator-admin-backdrop"
+          style={{ position: "fixed", inset: 0, backgroundColor: "rgba(8,15,28,0.68)", display: "grid", placeItems: "center", zIndex: 1000, padding: "1rem" }}
+          onClick={() => setInfoModal(null)}
+        >
+          <div
+            onClick={e => e.stopPropagation()}
+            style={{ background: "#fff", borderRadius: "1rem", padding: "0", maxWidth: "560px", width: "100%", boxShadow: "0 24px 48px rgba(0,0,0,0.2)", maxHeight: "85vh", display: "flex", flexDirection: "column", overflow: "hidden" }}
+          >
+            {/* Modal header */}
+            <div style={{ background: "linear-gradient(135deg,#001e40 0%,#003366 100%)", padding: "1.25rem 1.5rem", display: "flex", alignItems: "center", justifyContent: "space-between", flexShrink: 0 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: "0.625rem" }}>
+                <span className="material-symbols-outlined" style={{ color: "rgba(255,255,255,0.8)", fontSize: "22px" }}>
+                  {infoModal === "privacy" ? "privacy_tip" : infoModal === "terms" ? "gavel" : infoModal === "support" ? "support_agent" : "quiz"}
+                </span>
+                <h3 style={{ margin: 0, color: "#fff", fontWeight: 800, fontSize: "1rem" }}>
+                  {infoModal === "privacy" ? "Privacy Policy" : infoModal === "terms" ? "Terms & Conditions" : infoModal === "support" ? "Support & Contact" : "Frequently Asked Questions"}
+                </h3>
+              </div>
+              <button type="button" onClick={() => setInfoModal(null)} style={{ background: "rgba(255,255,255,0.1)", border: "none", cursor: "pointer", padding: "6px", color: "#fff", borderRadius: "8px", display: "flex", alignItems: "center" }} aria-label="Close">
+                <span className="material-symbols-outlined" style={{ fontSize: "20px" }}>close</span>
+              </button>
+            </div>
+
+            {/* Scrollable body */}
+            <div style={{ overflowY: "auto", padding: "1.5rem", display: "flex", flexDirection: "column", gap: "1rem" }}>
+
+              {infoModal === "privacy" && (
+                <>
+                  <div style={{ background: "#f0f7ff", borderRadius: "10px", padding: "0.875rem 1rem", borderLeft: "4px solid #003366" }}>
+                    <p style={{ margin: 0, fontSize: "0.8rem", color: "#1e3a5f", fontWeight: 600 }}>University of Gondar — UGClear Data Privacy Notice</p>
+                    <p style={{ margin: "0.25rem 0 0", fontSize: "0.75rem", color: "#475569" }}>Effective January 2025 · Reviewed annually</p>
+                  </div>
+                  {[
+                    { title: "What Information We Collect", body: "UGClear collects student identification details (ID number, name, program, department), academic enrolment records, administrative clearance status per office, financial liability records, and staff credentials necessary for role-based portal access. No sensitive personal data beyond academic and administrative scope is processed." },
+                    { title: "How We Use Your Data", body: "Data is used exclusively to administer the institutional clearance process: verifying departmental approvals, tracking outstanding fines and liabilities, issuing digitally-signed clearance certificates, and enabling authorised staff to review student records in their assigned offices. Data is never sold or shared with external third parties." },
+                    { title: "Data Storage & Security", body: "All records are stored on University of Gondar servers hosted within Ethiopia. Access is role-restricted and authenticated via JSON Web Tokens. Transmission is encrypted using TLS 1.3. Database backups are maintained with a 30-day retention period in accordance with the university's IT Security Policy." },
+                    { title: "Your Rights", body: "Students and staff have the right to access their own records, request corrections to inaccurate data, and raise objections to specific processing activities. Requests should be directed to the University Registrar's Office or the ICT Directorate in writing." },
+                    { title: "Data Retention", body: "Clearance records are retained for a minimum of five (5) years after graduation or separation, in compliance with Ethiopian higher education regulations. Financial liability records are retained for seven (7) years." },
+                    { title: "Contact", body: "Data Protection queries: ict@uog.edu.et · University of Gondar, Gondar, Amhara Region, Ethiopia." },
+                  ].map(s => (
+                    <details key={s.title} style={{ border: "1px solid #e2e8f0", borderRadius: "10px", padding: "0.75rem 1rem" }}>
+                      <summary style={{ fontWeight: 700, color: "#0f172a", cursor: "pointer", fontSize: "0.875rem" }}>{s.title}</summary>
+                      <p style={{ margin: "0.5rem 0 0", fontSize: "0.82rem", color: "#475569", lineHeight: 1.7 }}>{s.body}</p>
+                    </details>
+                  ))}
+                </>
+              )}
+
+              {infoModal === "terms" && (
+                <>
+                  <div style={{ background: "#f0f7ff", borderRadius: "10px", padding: "0.875rem 1rem", borderLeft: "4px solid #003366" }}>
+                    <p style={{ margin: 0, fontSize: "0.8rem", color: "#1e3a5f", fontWeight: 600 }}>UGClear Portal — Terms & Conditions of Use</p>
+                    <p style={{ margin: "0.25rem 0 0", fontSize: "0.75rem", color: "#475569" }}>Governing use of the University of Gondar Institutional Clearance System</p>
+                  </div>
+                  {[
+                    { title: "1. Acceptance of Terms", body: "By accessing and using the UGClear portal, you agree to be bound by these Terms & Conditions and all applicable University of Gondar policies. If you do not agree, you must not use this system." },
+                    { title: "2. Authorised Use", body: "This portal is exclusively for registered students, academic staff, administrative staff, and system administrators of the University of Gondar. Access credentials are personal and non-transferable. Sharing login credentials is strictly prohibited and may result in disciplinary action." },
+                    { title: "3. Student Obligations", body: "Students must ensure all submitted information is accurate and complete. Providing false or misleading information to obtain clearance constitutes academic misconduct and will be referred to the university's disciplinary committee." },
+                    { title: "4. Staff Obligations", body: "Staff members must process clearance requests in a timely manner, maintain confidentiality of student records, and only access records relevant to their assigned office. Unauthorised access to other departments' records is prohibited." },
+                    { title: "5. Financial Liabilities", body: "All outstanding fines, fees, and liabilities must be settled before a clearance certificate can be issued. The university reserves the right to withhold transcripts, degrees, and certificates until all financial obligations are cleared." },
+                    { title: "6. Clearance Certificate Validity", body: "Digital clearance certificates issued by UGClear are valid for the academic year specified. Certificates include a QR verification code. Tampering with or forging clearance documents is a criminal offence under Ethiopian law." },
+                    { title: "7. System Availability", body: "The university endeavours to maintain portal availability but does not guarantee uninterrupted access. Scheduled maintenance windows will be communicated in advance. The university is not liable for losses arising from temporary unavailability." },
+                    { title: "8. Governing Law", body: "These terms are governed by the laws of the Federal Democratic Republic of Ethiopia. Disputes shall be resolved through the University of Gondar's internal dispute resolution procedures before referral to competent courts." },
+                  ].map(s => (
+                    <details key={s.title} style={{ border: "1px solid #e2e8f0", borderRadius: "10px", padding: "0.75rem 1rem" }}>
+                      <summary style={{ fontWeight: 700, color: "#0f172a", cursor: "pointer", fontSize: "0.875rem" }}>{s.title}</summary>
+                      <p style={{ margin: "0.5rem 0 0", fontSize: "0.82rem", color: "#475569", lineHeight: 1.7 }}>{s.body}</p>
+                    </details>
+                  ))}
+                </>
+              )}
+
+              {infoModal === "support" && (
+                <>
+                  <div style={{ background: "#f0f7ff", borderRadius: "10px", padding: "0.875rem 1rem", borderLeft: "4px solid #003366" }}>
+                    <p style={{ margin: 0, fontSize: "0.8rem", color: "#1e3a5f", fontWeight: 600 }}>University of Gondar — UGClear Support</p>
+                    <p style={{ margin: "0.25rem 0 0", fontSize: "0.75rem", color: "#475569" }}>Available Sunday–Thursday, 08:00–17:00 EAT</p>
+                  </div>
+                  {[
+                    { icon: "computer", label: "ICT Directorate (Technical Support)", lines: ["For login issues, account lockouts, portal errors, and technical problems.", "📧 ict@uog.edu.et", "📞 +251 58 114 1231  (ext. 2200)", "🏢 ICT Building, Main Campus, Gondar"] },
+                    { icon: "school", label: "Registrar's Office (Clearance Queries)", lines: ["For clearance status, certificate issuance, and academic records.", "📧 registrar@uog.edu.et", "📞 +251 58 114 1231  (ext. 1100)", "🏢 Administration Block, Ground Floor"] },
+                    { icon: "account_balance", label: "Finance Office (Fee & Liability Issues)", lines: ["For outstanding fines, payment confirmation, and fee disputes.", "📧 finance@uog.edu.et", "📞 +251 58 114 1231  (ext. 1300)", "🏢 Finance Block, Room 004"] },
+                    { icon: "library_books", label: "Library (Library Clearance)", lines: ["For unreturned books, library fines, and library clearance.", "📧 library@uog.edu.et", "📞 +251 58 114 1231  (ext. 1500)", "🏢 Central Library Building"] },
+                    { icon: "location_on", label: "University of Gondar", lines: ["P.O. Box 196, Gondar, Amhara Region, Ethiopia", "🌐 www.uog.edu.et"] },
+                  ].map(s => (
+                    <div key={s.label} style={{ border: "1px solid #e2e8f0", borderRadius: "10px", padding: "0.875rem 1rem", display: "flex", gap: "0.75rem", alignItems: "flex-start" }}>
+                      <div style={{ flexShrink: 0, width: "36px", height: "36px", borderRadius: "8px", background: "#e8f0fb", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                        <span className="material-symbols-outlined" style={{ color: "#003366", fontSize: "20px" }}>{s.icon}</span>
+                      </div>
+                      <div>
+                        <p style={{ margin: "0 0 0.375rem", fontWeight: 700, fontSize: "0.875rem", color: "#0f172a" }}>{s.label}</p>
+                        {s.lines.map(l => <p key={l} style={{ margin: "0.1rem 0", fontSize: "0.8rem", color: "#475569" }}>{l}</p>)}
+                      </div>
+                    </div>
+                  ))}
+                </>
+              )}
+
+              {infoModal === "faq" && (
+                <>
+                  <div style={{ background: "#f0f7ff", borderRadius: "10px", padding: "0.875rem 1rem", borderLeft: "4px solid #003366" }}>
+                    <p style={{ margin: 0, fontSize: "0.8rem", color: "#1e3a5f", fontWeight: 600 }}>Frequently Asked Questions — UGClear Portal</p>
+                    <p style={{ margin: "0.25rem 0 0", fontSize: "0.75rem", color: "#475569" }}>University of Gondar Institutional Clearance System</p>
+                  </div>
+                  {[
+                    { q: "What is UGClear?", a: "UGClear is the University of Gondar's official digital institutional clearance portal. It replaces the manual paper-based clearance process, allowing students to apply for clearance online and enabling administrative offices to review and approve requests digitally from any campus location." },
+                    { q: "Who needs institutional clearance?", a: "All graduating students, students taking leave of absence, students transferring to another institution, and employees separating from the university must obtain institutional clearance before academic documents (degree certificates, transcripts, etc.) can be released." },
+                    { q: "How do I start my clearance application?", a: "Log in with your university ID and password on your campus portal. From your Student Dashboard, click 'Apply for Clearance' and submit the application. Your request will be sent to all required offices simultaneously." },
+                    { q: "Which offices must approve my clearance?", a: "Typically: Library (no unreturned books), Proctor's Office (no disciplinary issues), Department Head (academic requirements met), Dean of Students (student affairs), Cafeteria (no outstanding dues), Finance Office (all fees paid), and the Registrar (final sign-off). The exact offices depend on your campus and programme." },
+                    { q: "What happens if an office flags my request?", a: "If an office finds an issue (e.g. an outstanding fine or unreturned item), they will flag your request with a reason. You will see this on your dashboard. Resolve the issue with that office, then they can lift the flag and approve your clearance." },
+                    { q: "How do I pay outstanding fines?", a: "Visit the Finance Office with your student ID and the fine details shown on your dashboard. Once payment is confirmed, the Finance Officer will update your status in the system. Keep your payment receipt until clearance is fully issued." },
+                    { q: "How long does clearance take?", a: "Once submitted, most requests are processed within 3–5 working days, provided no outstanding issues exist. Complex cases involving fines or disciplinary reviews may take longer. You can track real-time status on your dashboard." },
+                    { q: "How do I get my clearance certificate?", a: "Once all offices have approved your request, the Registrar will issue a digitally-signed PDF clearance certificate. It will appear on your Student Dashboard under 'My Clearance Certificate' and can be downloaded and printed at any time." },
+                    { q: "Is my clearance certificate authentic?", a: "Yes. Each certificate contains a unique QR verification code that any institution or employer can scan to verify its authenticity directly through the UGClear verification portal at the University of Gondar website." },
+                    { q: "I can't log in — what should I do?", a: "First, ensure you are selecting the correct campus before entering credentials. If you have forgotten your password, use the 'Forgot password?' link on the login form. For persistent issues, contact the ICT Directorate at ict@uog.edu.et or call ext. 2200." },
+                  ].map(s => (
+                    <details key={s.q} style={{ border: "1px solid #e2e8f0", borderRadius: "10px", padding: "0.75rem 1rem" }}>
+                      <summary style={{ fontWeight: 700, color: "#0f172a", cursor: "pointer", fontSize: "0.875rem" }}>{s.q}</summary>
+                      <p style={{ margin: "0.5rem 0 0", fontSize: "0.82rem", color: "#475569", lineHeight: 1.7 }}>{s.a}</p>
+                    </details>
+                  ))}
+                </>
+              )}
+
+            </div>
+
+            {/* Footer */}
+            <div style={{ borderTop: "1px solid #e2e8f0", padding: "0.875rem 1.5rem", display: "flex", alignItems: "center", justifyContent: "space-between", flexShrink: 0, background: "#f8fafc" }}>
+              <p style={{ margin: 0, fontSize: "0.72rem", color: "#94a3b8" }}>© 2026 University of Gondar · UGClear</p>
+              <button type="button" onClick={() => setInfoModal(null)} style={{ background: "#003366", color: "#fff", border: "none", borderRadius: "8px", padding: "0.5rem 1.25rem", fontSize: "0.8rem", fontWeight: 700, cursor: "pointer" }}>Close</button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {showAdminGate ? (
         <div
