@@ -709,6 +709,45 @@ function handleRecordManualPayment(token: string | null, body: { clearanceReques
   return payment;
 }
 
+function handleRecordStandalonePayment(token: string | null, body: { studentFullName: string; studentId: string; yearOfStudy: string; department: string; campusId: string; amountPaid: number; paymentDate: string; referenceNumber: string | null; liabilityId: string | null; clearanceRequestId: string | null; txId: string; receiptNumber: string; recordedBy: string }, db: Db) {
+  const user = requireAuth(token, db);
+  const payment: DbPayment = {
+    id: uid(),
+    clearanceRequestId: body.clearanceRequestId ?? "standalone",
+    studentId: body.studentId,
+    liabilityIds: body.liabilityId ? [body.liabilityId] : [],
+    provider: "MANUAL",
+    txRef: body.txId,
+    providerReference: body.referenceNumber ?? null,
+    departmentCheckCode: "FINANCE",
+    amount: body.amountPaid,
+    currency: "ETB",
+    status: "VERIFIED",
+    verifiedAt: new Date(body.paymentDate).toISOString(),
+    receiptNumber: body.receiptNumber,
+    receiptSignature: null,
+    receiptIssuedAt: isoNow(),
+  };
+  db.payments.push(payment);
+  if (body.liabilityId) {
+    const liability = db.liabilities.find((l) => l.id === body.liabilityId);
+    if (liability) {
+      liability.status = "PAID";
+      if (body.clearanceRequestId) {
+        const check = db.checks.find((c) => c.clearanceRequestId === body.clearanceRequestId && c.checkCode === liability.departmentCheckCode);
+        if (check && check.status === "AWAITING_FINANCE") check.status = "PAID_PENDING_DEPARTMENT_APPROVAL";
+        const req = db.requests.find((r) => r.id === body.clearanceRequestId);
+        if (req) {
+          const allChecks = db.checks.filter((c) => c.clearanceRequestId === req.id);
+          req.status = computeRequestStatus(allChecks, db.liabilities.filter((l) => l.clearanceRequestId === req.id));
+        }
+      }
+    }
+  }
+  writeDb(db);
+  return payment;
+}
+
 // Registrar endpoints
 function handleRegistrarQueue(token: string | null, db: Db) {
   const user = requireAuth(token, db);
@@ -972,6 +1011,7 @@ async function dispatch(method: string, path: string, headers: Headers, bodyText
       return { status: 200, body: handleVerifyChapa(token, txRef, body, db) };
     }
     if (method === "POST" && pathOnly === "/finance/payments/manual") return { status: 200, body: handleRecordManualPayment(token, body, db) };
+    if (method === "POST" && pathOnly === "/finance/payments/record") return { status: 200, body: handleRecordStandalonePayment(token, body, db) };
 
     // ── Registrar
     if (method === "GET" && pathOnly === "/registrar/clearance-requests") return { status: 200, body: handleRegistrarQueue(token, db) };

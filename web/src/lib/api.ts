@@ -633,5 +633,31 @@ export const api = {
         method: "POST",
         body: JSON.stringify({ email, code, newPassword })
       }
+    ),
+  recordStandalonePayment: (
+    token: string,
+    payload: {
+      studentFullName: string;
+      studentId: string;
+      yearOfStudy: string;
+      department: string;
+      campusId: string;
+      amountPaid: number;
+      paymentDate: string;
+      referenceNumber: string | null;
+      liabilityId: string | null;
+      clearanceRequestId: string | null;
+      txId: string;
+      receiptNumber: string;
+      recordedBy: string;
+    }
+  ) =>
+    request<PaymentRecord>(
+      "/finance/payments/record",
+      {
+        method: "POST",
+        body: JSON.stringify(payload)
+      },
+      token
     )
 };

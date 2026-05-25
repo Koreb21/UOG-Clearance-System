@@ -34,6 +34,14 @@ export function FinanceDashboardPage() {
       color: "from-[#001e40] to-[#003366]",
     },
     {
+      path: "record-payment",
+      icon: "payments",
+      label: "Record Payment",
+      desc: "Record standalone cash / bank payments and generate official receipts",
+      badge: null,
+      color: "from-green-700 to-green-500",
+    },
+    {
       path: "liabilities",
       icon: "receipt_long",
       label: "Liability Ledger",
@@ -122,7 +130,7 @@ export function FinanceDashboardPage() {
           ))}
         </section>
 
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
           {navCards.map((card) => (
             <button
               key={card.path}
@@ -153,6 +161,7 @@ export function FinanceDashboardPage() {
           {[
             { label: "Dashboard", icon: "dashboard", action: () => undefined },
             { label: "Queue", icon: "groups", action: () => go("queue") },
+            { label: "Record", icon: "payments", action: () => go("record-payment") },
             { label: "Liabilities", icon: "receipt_long", action: () => go("liabilities") },
             { label: "Inquiries", icon: "forum", action: () => go("inquiries") },
           ].map((item) => (
