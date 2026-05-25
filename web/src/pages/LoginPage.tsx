@@ -342,9 +342,6 @@ export function LoginPage() {
                 <SessionControls density="compact" />
               </>
             ) : null}
-            <button type="button" className="portal-login-help-button" aria-label="Help" onClick={() => setShowHelp(true)} title="Help & FAQ">
-              <HelpIcon />
-            </button>
           </div>
         </div>
       </header>
