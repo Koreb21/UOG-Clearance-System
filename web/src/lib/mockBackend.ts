@@ -17,7 +17,7 @@ const ROLE_TO_CHECK: Record<string, CheckCode> = {
   STUDENT_DEAN: "STUDENT_DEAN",
 };
 
-const MESSAGEABLE_ROLES = ["LIBRARIAN", "PROCTOR", "CAFE_STAFF", "DEPARTMENT_HEAD", "STUDENT_DEAN", "FINANCE_OFFICER", "SYSTEM_ADMIN"];
+const MESSAGEABLE_ROLES = ["LIBRARIAN", "PROCTOR", "CAFE_STAFF", "DEPARTMENT_HEAD", "STUDENT_DEAN", "FINANCE_OFFICER", "MAIN_REGISTRAR", "SYSTEM_ADMIN"];
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -1201,7 +1201,15 @@ function handleAdminCreateStaff(token: string | null, body: { username: string; 
 function handleGetContacts(token: string | null, db: Db) {
   const user = requireAuth(token, db);
   return db.users
-    .filter((u) => u.id !== user.id && MESSAGEABLE_ROLES.includes(u.role) && (u.campusId === user.campusId || user.role === "SYSTEM_ADMIN"))
+    .filter((u) => {
+      if (u.id === user.id) return false;
+      if (!MESSAGEABLE_ROLES.includes(u.role)) return false;
+      // Registrar can only message SYSTEM_ADMIN
+      if (user.role === "MAIN_REGISTRAR") return u.role === "SYSTEM_ADMIN";
+      // Non-admin, non-registrar staff cannot message the registrar
+      if (user.role !== "SYSTEM_ADMIN" && u.role === "MAIN_REGISTRAR") return false;
+      return u.campusId === user.campusId || user.role === "SYSTEM_ADMIN";
+    })
     .map((u) => ({ id: u.id, username: u.username, role: u.role, campusId: u.campusId }));
 }
 

@@ -135,6 +135,11 @@ export function RegistrarDashboardPage() {
             <span className="material-symbols-outlined">bar_chart</span>
             <span className="text-sm font-semibold">Analytics & Exports</span>
           </button>
+          <div className="px-4 py-2 mt-2 text-[10px] font-bold uppercase tracking-widest text-[#43474f]/50">Communication</div>
+          <button type="button" onClick={() => navigate(`/campus/${campusSlug}/messages`)} className="flex items-center gap-4 px-4 py-3 text-[#43474f] rounded-lg hover:bg-white hover:text-[#001e40] hover:shadow-sm transition-all text-left">
+            <span className="material-symbols-outlined">chat</span>
+            <span className="text-sm font-semibold">Messages</span>
+          </button>
         </nav>
         <div className="mt-auto p-6">
           <div className="p-4 bg-[#001e40] text-white rounded-xl">
