@@ -1,0 +1,204 @@
+I have a university automated clearance management system built with modern web technologies. I want to implement a complete multilingual system with high-quality Amharic localization and multilingual voice input support.
+
+Your task is to implement the following features professionally and consistently across the entire application.
+
+Main Goal
+
+Add full multilingual support for:
+
+English
+Amharic (አማርኛ)
+
+The system must support:
+
+Dynamic language switching
+Proper Amharic grammar and wording
+Full page translation
+Voice-to-text input
+Automatic language-aware transcription
+Multilingual placeholders
+Persistent language preference
+RTL/LTR-safe layout handling if needed
+Accessibility support
+Functional Requirements
+1. Internationalization (i18n)
+
+Implement a scalable internationalization architecture.
+
+Requirements:
+
+Use industry-standard i18n structure
+Separate translation files
+Lazy-load translations if possible
+Avoid hardcoded text anywhere
+Every visible text must be translatable
+
+Translate:
+
+Navbar
+Sidebar
+Dashboard
+Login/Register
+Forms
+Buttons
+Alerts
+Validation messages
+Tables
+Status labels
+Admin pages
+Student pages
+Clearance workflows
+Notifications
+Modals
+Tooltips
+Email templates
+Error pages
+Translation Quality Requirements
+
+For Amharic:
+
+Use natural and professional Ethiopian Amharic
+Avoid machine-like literal translations
+Use terminology appropriate for university systems
+Keep grammar culturally appropriate
+Use readable Unicode Amharic fonts
+
+Examples:
+
+English → Amharic
+
+Login → ግባ
+Logout → ውጣ
+Clearance Status → የጥራት ሁኔታ
+Submit → አስገባ
+Approved → ተፈቅዷል
+Rejected → ተቀባይነት አልተሰጠውም
+
+Ensure all translations are context-aware.
+
+2. Language Switcher
+
+Add a professional language switcher component.
+
+Requirements:
+
+Toggle between English and Amharic instantly
+Persist selected language using:
+localStorage
+cookies
+or database profile setting
+Language must remain selected after refresh/login/logout
+Default language:
+English initially
+Add language selector in:
+Navbar
+Login page
+3. Voice-to-Text System
+
+Implement multilingual speech recognition for all important text fields.
+
+Features:
+
+Microphone button beside inputs
+Real-time speech-to-text
+Detect currently selected system language
+If English selected:
+Speech transcription must produce English text
+If Amharic selected:
+Speech transcription must produce Amharic text
+
+Examples:
+
+English speech:
+“Request clearance approval”
+→ Text should appear in English
+
+Amharic speech:
+“የጥራት ማረጋገጫ እፈልጋለሁ”
+→ Text should appear in Amharic
+
+Voice Recognition Requirements
+
+Use browser speech recognition APIs or reliable libraries.
+
+Requirements:
+
+Continuous listening option
+Start/stop microphone controls
+Visual listening indicator
+Error handling for unsupported browsers
+Graceful permission handling
+Support:
+Chrome
+Edge
+Modern browsers
+
+Set recognition language dynamically:
+
+English → en-US
+Amharic → am-ET
+4. Multilingual Placeholders
+
+All placeholders must change dynamically based on selected language.
+
+Examples:
+
+English:
+“Enter your student ID”
+
+Amharic:
+“የተማሪ መለያ ቁጥር ያስገቡ”
+
+Voice input must insert text into the correct placeholder field automatically.
+
+5. Form Validation Localization
+
+All validation errors must support both languages.
+
+Examples:
+
+English:
+“Email is required”
+
+Amharic:
+“ኢሜይል ያስፈልጋል”
+
+6. Database & Backend Considerations
+
+Implement backend support where needed.
+
+Requirements:
+
+Store user language preference
+Return localized API messages
+Support UTF-8 everywhere
+Ensure Amharic text stores correctly in database
+Prevent encoding issues
+7. UI/UX Requirements
+
+The interface must remain visually clean in both languages.
+
+Requirements:
+
+Responsive layout
+Proper font rendering for Amharic
+No text overflow
+Dynamic resizing for longer Amharic text
+Consistent spacing/alignment
+
+Recommended fonts:
+
+Noto Sans Ethiopic
+Abyssinica SIL
+8. Technical Expectations
+
+Refactor existing code professionally.
+
+Requirements:
+
+Clean architecture
+Reusable translation hooks/components
+Reusable voice-input component
+Type-safe translation keys if using TypeScript
+No duplicated translation logic
+Maintainable folder structure
