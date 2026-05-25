@@ -1,7 +1,6 @@
 import { useMemo, useState, useEffect, useCallback } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { SessionControls } from "../../components/SessionControls";
-import { BackButton } from "../../components/BackButton";
 import { toApiUrl, api } from "../../lib/api";
 import { campusCatalog } from "../../modules/campus/catalog";
 import { useAuth } from "../../modules/auth/AuthContext";
@@ -207,8 +206,6 @@ export function StaffWorkbenchTailwind({
     <div className="relative flex min-h-screen w-full flex-col overflow-x-hidden bg-background font-body text-on-surface">
       <header className="sticky top-0 z-50 flex items-center justify-between border-b border-outline-variant/20 bg-background/70 px-4 py-3 backdrop-blur-md">
         <div className="flex min-w-0 items-center gap-3">
-          <BackButton />
-          <div className="h-5 w-px shrink-0 bg-outline-variant/40" />
           <div className="min-w-0">
             <h2 className="truncate text-lg font-bold tracking-tight text-primary">{campus?.name ?? "Campus"}</h2>
             <p className="truncate text-[10px] font-bold uppercase tracking-widest text-on-surface-variant">{headerSubtitle}</p>
