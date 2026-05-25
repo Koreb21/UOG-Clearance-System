@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../modules/auth/AuthContext";
+import { ThemeToggle } from "./ThemeToggle";
 
 type SessionControlsProps = {
   density?: "compact" | "full";
@@ -38,6 +39,7 @@ export function SessionControls({ density = "full", className = "" }: SessionCon
         className={`flex flex-wrap items-center justify-end gap-2 sm:gap-3 ${className}`.trim()}
         data-testid="session-controls"
       >
+        <ThemeToggle />
         {density === "full" ? (
           <div className="hidden min-w-0 text-right sm:block">
             <p className="truncate text-sm font-bold leading-tight text-slate-800">{user.username}</p>

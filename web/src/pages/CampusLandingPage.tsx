@@ -1,7 +1,6 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { SessionControls } from "../components/SessionControls";
-import { ThemeToggle } from "../components/ThemeToggle";
 import { useToast } from "../components/ToastContext";
 import { useAuth } from "../modules/auth/AuthContext";
 import { campusCatalog, getCampusByCode } from "../modules/campus/catalog";
@@ -117,7 +116,6 @@ export function CampusLandingPage() {
             <span>UGClear</span>
           </button>
           <div className="flex items-center gap-2 sm:gap-3">
-            <ThemeToggle />
             <SessionControls density="compact" />
             <button type="button" className="role-navigator-header-action" aria-label="Portal navigation">
               <HeaderIcon />
