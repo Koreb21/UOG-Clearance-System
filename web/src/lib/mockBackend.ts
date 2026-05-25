@@ -878,6 +878,40 @@ function handlePaymentHistory(token: string | null, campusId: string, db: Db) {
   });
 }
 
+function handleLookupPayment(token: string | null, ref: string, db: Db) {
+  requireAuth(token, db);
+  if (!ref) throw { status: 400, message: "ref is required" };
+  const q = ref.trim().toUpperCase();
+  const payment = db.payments.find(
+    (p) => p.txRef.toUpperCase() === q || (p.receiptNumber ?? "").toUpperCase() === q
+  );
+  if (!payment) throw { status: 404, message: "No payment found for that reference." };
+  const student = db.students.find((s) => s.studentId === payment.studentId);
+  return {
+    id: payment.id,
+    txRef: payment.txRef,
+    receiptNumber: payment.receiptNumber,
+    providerReference: payment.providerReference,
+    provider: payment.provider,
+    amount: payment.amount,
+    currency: payment.currency,
+    status: payment.status,
+    verifiedAt: payment.verifiedAt,
+    receiptIssuedAt: payment.receiptIssuedAt,
+    departmentCheckCode: payment.departmentCheckCode,
+    student: student
+      ? {
+          studentId: student.studentId,
+          fullName: [student.firstName, student.middleName, student.lastName].filter(Boolean).join(" "),
+          program: student.program ?? "—",
+          academicYear: student.academicYear ?? "—",
+          email: student.email ?? "—",
+          campusId: student.campusId,
+        }
+      : null,
+  };
+}
+
 function handleInitiateChapa(token: string | null, body: { clearanceRequestId: string; liabilityIds: string[] }, db: Db) {
   const user = requireAuth(token, db);
   const student = studentForUser(user, db);
@@ -1451,6 +1485,7 @@ async function dispatch(method: string, path: string, headers: Headers, bodyText
     if (method === "POST" && pathOnly === "/finance/payments/manual") return { status: 200, body: handleRecordManualPayment(token, body, db) };
     if (method === "POST" && pathOnly === "/finance/payments/record") return { status: 200, body: handleRecordStandalonePayment(token, body, db) };
     if (method === "GET" && pathOnly === "/finance/payments/history") return { status: 200, body: handlePaymentHistory(token, params.get("campusId") ?? "", db) };
+    if (method === "GET" && pathOnly === "/finance/payments/lookup") return { status: 200, body: handleLookupPayment(token, params.get("ref") ?? "", db) };
 
     // ── Registrar
     if (method === "GET" && pathOnly === "/registrar/clearance-requests") return { status: 200, body: handleRegistrarQueue(token, db) };

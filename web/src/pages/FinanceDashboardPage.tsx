@@ -30,6 +30,14 @@ export function FinanceDashboardPage() {
 
   const navCards = [
     {
+      path: "scan",
+      icon: "qr_code_scanner",
+      label: "Scan Payment QR",
+      desc: "Point camera at a student payment receipt to instantly verify and display full record",
+      badge: null,
+      color: "from-primary to-[#003366]",
+    },
+    {
       path: "manual-payment",
       icon: "payments",
       label: "Manual Payment",
@@ -193,6 +201,7 @@ export function FinanceDashboardPage() {
         <div className="mx-auto flex max-w-7xl justify-center gap-1 px-2 pb-3 pt-2">
           {[
             { label: "Dashboard", icon: "dashboard", action: () => undefined },
+            { label: "Scan QR", icon: "qr_code_scanner", action: () => go("scan") },
             { label: "Manual", icon: "payments", action: () => go("manual-payment") },
             { label: "Liabilities", icon: "receipt_long", action: () => go("liabilities") },
             { label: "Inquiries", icon: "forum", action: () => go("inquiries") },

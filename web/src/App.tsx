@@ -25,6 +25,7 @@ import { CampusMismatchPage } from "./pages/CampusMismatchPage";
 import { ClearanceCertificatePage } from "./pages/ClearanceCertificatePage";
 import { MessagingPage } from "./pages/MessagingPage";
 import { StaffRecordLiabilityPage } from "./pages/StaffRecordLiabilityPage";
+import { StaffPaymentScannerPage } from "./pages/StaffPaymentScannerPage";
 
 function HomeRedirect() {
   const { user } = useAuth();
@@ -168,6 +169,14 @@ export default function App() {
         element={
           <CampusProtectedRoute allowedRoles={["FINANCE_OFFICER"]}>
             <FinanceManualPaymentPage />
+          </CampusProtectedRoute>
+        }
+      />
+      <Route
+        path="/campus/:campusSlug/finance/scan"
+        element={
+          <CampusProtectedRoute allowedRoles={["FINANCE_OFFICER"]}>
+            <StaffPaymentScannerPage />
           </CampusProtectedRoute>
         }
       />

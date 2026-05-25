@@ -438,6 +438,32 @@ export const api = {
       { method: "GET" },
       token
     ),
+  lookupPaymentByRef: (token: string, ref: string) =>
+    request<{
+      id: string;
+      txRef: string;
+      receiptNumber: string | null;
+      providerReference: string | null;
+      provider: string;
+      amount: number;
+      currency: string;
+      status: string;
+      verifiedAt: string | null;
+      receiptIssuedAt: string | null;
+      departmentCheckCode: string | null;
+      student: {
+        studentId: string;
+        fullName: string;
+        program: string;
+        academicYear: string | number;
+        email: string;
+        campusId: string;
+      } | null;
+    }>(
+      `/finance/payments/lookup?ref=${encodeURIComponent(ref)}`,
+      { method: "GET" },
+      token
+    ),
   getFlaggedStudents: (token: string, campusId?: string) =>
     request<StaffQueueItem[]>(
       `/staff/flagged?${campusId ? `campusId=${encodeURIComponent(campusId)}` : ""}`,
