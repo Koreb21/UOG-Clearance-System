@@ -1,0 +1,8 @@
+uploads = []
+generated = []
+
+[[outputs]]
+id = "QToAe8nQPkheF_2AKyBgI"
+uri = "file://UGClear_UseCaseDiagrams.pdf"
+type = "pdf"
+title = "UGClear – Use Case Diagrams (Admin · Student · Staff)"
