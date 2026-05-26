@@ -72,3 +72,9 @@ externalPort = 5000
 [[ports]]
 localPort = 8080
 externalPort = 8080
+
+[userenv]
+
+[userenv.shared]
+MONGODB_URI = "mongodb+srv://solomonaderajew04_db_user:yRvyz7XsEi64j24Y@cluster0.tazj48o.mongodb.net/ugclear"
+MONGODB_DB = "ugclear"

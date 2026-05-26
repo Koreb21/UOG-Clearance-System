@@ -20,7 +20,12 @@ let mongoClient;
 let mongoDb;
 
 async function initStore() {
-  mongoClient = new MongoClient(MONGODB_URI);
+  mongoClient = new MongoClient(MONGODB_URI, {
+    tls: true,
+    tlsAllowInvalidCertificates: false,
+    serverSelectionTimeoutMS: 15000,
+    connectTimeoutMS: 15000,
+  });
   await mongoClient.connect();
   mongoDb = mongoClient.db(MONGODB_DB);
   const col = mongoDb.collection('app_store');
