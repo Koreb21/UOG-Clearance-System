@@ -33,8 +33,10 @@ async function initStore() {
   if (!doc || !doc.data || !doc.data.initialized) {
     const db = seed(emptyDb());
     await writeDb(db);
+    await syncCollections(db);
     console.log('[UGClear] MongoDB database seeded with initial data.');
   } else {
+    await syncCollections(doc.data);
     console.log('[UGClear] MongoDB database loaded successfully.');
   }
   console.log(`[UGClear] Connected to MongoDB: ${MONGODB_DB}`);
@@ -59,6 +61,30 @@ async function readDb() {
   return db;
 }
 
+const ENTITY_COLLECTIONS = [
+  'users', 'students', 'requests', 'checks', 'liabilities',
+  'payments', 'certificates', 'departments', 'batches',
+  'prospectiveStudents', 'messages', 'inquiries'
+];
+
+async function syncCollections(db) {
+  await Promise.all(ENTITY_COLLECTIONS.map(async (key) => {
+    const items = db[key];
+    if (!Array.isArray(items)) return;
+    const col = mongoDb.collection(key);
+    await col.deleteMany({});
+    if (items.length > 0) {
+      const docs = items.map((item, i) => ({
+        ...item,
+        _seq: i,
+        ...(item.password ? { password: '[hidden]' } : {}),
+        ...(item.base64Qr ? { base64Qr: '[binary data]' } : {}),
+      }));
+      await col.insertMany(docs, { ordered: false });
+    }
+  }));
+}
+
 async function writeDb(db) {
   const col = mongoDb.collection('app_store');
   await col.replaceOne(
@@ -66,6 +92,7 @@ async function writeDb(db) {
     { _id: 'singleton', data: db, updated_at: new Date() },
     { upsert: true }
   );
+  syncCollections(db).catch(err => console.error('[UGClear] syncCollections error:', err));
 }
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
@@ -995,72 +1022,27 @@ r.post('/admin/student-batches/:batchId/import', wrap(async (req, res) => {
 r.get('/admin/db-overview', wrap(async (req, res) => {
   const db = await readDb();
   requireAuth(extractToken(req), db);
-  const collections = {
-    users: {
-      name: 'users',
-      count: db.users.length,
-      data: db.users.map(u => ({ ...u, password: '[hidden]' }))
-    },
-    students: {
-      name: 'students',
-      count: db.students.length,
-      data: db.students
-    },
-    requests: {
-      name: 'clearanceRequests',
-      count: db.requests.length,
-      data: db.requests
-    },
-    checks: {
-      name: 'clearanceChecks',
-      count: db.checks.length,
-      data: db.checks
-    },
-    liabilities: {
-      name: 'liabilities',
-      count: db.liabilities.length,
-      data: db.liabilities
-    },
-    payments: {
-      name: 'payments',
-      count: db.payments.length,
-      data: db.payments
-    },
-    certificates: {
-      name: 'certificates',
-      count: db.certificates.length,
-      data: db.certificates.map(c => ({ ...c, base64Qr: c.base64Qr ? '[binary data]' : null }))
-    },
-    departments: {
-      name: 'departments',
-      count: db.departments.length,
-      data: db.departments
-    },
-    batches: {
-      name: 'studentBatches',
-      count: db.batches.length,
-      data: db.batches
-    },
-    prospectiveStudents: {
-      name: 'prospectiveStudents',
-      count: db.prospectiveStudents.length,
-      data: db.prospectiveStudents
-    },
-    messages: {
-      name: 'messages',
-      count: db.messages.length,
-      data: db.messages
-    },
-    inquiries: {
-      name: 'inquiries',
-      count: db.inquiries.length,
-      data: db.inquiries
-    },
+  const LABEL = {
+    users: 'users', students: 'students', requests: 'clearanceRequests',
+    checks: 'clearanceChecks', liabilities: 'liabilities', payments: 'payments',
+    certificates: 'certificates', departments: 'departments', batches: 'studentBatches',
+    prospectiveStudents: 'prospectiveStudents', messages: 'messages', inquiries: 'inquiries',
   };
+  const entries = await Promise.all(
+    ENTITY_COLLECTIONS.map(async (key) => {
+      const col = mongoDb.collection(key);
+      const [count, docs] = await Promise.all([
+        col.countDocuments(),
+        col.find({}, { projection: { _seq: 0 } }).limit(200).toArray(),
+      ]);
+      return [key, { name: LABEL[key] || key, count, data: docs }];
+    })
+  );
+  const collections = Object.fromEntries(entries);
   res.json({
     database: MONGODB_DB,
     mongoUri: MONGODB_URI.replace(/:([^@]+)@/, ':***@'),
-    totalCollections: Object.keys(collections).length,
+    totalCollections: ENTITY_COLLECTIONS.length,
     collections
   });
 }));
