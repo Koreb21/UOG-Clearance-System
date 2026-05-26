@@ -33,7 +33,7 @@ const BLANK_CREATE = {
   academicYear: new Date().getFullYear()
 };
 
-type MainTab = "DASHBOARD" | "STUDENTS" | "STAFF" | "DEPARTMENTS" | "STUDENT_BATCHES";
+type MainTab = "DASHBOARD" | "STUDENTS" | "STAFF" | "DEPARTMENTS" | "STUDENT_BATCHES" | "DATABASE";
 type RightTab = "EDIT" | "REGISTER_STUDENT" | "REGISTER_STAFF" | "IMPORT";
 
 export function AdminDashboardPage() {
@@ -104,6 +104,33 @@ export function AdminDashboardPage() {
     totalRows: number; importedCount: number; failedCount: number; errors: string[];
     generatedCredentials: Array<{ firstName: string; fatherName: string | null; lastName: string; studentId: string; password: string }>;
   } | null>(null);
+
+  /* ── MongoDB Database Overview state ─────────────────────── */
+  const [dbOverview, setDbOverview] = useState<{
+    database: string;
+    mongoUri: string;
+    totalCollections: number;
+    collections: Record<string, { name: string; count: number; data: unknown[] }>;
+  } | null>(null);
+  const [dbLoading, setDbLoading] = useState(false);
+  const [dbError, setDbError] = useState<string | null>(null);
+  const [dbActiveCollection, setDbActiveCollection] = useState<string>("users");
+  const [dbSearch, setDbSearch] = useState("");
+
+  const loadDbOverview = async () => {
+    if (!token) return;
+    setDbLoading(true);
+    setDbError(null);
+    try {
+      const data = await api.getDbOverview(token);
+      setDbOverview(data);
+      setDbActiveCollection("users");
+    } catch (err: unknown) {
+      setDbError(err instanceof Error ? err.message : "Failed to load database overview");
+    } finally {
+      setDbLoading(false);
+    }
+  };
 
   /* ── Department Management state ──────────────────────────── */
   const [deptSearch, setDeptSearch] = useState("");
@@ -465,6 +492,7 @@ export function AdminDashboardPage() {
     { tab: "STAFF", icon: "badge", label: "Staff" },
     { tab: "STUDENT_BATCHES", icon: "upload_file", label: t("studentBatches") },
     { tab: "DEPARTMENTS", icon: "corporate_fare", label: t("departments") },
+    { tab: "DATABASE", icon: "database", label: "MongoDB Database" },
   ];
 
   /* ═══════════════════════════════════════════════════════════ */
@@ -1496,6 +1524,185 @@ export function AdminDashboardPage() {
                   </div>
                 </div>
               </div>
+            )}
+          </div>
+        )}
+
+        {/* ════════════════════════ DATABASE TAB ════════════════════════ */}
+        {mainTab === "DATABASE" && (
+          <div className="space-y-6">
+            <section className="flex items-center justify-between">
+              <div>
+                <h2 className="text-2xl font-bold text-primary tracking-tight flex items-center gap-3">
+                  <span className="material-symbols-outlined text-3xl">database</span>
+                  MongoDB Database
+                </h2>
+                <p className="text-sm text-on-surface-variant mt-1">
+                  Live view of all collections stored in MongoDB
+                </p>
+              </div>
+              <button
+                onClick={loadDbOverview}
+                disabled={dbLoading}
+                className="bg-primary text-white px-5 py-3 rounded-xl font-bold text-sm flex items-center gap-2 shadow-md hover:bg-primary/90 transition-all disabled:opacity-50"
+              >
+                <span className="material-symbols-outlined text-base">{dbLoading ? "sync" : "refresh"}</span>
+                {dbLoading ? "Loading..." : (dbOverview ? "Refresh" : "Load Collections")}
+              </button>
+            </section>
+
+            {dbError && (
+              <div className="bg-error-container text-on-error-container rounded-2xl p-5 flex items-start gap-3">
+                <span className="material-symbols-outlined text-error mt-0.5">error</span>
+                <div>
+                  <p className="font-bold text-sm">Connection Error</p>
+                  <p className="text-sm mt-1">{dbError}</p>
+                  <p className="text-xs mt-2 opacity-70">Make sure MONGODB_URI is set correctly in environment variables.</p>
+                </div>
+              </div>
+            )}
+
+            {!dbOverview && !dbLoading && !dbError && (
+              <div className="flex flex-col items-center justify-center py-24 gap-4 bg-surface-container-low rounded-2xl">
+                <span className="material-symbols-outlined text-6xl text-on-surface-variant/30">database</span>
+                <p className="text-on-surface-variant font-medium">Click "Load Collections" to view MongoDB data</p>
+              </div>
+            )}
+
+            {dbLoading && (
+              <div className="flex flex-col items-center justify-center py-24 gap-4 bg-surface-container-low rounded-2xl">
+                <span className="material-symbols-outlined text-4xl text-primary animate-spin">sync</span>
+                <p className="text-on-surface-variant font-medium">Connecting to MongoDB...</p>
+              </div>
+            )}
+
+            {dbOverview && !dbLoading && (
+              <>
+                {/* Connection info */}
+                <div className="bg-gradient-to-br from-green-50 to-emerald-50 border border-green-200 rounded-2xl p-5 flex items-center gap-4">
+                  <div className="w-10 h-10 rounded-full bg-green-500 flex items-center justify-center shrink-0">
+                    <span className="material-symbols-outlined text-white text-lg">check_circle</span>
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="font-bold text-green-800 text-sm">Connected to MongoDB</p>
+                    <p className="text-green-700 text-xs mt-0.5 truncate">
+                      Database: <strong>{dbOverview.database}</strong> &nbsp;•&nbsp; {dbOverview.mongoUri}
+                    </p>
+                  </div>
+                  <div className="text-right shrink-0">
+                    <p className="text-2xl font-black text-green-700">{dbOverview.totalCollections}</p>
+                    <p className="text-xs text-green-600 font-medium">Collections</p>
+                  </div>
+                </div>
+
+                {/* Collection summary cards */}
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                  {Object.entries(dbOverview.collections).map(([key, col]) => (
+                    <button
+                      key={key}
+                      onClick={() => { setDbActiveCollection(key); setDbSearch(""); }}
+                      className={`p-4 rounded-xl text-left transition-all border-2 ${
+                        dbActiveCollection === key
+                          ? "bg-primary text-white border-primary shadow-lg"
+                          : "bg-surface-container-lowest border-surface-container hover:border-primary/30 hover:bg-surface-container"
+                      }`}
+                    >
+                      <p className={`text-xs font-bold uppercase tracking-widest mb-1 ${dbActiveCollection === key ? "text-white/70" : "text-on-surface-variant"}`}>
+                        {col.name}
+                      </p>
+                      <p className={`text-3xl font-black ${dbActiveCollection === key ? "text-white" : "text-primary"}`}>
+                        {col.count}
+                      </p>
+                      <p className={`text-xs mt-1 ${dbActiveCollection === key ? "text-white/70" : "text-on-surface-variant"}`}>
+                        documents
+                      </p>
+                    </button>
+                  ))}
+                </div>
+
+                {/* Data table for active collection */}
+                {dbOverview.collections[dbActiveCollection] && (() => {
+                  const col = dbOverview.collections[dbActiveCollection];
+                  const allRows = col.data as Record<string, unknown>[];
+                  const filteredRows = dbSearch
+                    ? allRows.filter(row =>
+                        JSON.stringify(row).toLowerCase().includes(dbSearch.toLowerCase())
+                      )
+                    : allRows;
+                  const columns = allRows.length > 0
+                    ? Object.keys(allRows[0]).slice(0, 10)
+                    : [];
+
+                  return (
+                    <div className="bg-surface-container-lowest rounded-2xl border border-surface-container overflow-hidden">
+                      <div className="p-4 border-b border-surface-container flex items-center justify-between gap-4">
+                        <div>
+                          <h3 className="font-bold text-on-surface text-base">{col.name}</h3>
+                          <p className="text-xs text-on-surface-variant">{filteredRows.length} of {col.count} documents</p>
+                        </div>
+                        <div className="relative w-64">
+                          <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant text-sm">search</span>
+                          <input
+                            value={dbSearch}
+                            onChange={e => setDbSearch(e.target.value)}
+                            placeholder="Search documents..."
+                            className="w-full pl-9 pr-4 py-2 text-sm bg-surface-container border-none rounded-lg focus:ring-2 focus:ring-primary/40"
+                          />
+                        </div>
+                      </div>
+
+                      {filteredRows.length === 0 ? (
+                        <div className="py-12 text-center text-on-surface-variant">
+                          <span className="material-symbols-outlined text-4xl block mb-2">inbox</span>
+                          <p className="text-sm">No documents found</p>
+                        </div>
+                      ) : (
+                        <div className="overflow-x-auto">
+                          <table className="w-full text-xs">
+                            <thead>
+                              <tr className="bg-surface-container">
+                                <th className="text-left px-4 py-3 font-bold text-on-surface-variant uppercase tracking-wider">#</th>
+                                {columns.map(col => (
+                                  <th key={col} className="text-left px-4 py-3 font-bold text-on-surface-variant uppercase tracking-wider whitespace-nowrap">
+                                    {col}
+                                  </th>
+                                ))}
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {filteredRows.slice(0, 100).map((row, i) => (
+                                <tr key={i} className="border-t border-surface-container hover:bg-surface-container/40 transition-colors">
+                                  <td className="px-4 py-2.5 text-on-surface-variant font-mono">{i + 1}</td>
+                                  {columns.map(colKey => {
+                                    const val = row[colKey];
+                                    const display = val === null || val === undefined
+                                      ? <span className="text-on-surface-variant/40 italic">null</span>
+                                      : typeof val === "boolean"
+                                        ? <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${val ? "bg-green-100 text-green-700" : "bg-red-100 text-red-700"}`}>{String(val)}</span>
+                                        : typeof val === "object"
+                                          ? <span className="text-on-surface-variant font-mono">{JSON.stringify(val).slice(0, 40)}</span>
+                                          : <span className="text-on-surface">{String(val).slice(0, 60)}</span>;
+                                    return (
+                                      <td key={colKey} className="px-4 py-2.5 whitespace-nowrap max-w-xs overflow-hidden text-ellipsis">
+                                        {display}
+                                      </td>
+                                    );
+                                  })}
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                          {filteredRows.length > 100 && (
+                            <div className="px-4 py-3 text-xs text-on-surface-variant border-t border-surface-container bg-surface-container/30">
+                              Showing first 100 of {filteredRows.length} documents
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })()}
+              </>
             )}
           </div>
         )}

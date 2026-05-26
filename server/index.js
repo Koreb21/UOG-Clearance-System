@@ -1,7 +1,7 @@
 'use strict';
 
 const express = require('express');
-const { Pool } = require('pg');
+const { MongoClient } = require('mongodb');
 const cors = require('cors');
 const QRCode = require('qrcode');
 const multer = require('multer');
@@ -11,26 +11,28 @@ const app = express();
 const PORT = process.env.SERVER_PORT || 3001;
 const upload = multer({ storage: multer.memoryStorage() });
 
-// ── PostgreSQL ──────────────────────────────────────────────────────────────
+// ── MongoDB ──────────────────────────────────────────────────────────────────
 
-const pool = new Pool({ connectionString: process.env.DATABASE_URL });
+const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017';
+const MONGODB_DB  = process.env.MONGODB_DB  || 'ugclear';
+
+let mongoClient;
+let mongoDb;
 
 async function initStore() {
-  await pool.query(`
-    CREATE TABLE IF NOT EXISTS app_store (
-      id TEXT PRIMARY KEY,
-      data JSONB NOT NULL,
-      updated_at TIMESTAMPTZ DEFAULT NOW()
-    )
-  `);
-  const res = await pool.query("SELECT data FROM app_store WHERE id = 'singleton'");
-  if (res.rows.length === 0 || !res.rows[0].data.initialized) {
+  mongoClient = new MongoClient(MONGODB_URI);
+  await mongoClient.connect();
+  mongoDb = mongoClient.db(MONGODB_DB);
+  const col = mongoDb.collection('app_store');
+  const doc = await col.findOne({ _id: 'singleton' });
+  if (!doc || !doc.data || !doc.data.initialized) {
     const db = seed(emptyDb());
     await writeDb(db);
-    console.log('[UGClear] Database seeded with initial data.');
+    console.log('[UGClear] MongoDB database seeded with initial data.');
   } else {
-    console.log('[UGClear] PostgreSQL database loaded successfully.');
+    console.log('[UGClear] MongoDB database loaded successfully.');
   }
+  console.log(`[UGClear] Connected to MongoDB: ${MONGODB_DB}`);
 }
 
 function emptyDb() {
@@ -38,21 +40,26 @@ function emptyDb() {
 }
 
 async function readDb() {
-  const res = await pool.query("SELECT data FROM app_store WHERE id = 'singleton'");
-  if (res.rows.length === 0) { const db = seed(emptyDb()); await writeDb(db); return db; }
-  const db = res.rows[0].data;
+  const col = mongoDb.collection('app_store');
+  const doc = await col.findOne({ _id: 'singleton' });
+  if (!doc || !doc.data) { const db = seed(emptyDb()); await writeDb(db); return db; }
+  const db = doc.data;
   if (!db.messages) db.messages = [];
   if (!db.passwordResetTokens) db.passwordResetTokens = [];
   if (!db.departments) db.departments = [];
   if (!db.batches) db.batches = [];
   if (!db.prospectiveStudents) db.prospectiveStudents = [];
+  if (!db.certificates) db.certificates = [];
+  if (!db.inquiries) db.inquiries = [];
   return db;
 }
 
 async function writeDb(db) {
-  await pool.query(
-    "INSERT INTO app_store (id, data, updated_at) VALUES ('singleton', $1, NOW()) ON CONFLICT (id) DO UPDATE SET data = $1, updated_at = NOW()",
-    [JSON.stringify(db)]
+  const col = mongoDb.collection('app_store');
+  await col.replaceOne(
+    { _id: 'singleton' },
+    { _id: 'singleton', data: db, updated_at: new Date() },
+    { upsert: true }
   );
 }
 
@@ -329,6 +336,23 @@ r.post('/auth/verify-reset-code', wrap(async (req, res) => {
 }));
 
 r.post('/auth/reset-password', wrap(async (req, res) => {
+  const db = await readDb();
+  const email = (req.body.email || '').trim().toLowerCase();
+  const code = (req.body.code || '').trim();
+  const newPassword = req.body.newPassword || '';
+  if (!newPassword || newPassword.length < 6) throw { status: 400, message: 'Password must be at least 6 characters.' };
+  const rec = db.passwordResetTokens.find(t => (t.email || '').toLowerCase() === email && t.tokenHash === sha256(code) && !t.usedAt && t.expiresAt > isoNow());
+  if (!rec) throw { status: 400, message: 'Invalid or expired verification code.' };
+  const user = db.users.find(u => u.id === rec.userId);
+  if (!user) throw { status: 404, message: 'User not found.' };
+  user.password = newPassword;
+  user.mustChangePassword = false;
+  rec.usedAt = isoNow();
+  await writeDb(db);
+  res.json({ message: 'Password reset successfully.' });
+}));
+
+r.post('/auth/reset-password-complete', wrap(async (req, res) => {
   const db = await readDb();
   const email = (req.body.email || '').trim().toLowerCase();
   const code = (req.body.code || '').trim();
@@ -961,6 +985,81 @@ r.post('/admin/student-batches/:batchId/import', wrap(async (req, res) => {
   res.json({ batchId: req.params.batchId, totalRows: prospectives.length, importedCount: imported, failedCount: failed, errors, generatedCredentials });
 }));
 
+// ─── Database Overview (MongoDB collections viewer) ────────────────────────────
+
+r.get('/admin/db-overview', wrap(async (req, res) => {
+  const db = await readDb();
+  requireAuth(extractToken(req), db);
+  const collections = {
+    users: {
+      name: 'users',
+      count: db.users.length,
+      data: db.users.map(u => ({ ...u, password: '[hidden]' }))
+    },
+    students: {
+      name: 'students',
+      count: db.students.length,
+      data: db.students
+    },
+    requests: {
+      name: 'clearanceRequests',
+      count: db.requests.length,
+      data: db.requests
+    },
+    checks: {
+      name: 'clearanceChecks',
+      count: db.checks.length,
+      data: db.checks
+    },
+    liabilities: {
+      name: 'liabilities',
+      count: db.liabilities.length,
+      data: db.liabilities
+    },
+    payments: {
+      name: 'payments',
+      count: db.payments.length,
+      data: db.payments
+    },
+    certificates: {
+      name: 'certificates',
+      count: db.certificates.length,
+      data: db.certificates.map(c => ({ ...c, base64Qr: c.base64Qr ? '[binary data]' : null }))
+    },
+    departments: {
+      name: 'departments',
+      count: db.departments.length,
+      data: db.departments
+    },
+    batches: {
+      name: 'studentBatches',
+      count: db.batches.length,
+      data: db.batches
+    },
+    prospectiveStudents: {
+      name: 'prospectiveStudents',
+      count: db.prospectiveStudents.length,
+      data: db.prospectiveStudents
+    },
+    messages: {
+      name: 'messages',
+      count: db.messages.length,
+      data: db.messages
+    },
+    inquiries: {
+      name: 'inquiries',
+      count: db.inquiries.length,
+      data: db.inquiries
+    },
+  };
+  res.json({
+    database: MONGODB_DB,
+    mongoUri: MONGODB_URI.replace(/:([^@]+)@/, ':***@'),
+    totalCollections: Object.keys(collections).length,
+    collections
+  });
+}));
+
 // ─── Campuses & Departments ───────────────────────────────────────────────────
 
 r.get('/campuses', (req, res) => res.json([
@@ -1097,7 +1196,7 @@ r.post('/payments/scan', wrap(async (req, res) => {
 
 // ─── Health check ─────────────────────────────────────────────────────────────
 
-app.get('/health', (req, res) => res.json({ status: 'ok', timestamp: isoNow() }));
+app.get('/health', (req, res) => res.json({ status: 'ok', database: 'mongodb', dbName: MONGODB_DB, timestamp: isoNow() }));
 app.use('/api/v1', r);
 
 // ─── Start ────────────────────────────────────────────────────────────────────
@@ -1105,6 +1204,7 @@ app.use('/api/v1', r);
 initStore().then(() => {
   app.listen(PORT, '0.0.0.0', () => {
     console.log(`[UGClear] Backend server listening on port ${PORT}`);
+    console.log(`[UGClear] Database: MongoDB — ${MONGODB_DB}`);
     console.log('[UGClear] Accounts: student1/student123 | librarian/staff123 | finance/finance123 | registrar/reg123 | admin/admin123');
   });
 }).catch(err => {

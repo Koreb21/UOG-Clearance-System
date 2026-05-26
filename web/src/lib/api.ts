@@ -744,5 +744,16 @@ export const api = {
         body: JSON.stringify(payload)
       },
       token
-    )
+    ),
+  getDbOverview: (token: string) =>
+    request<{
+      database: string;
+      mongoUri: string;
+      totalCollections: number;
+      collections: Record<string, {
+        name: string;
+        count: number;
+        data: unknown[];
+      }>;
+    }>("/admin/db-overview", { method: "GET" }, token),
 };
