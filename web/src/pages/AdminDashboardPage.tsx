@@ -33,7 +33,7 @@ const BLANK_CREATE = {
   academicYear: new Date().getFullYear()
 };
 
-type MainTab = "DASHBOARD" | "STUDENTS" | "DEPARTMENTS" | "STUDENT_BATCHES";
+type MainTab = "DASHBOARD" | "STUDENTS" | "STAFF" | "DEPARTMENTS" | "STUDENT_BATCHES";
 type RightTab = "EDIT" | "REGISTER_STUDENT" | "REGISTER_STAFF" | "IMPORT";
 
 export function AdminDashboardPage() {
@@ -57,6 +57,10 @@ export function AdminDashboardPage() {
   const [showStudentEditModal, setShowStudentEditModal] = useState(false);
   const [showStudentAddModal, setShowStudentAddModal] = useState(false);
   const [showStudentImportModal, setShowStudentImportModal] = useState(false);
+
+  /* ── Staff tab state ──────────────────────────────────────── */
+  const [staffSearch, setStaffSearch] = useState("");
+  const [showStaffAddModal, setShowStaffAddModal] = useState(false);
   const [selectedStudentIds, setSelectedStudentIds] = useState<Set<string>>(new Set());
   const [bulkActionLoading, setBulkActionLoading] = useState(false);
 
@@ -458,6 +462,7 @@ export function AdminDashboardPage() {
   const sidebarItems: { tab: MainTab; icon: string; label: string }[] = [
     { tab: "DASHBOARD", icon: "dashboard", label: t("dashboard") },
     { tab: "STUDENTS", icon: "school", label: t("students") },
+    { tab: "STAFF", icon: "badge", label: "Staff" },
     { tab: "STUDENT_BATCHES", icon: "upload_file", label: t("studentBatches") },
     { tab: "DEPARTMENTS", icon: "corporate_fare", label: t("departments") },
   ];
@@ -979,6 +984,224 @@ export function AdminDashboardPage() {
             </div>
           );
         })()}
+
+        {/* ════════════════════════ STAFF TAB ════════════════════════ */}
+        {mainTab === "STAFF" && (() => {
+          const filteredStaff = staffUsers.filter(s => {
+            if (!staffSearch) return true;
+            const q = staffSearch.toLowerCase();
+            return s.username.toLowerCase().includes(q) ||
+              s.role.toLowerCase().includes(q) ||
+              (s.email ?? "").toLowerCase().includes(q) ||
+              (s.campusId ?? "").toLowerCase().includes(q);
+          });
+          return (
+            <div className="space-y-6">
+              {/* Header */}
+              <section className="flex items-center justify-between">
+                <div>
+                  <h2 className="text-2xl font-bold text-primary tracking-tight">Staff Management</h2>
+                  <p className="text-sm text-on-surface-variant mt-1">Register and manage staff accounts across all campuses and offices.</p>
+                </div>
+                <button
+                  onClick={() => { setCreateUserType("STAFF"); setCreateData({ ...BLANK_CREATE }); setShowStaffAddModal(true); }}
+                  className="bg-primary text-white px-5 py-3 rounded-xl font-bold text-sm flex items-center gap-2 shadow-md hover:bg-primary-container hover:text-on-primary-container transition-all"
+                >
+                  <span className="material-symbols-outlined text-base">person_add</span> Register Staff
+                </button>
+              </section>
+
+              {/* Search */}
+              <div className="bg-surface-container-low p-4 rounded-2xl">
+                <div className="relative">
+                  <span className="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-on-surface-variant">search</span>
+                  <input
+                    value={staffSearch}
+                    onChange={e => setStaffSearch(e.target.value)}
+                    type="text"
+                    placeholder="Search by username, role, email, or campus…"
+                    className="w-full pl-12 pr-4 py-3 bg-white border-none rounded-xl focus:ring-2 focus:ring-primary/40 text-sm shadow-sm transition-shadow"
+                  />
+                </div>
+              </div>
+
+              {/* Staff Table */}
+              <div className="bg-surface-container-lowest rounded-2xl overflow-hidden shadow-sm border border-surface-container">
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left text-sm">
+                    <thead className="bg-surface-container-low">
+                      <tr>
+                        <th className="px-4 py-3 text-xs font-bold uppercase tracking-wider text-on-surface-variant">Username</th>
+                        <th className="px-4 py-3 text-xs font-bold uppercase tracking-wider text-on-surface-variant">Role</th>
+                        <th className="px-4 py-3 text-xs font-bold uppercase tracking-wider text-on-surface-variant">Email</th>
+                        <th className="px-4 py-3 text-xs font-bold uppercase tracking-wider text-on-surface-variant">Campus</th>
+                        <th className="px-4 py-3 text-xs font-bold uppercase tracking-wider text-on-surface-variant">Status</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-surface-container">
+                      {filteredStaff.map(s => {
+                        const roleLabel = s.role.replace(/_/g, " ");
+                        const campusLabel = s.campusId === "TEWODROS" ? "Atse Tewodros" : s.campusId === "MARAKI" ? "Maraki" : s.campusId === "FASIL" ? "Atse Fasil" : (s.campusId ?? "—");
+                        const roleColors: Record<string, string> = {
+                          SYSTEM_ADMIN: "bg-primary-container text-primary",
+                          LIBRARIAN: "bg-secondary-container text-on-secondary-container",
+                          PROCTOR: "bg-tertiary-container text-on-tertiary-container",
+                          CAFE_STAFF: "bg-orange-100 text-orange-800",
+                          DEPARTMENT_HEAD: "bg-indigo-100 text-indigo-800",
+                          STUDENT_DEAN: "bg-purple-100 text-purple-800",
+                          FINANCE_OFFICER: "bg-green-100 text-green-800",
+                          MAIN_REGISTRAR: "bg-yellow-100 text-yellow-800",
+                        };
+                        return (
+                          <tr key={s.id} className="hover:bg-primary-fixed/10">
+                            <td className="px-4 py-3">
+                              <div className="flex items-center gap-3">
+                                <div className="w-8 h-8 rounded-full bg-primary-fixed flex items-center justify-center shrink-0">
+                                  <span className="text-xs font-black text-on-primary-fixed">{s.username.charAt(0).toUpperCase()}</span>
+                                </div>
+                                <span className="font-bold text-on-surface font-mono">{s.username}</span>
+                              </div>
+                            </td>
+                            <td className="px-4 py-3">
+                              <span className={`inline-flex rounded-full px-2 py-0.5 text-[10px] font-bold ${roleColors[s.role] ?? "bg-surface-container text-on-surface-variant"}`}>{roleLabel}</span>
+                            </td>
+                            <td className="px-4 py-3 text-on-surface-variant text-xs">{s.email ?? "—"}</td>
+                            <td className="px-4 py-3 text-on-surface-variant">{campusLabel}</td>
+                            <td className="px-4 py-3">
+                              <span className={`inline-flex rounded-full px-2 py-0.5 text-[10px] font-bold ${s.active ? "bg-green-100 text-green-800" : "bg-error-container text-error"}`}>
+                                {s.active ? "Active" : "Inactive"}
+                              </span>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                  {filteredStaff.length === 0 && (
+                    <div className="p-8 text-center text-on-surface-variant text-sm">
+                      {staffSearch ? "No staff match your search." : "No staff accounts registered yet."}
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Credentials Reference Card */}
+              <div className="bg-surface-container-low rounded-2xl p-5 border border-outline-variant/20">
+                <div className="flex items-center gap-2 mb-3">
+                  <span className="material-symbols-outlined text-primary text-lg">key</span>
+                  <h3 className="text-sm font-bold text-on-surface">Default Credentials Reference</h3>
+                  <span className="ml-auto text-[10px] font-bold text-on-surface-variant bg-surface-container px-2 py-0.5 rounded-full">Seed data</span>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
+                  {[
+                    { label: "System Admin", user: "admin", pw: "admin123", campus: "Tewodros" },
+                    { label: "Librarian", user: "librarian", pw: "staff123", campus: "Tewodros" },
+                    { label: "Proctor", user: "proctor", pw: "staff123", campus: "Tewodros" },
+                    { label: "Café Staff", user: "cafe", pw: "staff123", campus: "Tewodros" },
+                    { label: "Department Head", user: "depthead", pw: "staff123", campus: "Tewodros" },
+                    { label: "Student Dean", user: "dean", pw: "staff123", campus: "Tewodros" },
+                    { label: "Finance Officer", user: "finance", pw: "finance123", campus: "Tewodros" },
+                    { label: "Main Registrar", user: "registrar", pw: "reg123", campus: "Tewodros" },
+                    { label: "Librarian", user: "librarian_m", pw: "staff123", campus: "Maraki" },
+                    { label: "Proctor", user: "proctor_m", pw: "staff123", campus: "Maraki" },
+                    { label: "Café Staff", user: "cafe_m", pw: "staff123", campus: "Maraki" },
+                    { label: "Dept Head", user: "depthead_m", pw: "staff123", campus: "Maraki" },
+                    { label: "Student Dean", user: "dean_m", pw: "staff123", campus: "Maraki" },
+                    { label: "Finance Officer", user: "finance_m", pw: "finance123", campus: "Maraki" },
+                    { label: "Registrar", user: "registrar_m", pw: "reg123", campus: "Maraki" },
+                    { label: "Librarian", user: "librarian_f", pw: "staff123", campus: "Fasil" },
+                    { label: "Registrar", user: "registrar_f", pw: "reg123", campus: "Fasil" },
+                  ].map(({ label, user, pw, campus }) => (
+                    <div key={user} className="flex items-center gap-2 bg-surface-container-lowest rounded-lg px-3 py-2 border border-outline-variant/10">
+                      <div className="flex-1 min-w-0">
+                        <p className="font-semibold text-on-surface truncate">{label} <span className="text-on-surface-variant font-normal">· {campus}</span></p>
+                        <p className="font-mono text-primary">{user} / <span className="text-on-surface-variant">{pw}</span></p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          );
+        })()}
+
+        {/* Register Staff Modal */}
+        {showStaffAddModal && (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+            <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={() => setShowStaffAddModal(false)} />
+            <div className="relative z-10 w-full max-w-lg rounded-2xl bg-surface-container-lowest shadow-2xl p-6">
+              <div className="flex items-center justify-between mb-6">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-secondary-container flex items-center justify-center">
+                    <span className="material-symbols-outlined text-on-secondary-container">badge</span>
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-black text-on-surface">Register Staff</h3>
+                    <p className="text-xs text-on-surface-variant">Add a new staff account to the system.</p>
+                  </div>
+                </div>
+                <button onClick={() => setShowStaffAddModal(false)} className="rounded-lg p-2 text-on-surface-variant hover:bg-surface-container">
+                  <span className="material-symbols-outlined">close</span>
+                </button>
+              </div>
+              <div className="space-y-4">
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="text-[10px] font-bold uppercase tracking-widest text-on-surface-variant mb-1 block">Username</label>
+                    <input type="text" value={createData.identifier} onChange={e => setCreateData({ ...createData, identifier: e.target.value })} className={inputCls} placeholder="e.g. librarian2" />
+                  </div>
+                  <div>
+                    <label className="text-[10px] font-bold uppercase tracking-widest text-on-surface-variant mb-1 block">Password</label>
+                    <input type="password" value={createData.password} onChange={e => setCreateData({ ...createData, password: e.target.value })} className={inputCls} placeholder="(default: staff123)" />
+                  </div>
+                </div>
+                <div>
+                  <label className="text-[10px] font-bold uppercase tracking-widest text-on-surface-variant mb-1 block">Email</label>
+                  <input type="email" value={createData.email} onChange={e => setCreateData({ ...createData, email: e.target.value })} className={inputCls} placeholder="staff@uog.edu.et" />
+                </div>
+                <div>
+                  <label className="text-[10px] font-bold uppercase tracking-widest text-on-surface-variant mb-1 block">Role</label>
+                  <select value={createData.role} onChange={e => setCreateData({ ...createData, role: e.target.value })} className={inputCls}>
+                    <option value="">Select role…</option>
+                    <option value="LIBRARIAN">Librarian</option>
+                    <option value="PROCTOR">Proctor</option>
+                    <option value="CAFE_STAFF">Cafeteria Staff</option>
+                    <option value="DEPARTMENT_HEAD">Department Head</option>
+                    <option value="STUDENT_DEAN">Student Dean</option>
+                    <option value="FINANCE_OFFICER">Finance Officer</option>
+                    <option value="MAIN_REGISTRAR">Main Registrar</option>
+                    <option value="SYSTEM_ADMIN">System Admin</option>
+                  </select>
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="text-[10px] font-bold uppercase tracking-widest text-on-surface-variant mb-1 block">Campus</label>
+                    <select value={createData.campusId} onChange={e => setCreateData({ ...createData, campusId: e.target.value })} className={inputCls}>
+                      <option value="">Select campus…</option>
+                      <option value="TEWODROS">Atse Tewodros Campus</option>
+                      <option value="FASIL">Atse Fasil Campus</option>
+                      <option value="MARAKI">Maraki Campus</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="text-[10px] font-bold uppercase tracking-widest text-on-surface-variant mb-1 block">Department (optional)</label>
+                    <input type="text" value={createData.departmentId} onChange={e => setCreateData({ ...createData, departmentId: e.target.value })} className={inputCls} placeholder="e.g. LIB" />
+                  </div>
+                </div>
+              </div>
+              <div className="flex gap-3 mt-6">
+                <button onClick={() => setCreateData({ ...BLANK_CREATE })} className="flex-1 py-3 text-sm font-bold text-on-surface-variant bg-surface-container hover:bg-surface-container-high rounded-xl transition-colors">Clear</button>
+                <button
+                  onClick={async () => { await handleCreate(); setShowStaffAddModal(false); }}
+                  disabled={!createData.identifier || !createData.role || !createData.campusId}
+                  className="flex-1 py-3 text-sm font-bold bg-primary text-white rounded-xl hover:bg-primary-container hover:text-on-primary-container shadow-md transition-colors disabled:opacity-50"
+                >
+                  Register
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* ════════════════════════ STUDENT BATCHES TAB ════════════════════════ */}
         {mainTab === "STUDENT_BATCHES" && (

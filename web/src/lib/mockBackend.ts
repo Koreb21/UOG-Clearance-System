@@ -9,6 +9,44 @@ const DB_KEY = "ugc_mock_db_v7";
 const CHECK_CODES = ["LIBRARY", "PROCTOR", "CAFE", "DEPARTMENT_HEAD", "STUDENT_DEAN"] as const;
 type CheckCode = typeof CHECK_CODES[number];
 
+// Ordered clearance approval sequence — each step must be CLEARED before the next can approve.
+const CLEARANCE_ORDER: CheckCode[] = [
+  "DEPARTMENT_HEAD",
+  "LIBRARY",
+  "CAFE",
+  "PROCTOR",
+  "STUDENT_DEAN",
+];
+
+function getPredecessors(checkCode: CheckCode): CheckCode[] {
+  const idx = CLEARANCE_ORDER.indexOf(checkCode);
+  if (idx <= 0) return [];
+  return CLEARANCE_ORDER.slice(0, idx);
+}
+
+function enforceApprovalOrder(checkCode: CheckCode, clearanceRequestId: string, db: Db) {
+  const predecessors = getPredecessors(checkCode);
+  if (predecessors.length === 0) return;
+  const allChecks = db.checks.filter((c) => c.clearanceRequestId === clearanceRequestId);
+  const blockedBy = predecessors.find((code) => {
+    const c = allChecks.find((x) => x.checkCode === code);
+    return !c || c.status !== "CLEARED";
+  });
+  if (blockedBy) {
+    const labels: Record<string, string> = {
+      DEPARTMENT_HEAD: "Department Head",
+      LIBRARY: "Library",
+      CAFE: "Cafeteria",
+      PROCTOR: "Proctor",
+      STUDENT_DEAN: "Student Dean",
+    };
+    throw {
+      status: 400,
+      message: `🚩 Out-of-order approval blocked. "${labels[blockedBy]}" must approve first before this step can be cleared. Please follow the required order: Department Head → Library → Cafeteria → Proctor → Student Dean.`,
+    };
+  }
+}
+
 const ROLE_TO_CHECK: Record<string, CheckCode> = {
   LIBRARIAN: "LIBRARY",
   PROCTOR: "PROCTOR",
@@ -703,6 +741,9 @@ function handleReviewCheck(token: string | null, checkId: string, body: { status
   const user = requireAuth(token, db);
   const check = db.checks.find((c) => c.id === checkId);
   if (!check) throw { status: 404, message: "Check not found." };
+  if (body.status === "CLEARED") {
+    enforceApprovalOrder(check.checkCode as CheckCode, check.clearanceRequestId, db);
+  }
   check.status = body.status;
   check.comment = body.comment ?? null;
   check.reviewedBy = user.id;
@@ -742,6 +783,7 @@ function handleQuickApproveCheck(token: string | null, checkId: string, db: Db) 
   const user = requireAuth(token, db);
   const check = db.checks.find((c) => c.id === checkId);
   if (!check) throw { status: 404, message: "Check not found." };
+  enforceApprovalOrder(check.checkCode as CheckCode, check.clearanceRequestId, db);
   // Block if student has ANY unpaid liabilities under this office across all requests
   const req = db.requests.find((r) => r.id === check.clearanceRequestId);
   const unpaid = db.liabilities.filter(

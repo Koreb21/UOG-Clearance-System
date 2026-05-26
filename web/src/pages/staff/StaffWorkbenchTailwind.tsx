@@ -259,6 +259,63 @@ export function StaffWorkbenchTailwind({
         {/* ══════════════════════════════════════════════════════════════ */}
         {
           <div className="space-y-4">
+            {/* Clearance Order Banner */}
+            {(() => {
+              const ORDER = [
+                { code: "DEPARTMENT_HEAD", label: "Dept Head", icon: "school" },
+                { code: "LIBRARY", label: "Library", icon: "menu_book" },
+                { code: "CAFE", label: "Cafeteria", icon: "restaurant" },
+                { code: "PROCTOR", label: "Proctor", icon: "apartment" },
+                { code: "STUDENT_DEAN", label: "Student Dean", icon: "manage_accounts" },
+              ];
+              const myIdx = ORDER.findIndex(s => s.code === roleConfig.targetCheckCode);
+              const hasPredecessors = myIdx > 0;
+              return (
+                <div className={`rounded-xl border p-3 ${hasPredecessors ? "border-amber-300/60 bg-amber-50" : "border-primary-fixed/30 bg-primary-fixed/10"}`}>
+                  <div className="flex items-center gap-2 mb-2">
+                    <span className="material-symbols-outlined text-[16px] text-amber-600" style={{ fontVariationSettings: "'FILL' 1" }}>
+                      {hasPredecessors ? "warning" : "verified"}
+                    </span>
+                    <p className="text-[10px] font-black uppercase tracking-widest text-amber-700">
+                      {hasPredecessors
+                        ? "Approval order enforced — prior steps must be cleared first"
+                        : "First step in clearance — no prerequisites"}
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-1 flex-wrap">
+                    {ORDER.map((step, idx) => {
+                      const isMe = idx === myIdx;
+                      const isPast = idx < myIdx;
+                      return (
+                        <div key={step.code} className="flex items-center gap-1">
+                          <div className={`flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-bold border ${
+                            isMe
+                              ? "bg-primary text-white border-primary shadow-sm"
+                              : isPast
+                              ? "bg-green-100 text-green-800 border-green-200"
+                              : "bg-surface-container text-on-surface-variant border-outline-variant/30 opacity-60"
+                          }`}>
+                            <span className="material-symbols-outlined text-[11px]">{step.icon}</span>
+                            <span>{step.label}</span>
+                            {isMe && <span className="material-symbols-outlined text-[11px]">arrow_upward</span>}
+                          </div>
+                          {idx < ORDER.length - 1 && (
+                            <span className="material-symbols-outlined text-[14px] text-on-surface-variant opacity-40">arrow_forward</span>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                  {hasPredecessors && (
+                    <p className="text-[10px] text-amber-700 mt-2 flex items-center gap-1">
+                      <span className="material-symbols-outlined text-[12px]">info</span>
+                      Attempting to approve before <strong>{ORDER.slice(0, myIdx).map(s => s.label).join(", ")}</strong> clears will show a 🚩 red-flag error.
+                    </p>
+                  )}
+                </div>
+              );
+            })()}
+
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
               <div>
                 <h3 className="text-lg font-bold text-on-surface">Clearance Approval Queue</h3>
