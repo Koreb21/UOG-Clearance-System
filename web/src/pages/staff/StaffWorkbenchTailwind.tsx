@@ -208,7 +208,15 @@ export function StaffWorkbenchTailwind({
         <div className="flex min-w-0 items-center gap-3">
           <div className="min-w-0">
             <h2 className="truncate text-lg font-bold tracking-tight text-primary">{campus?.name ?? "Campus"}</h2>
-            <p className="truncate text-[10px] font-bold uppercase tracking-widest text-on-surface-variant">{headerSubtitle}</p>
+            <div className="flex flex-wrap items-center gap-2">
+              <p className="truncate text-[10px] font-bold uppercase tracking-widest text-on-surface-variant">{headerSubtitle}</p>
+              {user?.staffId && (
+                <span className="inline-flex items-center gap-1 rounded-full border border-primary/20 bg-primary/5 px-2 py-0.5 font-mono text-[10px] font-bold text-primary">
+                  <span className="material-symbols-outlined text-[11px]" style={{ fontVariationSettings: "'FILL' 1" }}>badge</span>
+                  {user.staffId}
+                </span>
+              )}
+            </div>
           </div>
         </div>
         <div className="flex shrink-0 items-center gap-2">
@@ -232,7 +240,15 @@ export function StaffWorkbenchTailwind({
         >
           <div className="relative z-10">
             <h1 className="mb-2 font-display text-2xl font-bold md:text-4xl">{roleConfig.heroTitle}</h1>
-            <p className="mb-6 max-w-2xl text-sm text-primary-fixed-dim md:text-base">{roleConfig.heroCopy}</p>
+            <p className="mb-3 max-w-2xl text-sm text-primary-fixed-dim md:text-base">{roleConfig.heroCopy}</p>
+            {user?.staffId && (
+              <div className="mb-6 inline-flex items-center gap-2 rounded-lg border border-white/20 bg-white/10 px-3 py-1.5 backdrop-blur-sm">
+                <span className="material-symbols-outlined text-[15px] text-white/70" style={{ fontVariationSettings: "'FILL' 1" }}>badge</span>
+                <span className="font-mono text-xs font-bold tracking-widest text-white/90">Staff ID</span>
+                <span className="h-3 w-px bg-white/30" />
+                <span className="font-mono text-sm font-bold text-white">{user.staffId}</span>
+              </div>
+            )}
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
               {statCards.map((card) => (
                 <div key={card.label} className="rounded-lg border border-white/10 bg-white/10 p-4 backdrop-blur-md md:p-6">
