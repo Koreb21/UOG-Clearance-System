@@ -192,6 +192,37 @@ function studentForUser(user, db) {
   return db.students.find(s => s.studentId === user.studentId) || null;
 }
 
+// ── Role-based access control ─────────────────────────────────────────────────
+
+const ROLES = {
+  STUDENT:    ['STUDENT'],
+  STAFF:      ['LIBRARIAN', 'PROCTOR', 'CAFE_STAFF', 'DEPARTMENT_HEAD', 'STUDENT_DEAN',
+                'FINANCE_OFFICER', 'MAIN_REGISTRAR', 'SYSTEM_ADMIN'],
+  FINANCE:    ['FINANCE_OFFICER', 'SYSTEM_ADMIN'],
+  REGISTRAR:  ['MAIN_REGISTRAR', 'SYSTEM_ADMIN'],
+  ADMIN:      ['SYSTEM_ADMIN'],
+};
+
+function requireRole(user, allowedRoles) {
+  if (!allowedRoles.includes(user.role)) {
+    throw { status: 403, message: `Access denied. Required role: ${allowedRoles.join(' or ')}.` };
+  }
+}
+
+function guard(...allowedRoles) {
+  return async (req, res, next) => {
+    try {
+      const db = await readDb();
+      const user = requireAuth(extractToken(req), db);
+      requireRole(user, allowedRoles);
+      next();
+    } catch (e) {
+      if (e && e.status) res.status(e.status).json({ message: e.message || 'Error' });
+      else { console.error('[UGClear] guard error', e); res.status(500).json({ message: 'Internal server error.' }); }
+    }
+  };
+}
+
 // ── Seed data ─────────────────────────────────────────────────────────────────
 
 function seed(db) {
@@ -310,6 +341,18 @@ function wrap(fn) {
 }
 
 const r = express.Router();
+
+// ─── Role guards (applied before any route handler in each group) ─────────────
+
+r.use('/student',    guard(...ROLES.STUDENT));
+r.use('/students',   guard(...ROLES.STUDENT));
+r.use('/staff',      guard(...ROLES.STAFF));
+r.use('/finance',    guard(...ROLES.FINANCE));
+r.use('/registrar',  guard(...ROLES.REGISTRAR));
+r.use('/admin',      guard(...ROLES.ADMIN));
+r.use('/departments', guard(...ROLES.STAFF));
+r.use('/messages',   guard(...ROLES.STAFF));
+r.use('/payments',   guard(...ROLES.STUDENT));
 
 // ─── Auth ─────────────────────────────────────────────────────────────────────
 
