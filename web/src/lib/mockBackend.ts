@@ -1231,7 +1231,7 @@ function handleImportStudentsCsv(token: string | null, file: { name: string; tex
     db.users.push({
       id: uid(), username: studentId, password: password || "student123",
       email: email || null, role: "STUDENT", campusId: student.campusId,
-      departmentId: null, studentId, active: true, mustChangePassword: true
+      departmentId: null, studentId, staffId: null, active: true, mustChangePassword: true
     });
     imported++;
   }
@@ -1386,7 +1386,7 @@ function handleAdminImportBatch(token: string | null, batchId: string, db: Db) {
     db.users.push({
       id: uid(), username: studentId, password,
       email: p.email, role: "STUDENT", campusId: p.campusId,
-      departmentId: null, studentId, active: true, mustChangePassword: true,
+      departmentId: null, studentId, staffId: null, active: true, mustChangePassword: true,
     });
     generatedCredentials.push({ firstName: p.firstName, fatherName: p.fatherName, lastName: p.lastName, studentId, password });
     imported++;
@@ -1410,7 +1410,7 @@ function handleAdminCreateStudent(token: string | null, body: Partial<DbStudent>
   const student: DbStudent = { id: uid(), studentId: body.studentId!, firstName: body.firstName!, middleName: body.middleName ?? null, lastName: body.lastName!, gender: body.gender ?? null, phone: body.phone ?? null, email: body.email ?? null, campusId: body.campusId!, academicDepartmentId: body.academicDepartmentId ?? null, program: body.program ?? null, academicYear: body.academicYear ?? null, graduationYear: body.graduationYear ?? null, profileImageUrl: null, hasProfileImage: false, status: "ACTIVE" };
   const password = (body as Record<string, string>)["temporaryPassword"] ?? "student123";
   db.students.push(student);
-  db.users.push({ id: uid(), username: body.studentId!, password, email: body.email ?? null, role: "STUDENT", campusId: body.campusId!, departmentId: null, studentId: body.studentId!, active: true, mustChangePassword: true });
+  db.users.push({ id: uid(), username: body.studentId!, password, email: body.email ?? null, role: "STUDENT", campusId: body.campusId!, departmentId: null, studentId: body.studentId!, staffId: null, active: true, mustChangePassword: true });
   writeDb(db);
   return student;
 }
@@ -1423,7 +1423,7 @@ function handleAdminStaffUsers(token: string | null, db: Db) {
 function handleAdminCreateStaff(token: string | null, body: { username: string; email?: string; role: string; campusId: string; temporaryPassword?: string }, db: Db) {
   requireAuth(token, db);
   if (db.users.find((u) => u.username === body.username)) throw { status: 400, message: "Username already exists." };
-  const user: DbUser = { id: uid(), username: body.username, password: body.temporaryPassword ?? "staff123", email: body.email ?? null, role: body.role, campusId: body.campusId, departmentId: null, studentId: null, active: true, mustChangePassword: true };
+  const user: DbUser = { id: uid(), username: body.username, password: body.temporaryPassword ?? "staff123", email: body.email ?? null, role: body.role, campusId: body.campusId, departmentId: null, studentId: null, staffId: null, active: true, mustChangePassword: true };
   db.users.push(user);
   writeDb(db);
   return { id: user.id, username: user.username, email: user.email, role: user.role, campusId: user.campusId, departmentId: null, active: true, mustChangePassword: true };

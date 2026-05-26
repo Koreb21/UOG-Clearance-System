@@ -1183,6 +1183,300 @@ r.post('/payments/scan', wrap(async (req, res) => {
   res.json({ valid: true, clearanceRequestId: cert.clearanceRequestId, studentId: cert.studentId });
 }));
 
+// ─── Route aliases (match web/mobile api.ts paths) ────────────────────────────
+
+// Student routes: /students/me/... → /student/...
+r.get('/students/me/clearance-requests', wrap(async (req, res) => {
+  const db = await readDb();
+  const user = requireAuth(extractToken(req), db);
+  const student = studentForUser(user, db);
+  if (!student) throw { status: 403, message: 'No student profile found.' };
+  res.json(db.requests.filter(rq => rq.studentId === student.studentId).sort((a, b) => b.submittedAt.localeCompare(a.submittedAt)));
+}));
+
+r.post('/students/me/clearance-requests', wrap(async (req, res) => {
+  const db = await readDb();
+  const user = requireAuth(extractToken(req), db);
+  const student = studentForUser(user, db);
+  if (!student) throw { status: 403, message: 'No student profile found.' };
+  const existing = db.requests.filter(rq => rq.studentId === student.studentId && rq.status !== 'CLOSED' && rq.status !== 'CLEARED');
+  if (existing.length > 0) throw { status: 400, message: 'You already have an active clearance request.' };
+  const reqId = uid();
+  const reqNum = 'CLR-' + String(Math.floor(Math.random() * 90000) + 10000);
+  const unpaidLiab = db.liabilities.filter(l => l.studentId === student.studentId && !['PAID', 'CLEARED', 'WAIVED'].includes(l.status));
+  const flaggedCodes = new Set(unpaidLiab.map(l => l.departmentCheckCode));
+  const newReq = { id: reqId, requestNumber: reqNum, studentId: student.studentId, campusId: student.campusId, semester: req.body.semester, academicYearLabel: req.body.academicYearLabel, requestType: req.body.requestType, status: flaggedCodes.size > 0 ? 'FLAGGED' : 'PENDING', submittedAt: isoNow() };
+  db.requests.push(newReq);
+  for (const code of CHECK_CODES) {
+    if (flaggedCodes.has(code)) {
+      const items = unpaidLiab.filter(l => l.departmentCheckCode === code).map(l => l.itemName + ' (' + l.amount.toFixed(2) + ' ETB)').join(', ');
+      db.checks.push({ id: uid(), clearanceRequestId: reqId, checkCode: code, status: 'FLAGGED', reviewedBy: null, reviewedAt: null, comment: 'Unpaid liabilities: ' + items });
+    } else {
+      db.checks.push({ id: uid(), clearanceRequestId: reqId, checkCode: code, status: 'PENDING', reviewedBy: null, reviewedAt: null, comment: null });
+    }
+  }
+  await writeDb(db);
+  res.json(newReq);
+}));
+
+r.get('/students/me/clearance-requests/:id/status', wrap(async (req, res) => {
+  const db = await readDb();
+  const user = requireAuth(extractToken(req), db);
+  const student = studentForUser(user, db);
+  if (!student) throw { status: 403, message: 'No student profile found.' };
+  const cr = db.requests.find(rq => rq.id === req.params.id && rq.studentId === student.studentId);
+  if (!cr) throw { status: 404, message: 'Clearance request not found.' };
+  res.json(buildStatusPayload(cr, student, db));
+}));
+
+r.get('/students/me/inquiries', wrap(async (req, res) => {
+  const db = await readDb();
+  const user = requireAuth(extractToken(req), db);
+  const student = studentForUser(user, db);
+  if (!student) { res.json([]); return; }
+  res.json(db.inquiries.filter(i => i.studentId === student.studentId));
+}));
+
+r.post('/students/me/inquiries', wrap(async (req, res) => {
+  const db = await readDb();
+  const user = requireAuth(extractToken(req), db);
+  const student = studentForUser(user, db);
+  if (!student) throw { status: 403, message: 'No student profile found.' };
+  const inq = { id: uid(), clearanceRequestId: req.body.clearanceRequestId, studentId: student.studentId, campusId: student.campusId, targetCheckCode: req.body.targetCheckCode, message: req.body.message, response: null, status: 'OPEN', respondedAt: null, createdAt: isoNow() };
+  db.inquiries.push(inq);
+  await writeDb(db);
+  res.json(inq);
+}));
+
+// Payment aliases
+r.post('/payments/chapa/initiate', wrap(async (req, res) => {
+  const db = await readDb();
+  const user = requireAuth(extractToken(req), db);
+  const student = studentForUser(user, db);
+  if (!student) throw { status: 403, message: 'Not a student.' };
+  const liabilities = db.liabilities.filter(l => (req.body.liabilityIds || []).includes(l.id));
+  const total = liabilities.reduce((s, l) => s + l.amount, 0);
+  const payment = { id: uid(), clearanceRequestId: req.body.clearanceRequestId, studentId: student.studentId, liabilityIds: req.body.liabilityIds || [], provider: 'CHAPA', txRef: 'TX-' + uid().slice(0, 8).toUpperCase(), providerReference: null, departmentCheckCode: liabilities[0]?.departmentCheckCode || null, amount: total, currency: 'ETB', status: 'PENDING', verifiedAt: null, receiptNumber: null, receiptSignature: null, receiptIssuedAt: null };
+  db.payments.push(payment);
+  await writeDb(db);
+  const proto = req.headers['x-forwarded-proto'] || 'https';
+  const host = req.headers['x-forwarded-host'] || req.headers.host || 'localhost:5000';
+  const origin = `${proto}://${host}`;
+  const sName = encodeURIComponent([student.firstName, student.middleName, student.lastName].filter(Boolean).join(' '));
+  res.json({ payment, checkoutUrl: `${origin}/chapa-sandbox?tx_ref=${encodeURIComponent(payment.txRef)}&amount=${total}&currency=ETB&name=${sName}&return_url=${encodeURIComponent(origin)}`, callbackUrl: `${origin}/api/v1/payments/chapa/callback`, returnUrl: origin });
+}));
+
+r.patch('/payments/chapa/verify/:txRef', wrap(async (req, res) => {
+  const db = await readDb();
+  requireAuth(extractToken(req), db);
+  const txRef = req.params.txRef;
+  const payment = db.payments.find(p => p.txRef === txRef);
+  if (!payment) throw { status: 404, message: 'Payment not found.' };
+  const { status, providerReference } = req.body;
+  const success = status === 'success' || status === 'completed' || status === 'SUCCESS';
+  payment.status = success ? 'VERIFIED' : 'FAILED';
+  payment.providerReference = providerReference || 'MOCK-' + uid().slice(0, 6).toUpperCase();
+  payment.verifiedAt = success ? isoNow() : null;
+  if (success) {
+    for (const lid of payment.liabilityIds) {
+      const liab = db.liabilities.find(l => l.id === lid);
+      if (liab) { liab.status = 'PAID'; const chk = db.checks.find(c => c.clearanceRequestId === payment.clearanceRequestId && c.checkCode === liab.departmentCheckCode); if (chk && chk.status === 'AWAITING_FINANCE') chk.status = 'PAID_PENDING_DEPARTMENT_APPROVAL'; }
+    }
+    const cr = db.requests.find(rq => rq.id === payment.clearanceRequestId);
+    if (cr) cr.status = computeRequestStatus(db.checks.filter(c => c.clearanceRequestId === cr.id));
+  }
+  await writeDb(db);
+  res.json(payment);
+}));
+
+// Finance aliases
+r.get('/finance/payments/history', wrap(async (req, res) => {
+  const db = await readDb();
+  const user = requireAuth(extractToken(req), db);
+  const targetCampus = req.query.campusId || user.campusId || '';
+  const manual = db.payments.filter(p => p.provider === 'MANUAL' || p.provider === 'STANDALONE');
+  if (!targetCampus) { res.json(manual); return; }
+  res.json(manual.filter(p => { const cr = db.requests.find(rq => rq.id === p.clearanceRequestId); if (cr) return cr.campusId === targetCampus; const st = db.students.find(s => s.studentId === p.studentId); return st?.campusId === targetCampus; }));
+}));
+
+r.post('/finance/payments/manual', wrap(async (req, res) => {
+  const db = await readDb();
+  requireAuth(extractToken(req), db);
+  const b = req.body;
+  const liabs = db.liabilities.filter(l => (b.liabilityIds || []).includes(l.id));
+  const total = liabs.reduce((s, l) => s + l.amount, 0);
+  const payment = { id: uid(), clearanceRequestId: b.clearanceRequestId, studentId: b.studentId, liabilityIds: b.liabilityIds || [], provider: 'MANUAL', txRef: 'MANUAL-' + uid().slice(0, 8).toUpperCase(), providerReference: b.providerReference, departmentCheckCode: liabs[0]?.departmentCheckCode || null, amount: total, currency: 'ETB', status: 'VERIFIED', verifiedAt: isoNow(), receiptNumber: 'RCP-' + uid().slice(0, 6).toUpperCase(), receiptSignature: null, receiptIssuedAt: isoNow() };
+  db.payments.push(payment);
+  for (const lid of (b.liabilityIds || [])) { const l = db.liabilities.find(x => x.id === lid); if (l) { l.status = 'PAID'; const chk = db.checks.find(c => c.clearanceRequestId === b.clearanceRequestId && c.checkCode === l.departmentCheckCode); if (chk && chk.status === 'AWAITING_FINANCE') chk.status = 'PAID_PENDING_DEPARTMENT_APPROVAL'; } }
+  const cr = db.requests.find(rq => rq.id === b.clearanceRequestId);
+  if (cr) cr.status = computeRequestStatus(db.checks.filter(c => c.clearanceRequestId === cr.id));
+  await writeDb(db);
+  res.json(payment);
+}));
+
+// Staff aliases
+r.get('/staff/clearance-requests', wrap(async (req, res) => {
+  const db = await readDb();
+  requireAuth(extractToken(req), db);
+  const { studentId } = req.query;
+  if (!studentId) { res.json([]); return; }
+  res.json(db.requests.filter(rq => rq.studentId === studentId));
+}));
+
+r.get('/staff/clearance', wrap(async (req, res) => {
+  const db = await readDb();
+  requireAuth(extractToken(req), db);
+  const { studentId, clearanceRequestId } = req.query;
+  if (!studentId || !clearanceRequestId) throw { status: 400, message: 'studentId and clearanceRequestId are required.' };
+  const cr = db.requests.find(rq => rq.id === clearanceRequestId && rq.studentId === studentId);
+  if (!cr) throw { status: 404, message: 'Request not found.' };
+  const student = db.students.find(s => s.studentId === studentId);
+  if (!student) throw { status: 404, message: 'Student not found.' };
+  res.json(buildStatusPayload(cr, student, db));
+}));
+
+r.get('/staff/clearance-queue', wrap(async (req, res) => {
+  const db = await readDb();
+  const user = requireAuth(extractToken(req), db);
+  const checkCode = ROLE_TO_CHECK[user.role];
+  if (!checkCode) { res.json([]); return; }
+  const results = [];
+  for (const cr of db.requests) {
+    if (cr.campusId !== user.campusId || cr.status === 'CLOSED') continue;
+    const chk = db.checks.find(c => c.clearanceRequestId === cr.id && c.checkCode === checkCode);
+    if (!chk) continue;
+    const st = db.students.find(s => s.studentId === cr.studentId);
+    if (!st) continue;
+    const allL = db.liabilities.filter(l => l.studentId === cr.studentId && l.departmentCheckCode === checkCode);
+    const unpaidL = allL.filter(l => !['PAID', 'CLEARED', 'WAIVED'].includes(l.status));
+    const isFlagged = chk.status === 'FLAGGED' || chk.status === 'FAILED' || unpaidL.length > 0;
+    results.push({ checkId: chk.id, checkCode: chk.checkCode, checkStatus: isFlagged && chk.status === 'PENDING' ? 'FLAGGED' : chk.status, clearanceRequestId: cr.id, requestNumber: cr.requestNumber, requestStatus: cr.status, submittedAt: cr.submittedAt, studentId: st.studentId, studentName: st.firstName + ' ' + st.lastName, program: st.program || null, campusId: cr.campusId, totalFines: unpaidL.reduce((s, l) => s + l.amount, 0), unpaidCount: unpaidL.length, liabilityCount: allL.length });
+  }
+  res.json(results.sort((a, b) => b.submittedAt.localeCompare(a.submittedAt)));
+}));
+
+r.get('/staff/flagged', wrap(async (req, res) => {
+  const db = await readDb();
+  const user = requireAuth(extractToken(req), db);
+  const targetCampus = req.query.campusId || user.campusId || '';
+  const targetStatuses = ['AWAITING_FINANCE', 'PAID_PENDING_DEPARTMENT_APPROVAL', 'FLAGGED'];
+  const result = [];
+  for (const chk of db.checks.filter(c => targetStatuses.includes(c.status))) {
+    const cr = db.requests.find(rq => rq.id === chk.clearanceRequestId);
+    if (!cr || (targetCampus && cr.campusId !== targetCampus)) continue;
+    const st = db.students.find(s => s.studentId === cr.studentId);
+    const liab = db.liabilities.find(l => l.clearanceRequestId === cr.id && l.departmentCheckCode === chk.checkCode);
+    result.push({ checkId: chk.id, checkCode: chk.checkCode, checkStatus: chk.status, clearanceRequestId: cr.id, requestNumber: cr.requestNumber, requestType: cr.requestType, requestStatus: cr.status, studentId: cr.studentId, studentName: st ? `${st.firstName} ${st.lastName}` : cr.studentId, campusId: cr.campusId, submittedAt: cr.submittedAt, liabilityItemName: liab?.itemName, liabilityAmount: liab?.amount, liabilityCurrency: liab?.currency, liabilityDescription: liab?.description, staffComment: chk.comment });
+  }
+  res.json(result);
+}));
+
+r.patch('/staff/checks/:checkId/review', wrap(async (req, res) => {
+  const db = await readDb();
+  const user = requireAuth(extractToken(req), db);
+  const chk = db.checks.find(c => c.id === req.params.checkId);
+  if (!chk) throw { status: 404, message: 'Check not found.' };
+  if (req.body.status === 'CLEARED') enforceApprovalOrder(chk.checkCode, chk.clearanceRequestId, db);
+  chk.status = req.body.status;
+  chk.comment = req.body.comment || null;
+  chk.reviewedBy = user.id;
+  chk.reviewedAt = isoNow();
+  const cr = db.requests.find(rq => rq.id === chk.clearanceRequestId);
+  if (cr) cr.status = computeRequestStatus(db.checks.filter(c => c.clearanceRequestId === cr.id));
+  await writeDb(db);
+  res.json(chk);
+}));
+
+r.patch('/staff/checks/:checkId/quick-approve', wrap(async (req, res) => {
+  const db = await readDb();
+  const user = requireAuth(extractToken(req), db);
+  const chk = db.checks.find(c => c.id === req.params.checkId);
+  if (!chk) throw { status: 404, message: 'Check not found.' };
+  chk.status = 'CLEARED';
+  chk.comment = req.body.comment || null;
+  chk.reviewedBy = user.id;
+  chk.reviewedAt = isoNow();
+  const cr = db.requests.find(rq => rq.id === chk.clearanceRequestId);
+  if (cr) cr.status = computeRequestStatus(db.checks.filter(c => c.clearanceRequestId === cr.id));
+  await writeDb(db);
+  res.json(chk);
+}));
+
+r.patch('/staff/checks/:checkId/revoke-payment', wrap(async (req, res) => {
+  const db = await readDb();
+  requireAuth(extractToken(req), db);
+  const chk = db.checks.find(c => c.id === req.params.checkId);
+  if (!chk) throw { status: 404, message: 'Check not found.' };
+  db.liabilities.filter(l => l.clearanceRequestId === chk.clearanceRequestId && l.departmentCheckCode === chk.checkCode && l.status === 'PAID' && l.paymentRequired).forEach(l => { l.status = 'PENDING'; });
+  const reason = req.body.reason || '';
+  chk.status = 'AWAITING_FINANCE';
+  chk.comment = 'Finance has stopped clearance. Payment disputed.' + (reason ? ' Reason: ' + reason : '');
+  chk.reviewedAt = isoNow();
+  const cr = db.requests.find(rq => rq.id === chk.clearanceRequestId);
+  if (cr) cr.status = 'IN_REVIEW';
+  await writeDb(db);
+  res.json(chk);
+}));
+
+// Registrar aliases
+r.get('/registrar/clearance-requests', wrap(async (req, res) => {
+  const db = await readDb();
+  const user = requireAuth(extractToken(req), db);
+  res.json(db.requests.filter(rq => { if (rq.campusId !== user.campusId) return false; const checks = db.checks.filter(c => c.clearanceRequestId === rq.id); return checks.length > 0 && checks.every(c => c.status === 'CLEARED'); }));
+}));
+
+r.get('/registrar/clearance-requests/statistics', wrap(async (req, res) => {
+  const db = await readDb();
+  const user = requireAuth(extractToken(req), db);
+  const campusReqs = db.requests.filter(rq => rq.campusId === user.campusId);
+  const cleared = campusReqs.filter(rq => rq.status === 'CLEARED').length;
+  const bm = {};
+  campusReqs.forEach(rq => { db.checks.filter(c => c.clearanceRequestId === rq.id && c.status !== 'CLEARED').forEach(c => { bm[c.checkCode] = (bm[c.checkCode] || 0) + 1; }); });
+  const be = Object.entries(bm).sort((a, b) => b[1] - a[1]);
+  res.json({ total_requests: campusReqs.length, cleared_requests: cleared, clearance_percentage: campusReqs.length > 0 ? (cleared / campusReqs.length) * 100 : 0, most_common_bottleneck: be[0]?.[0] || '—', bottleneck_count: be[0]?.[1] || 0, pending_count: campusReqs.filter(rq => rq.status === 'PENDING').length, in_review_count: campusReqs.filter(rq => rq.status === 'IN_REVIEW').length, flagged_count: campusReqs.filter(rq => rq.status === 'FLAGGED').length });
+}));
+
+r.get('/registrar/clearance-requests/all-students', wrap(async (req, res) => {
+  const db = await readDb();
+  const user = requireAuth(extractToken(req), db);
+  res.json(db.requests.filter(rq => rq.campusId === user.campusId).map(cr => {
+    const st = db.students.find(s => s.studentId === cr.studentId);
+    const checks = db.checks.filter(c => c.clearanceRequestId === cr.id);
+    const clearedCount = checks.filter(c => c.status === 'CLEARED').length;
+    const cert = db.certificates.find(c => c.clearanceRequestId === cr.id);
+    return { request_id: cr.id, request_number: cr.requestNumber, student: { studentId: cr.studentId, firstName: st?.firstName || 'Unknown', lastName: st?.lastName || '', middleName: st?.middleName || null, program: st?.program || null }, status: cr.status, submitted_at: cr.submittedAt, progress_percentage: checks.length > 0 ? Math.round((clearedCount / checks.length) * 100) : 0, checks: checks.map(c => ({ id: c.id, checkCode: c.checkCode, status: c.status })), has_certificate: cert != null };
+  }));
+}));
+
+r.post('/registrar/clearance-requests/:id/generate-certificate', wrap(async (req, res) => {
+  const db = await readDb();
+  requireAuth(extractToken(req), db);
+  const cr = db.requests.find(rq => rq.id === req.params.id);
+  if (!cr) throw { status: 404, message: 'Request not found.' };
+  const checks = db.checks.filter(c => c.clearanceRequestId === req.params.id);
+  if (!checks.every(c => c.status === 'CLEARED')) throw { status: 400, message: 'All departments must approve before generating a certificate.' };
+  const existing = db.certificates.find(c => c.clearanceRequestId === req.params.id);
+  if (existing) { res.json(existing); return; }
+  const st = db.students.find(s => s.studentId === cr.studentId);
+  const hash = Buffer.from(req.params.id + cr.studentId + isoNow()).toString('base64').replace(/[^a-zA-Z0-9]/g, '').slice(0, 32);
+  const clearedDate = new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
+  const campusNames = { TEWODROS: 'Atse Tewodros Campus', MARAKI: 'Maraki Campus', FASIL: 'Atse Fasil Campus' };
+  const qrBase64 = await generateQrBase64({ studentId: cr.studentId, fullName: st ? `${st.firstName} ${st.lastName}` : cr.studentId, program: st?.program || null, campus: campusNames[cr.campusId] || cr.campusId, clearedDate, requestNumber: cr.requestNumber, hash });
+  const cert = { id: uid(), clearanceRequestId: req.params.id, studentId: cr.studentId, campusId: cr.campusId, hash, signedPayload: JSON.stringify({ requestId: req.params.id, studentId: cr.studentId, hash, generatedAt: isoNow() }), base64Qr: qrBase64, generatedAt: isoNow() };
+  db.certificates.push(cert);
+  cr.status = 'CLEARED';
+  await writeDb(db);
+  res.json(cert);
+}));
+
+r.post('/registrar/clearance-requests/:id/send-certificate', wrap(async (req, res) => {
+  const db = await readDb();
+  requireAuth(extractToken(req), db);
+  const cert = db.certificates.find(c => c.clearanceRequestId === req.params.id);
+  if (!cert) throw { status: 404, message: 'Certificate not found. Generate it first.' };
+  res.json({ message: 'Certificate sent to student successfully.', certificateId: cert.id });
+}));
+
 // ─── Health check ─────────────────────────────────────────────────────────────
 
 app.get('/health', (req, res) => res.json({ status: 'ok', database: 'mongodb', dbName: MONGODB_DB, timestamp: isoNow() }));
