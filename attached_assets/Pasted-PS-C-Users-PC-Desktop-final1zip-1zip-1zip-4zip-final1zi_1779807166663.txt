@@ -1,0 +1,47 @@
+PS C:\Users\PC\Desktop\final1zip-1zip-1zip-4zip\final1zip-1zip-1zip-4zip\server>node index.js
+[UGClear] Failed to start: MongoServerSelectionError: Client network socket disconnected before secure TLS connection was established
+    at Topology.selectServer (C:\Users\PC\Desktop\final1zip-1zip-1zip-4zip\final1zip-1zip-1zip-4zip\server\node_modules\mongodb\lib\sdam\topology.js:348:38)
+    at async Topology._connect (C:\Users\PC\Desktop\final1zip-1zip-1zip-4zip\final1zip-1zip-1zip-4zip\server\node_modules\mongodb\lib\sdam\topology.js:220:28)
+    at async Topology.connect (C:\Users\PC\Desktop\final1zip-1zip-1zip-4zip\final1zip-1zip-1zip-4zip\server\node_modules\mongodb\lib\sdam\topology.js:171:13)
+    at async topologyConnect (C:\Users\PC\Desktop\final1zip-1zip-1zip-4zip\final1zip-1zip-1zip-4zip\server\node_modules\mongodb\lib\mongo_client.js:258:17)
+    at async MongoClient._connect (C:\Users\PC\Desktop\final1zip-1zip-1zip-4zip\final1zip-1zip-1zip-4zip\server\node_modules\mongodb\lib\mongo_client.js:271:13)
+    at async MongoClient.connect (C:\Users\PC\Desktop\final1zip-1zip-1zip-4zip\final1zip-1zip-1zip-4zip\server\node_modules\mongodb\lib\mongo_client.js:196:13)
+    at async initStore (C:\Users\PC\Desktop\final1zip-1zip-1zip-4zip\final1zip-1zip-1zip-4zip\server\index.js:29:3) {
+  errorLabelSet: Set(0) {},
+  reason: TopologyDescription {
+    type: 'Unknown',
+    servers: Map(1) { 'localhost:27017' => [ServerDescription] },
+    stale: false,
+    compatible: true,
+    heartbeatFrequencyMS: 10000,
+    localThresholdMS: 15,
+    setName: null,
+    maxElectionId: null,
+    maxSetVersion: null,
+    commonWireVersion: 0,
+    logicalSessionTimeoutMinutes: null
+  },
+  code: undefined,
+  [cause]: MongoNetworkError: Client network socket disconnected before secure TLS connection was established
+      at TLSSocket.<anonymous> (C:\Users\PC\Desktop\final1zip-1zip-1zip-4zip\final1zip-1zip-1zip-4zip\server\node_modules\mongodb\lib\cmap\connect.js:314:44)
+      at Object.onceWrapper (node:events:634:26)
+      at TLSSocket.emit (node:events:519:28)
+      at emitErrorNT (node:internal/streams/destroy:170:8)
+      at emitErrorCloseNT (node:internal/streams/destroy:129:3)
+      at process.processTicksAndRejections (node:internal/process/task_queues:90:21) {
+    errorLabelSet: Set(3) { 'SystemOverloadedError', 'RetryableError', 'ResetPool' },
+    beforeHandshake: false,
+    [cause]: Error: Client network socket disconnected before secure TLS connection was established
+        at TLSSocket.onConnectEnd (node:_tls_wrap:1732:19)
+        at TLSSocket.emit (node:events:531:35)
+        at endReadableNT (node:internal/streams/readable:1698:12)
+        at process.processTicksAndRejections (node:internal/process/task_queues:90:21) {
+      code: 'ECONNRESET',
+      path: undefined,
+      host: 'localhost',
+      port: 27017,
+      localAddress: undefined
+    }
+  }
+}
+PS C:\Users\PC\Desktop\final1zip-1zip-1zip-4zip\final1zip-1zip-1zip-4zip\server> 

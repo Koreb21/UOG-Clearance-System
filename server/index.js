@@ -1,5 +1,7 @@
 'use strict';
 
+require('dotenv').config();
+
 const express = require('express');
 const { MongoClient } = require('mongodb');
 const cors = require('cors');
