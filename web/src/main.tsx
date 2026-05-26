@@ -6,11 +6,8 @@ import { AuthProvider } from "./modules/auth/AuthContext";
 import { CampusProvider } from "./modules/campus/CampusContext";
 import { ToastProvider } from "./components/ToastContext";
 import { ThemeProvider } from "./modules/theme/ThemeContext";
-import { installMockBackend } from "./lib/mockBackend";
 import "./i18n";
 import "./styles.css";
-
-installMockBackend();
 
 ReactDOM.createRoot(document.getElementById("root")!).render(
   <React.StrictMode>
