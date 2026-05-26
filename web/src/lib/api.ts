@@ -136,16 +136,10 @@ async function request<T>(
 }
 
 export const api = {
-  login: (username: string, password: string, expectedCampusId?: string | null) =>
+  login: (username: string, password: string) =>
     request<LoginResponse>("/auth/login", {
       method: "POST",
-      body: JSON.stringify({
-        username,
-        password,
-        ...(expectedCampusId != null && expectedCampusId !== ""
-          ? { expectedCampusId }
-          : {})
-      })
+      body: JSON.stringify({ username, password })
     }),
   getCurrentUser: (token: string) =>
     request<CurrentUserResponse>("/auth/me", { method: "GET" }, token),

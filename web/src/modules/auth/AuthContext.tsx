@@ -15,7 +15,7 @@ type AuthContextValue = {
   user: AuthUser | null;
   token: string | null;
   loading: boolean;
-  login: (username: string, password: string, expectedCampusId?: string | null) => Promise<void>;
+  login: (username: string, password: string) => Promise<void>;
   logout: () => void;
 };
 
@@ -92,11 +92,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const login = useCallback(
-    async (username: string, password: string, expectedCampusId?: string | null) => {
+    async (username: string, password: string) => {
       setAuthBusy(true);
       setUser(null);
       try {
-        const response = await api.login(username, password, expectedCampusId);
+        const response = await api.login(username, password);
         storage.setToken(response.accessToken);
         const currentUser = await api.getCurrentUser(response.accessToken);
         setToken(response.accessToken);

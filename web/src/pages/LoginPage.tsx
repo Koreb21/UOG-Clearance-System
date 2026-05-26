@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { SessionControls } from "../components/SessionControls";
@@ -9,37 +9,6 @@ import { useToast } from "../components/ToastContext";
 import { useAuth } from "../modules/auth/AuthContext";
 import { api } from "../lib/api";
 
-type CampusOption = {
-  id: string;
-  labelKey: string;
-  title: string;
-  descriptionKey: string;
-  accentClass: string;
-};
-
-const campuses: CampusOption[] = [
-  {
-    id: "TEWODROS",
-    labelKey: "campusAlpha",
-    title: "Atse Tewodros",
-    descriptionKey: "appliedSciencesAgriculture",
-    accentClass: "portal-login-campus-accent-primary"
-  },
-  {
-    id: "MARAKI",
-    labelKey: "campusBeta",
-    title: "Maraki",
-    descriptionKey: "socialSciencesHumanities",
-    accentClass: "portal-login-campus-accent-secondary"
-  },
-  {
-    id: "FASIL",
-    labelKey: "campusGamma",
-    title: "Atse Fasil",
-    descriptionKey: "mainAdminTechnicalHub",
-    accentClass: "portal-login-campus-accent-primary"
-  }
-];
 
 function UGClearLogoIcon() {
   return (
@@ -157,7 +126,6 @@ export function LoginPage() {
   const { showToast } = useToast();
   const { login, logout, user, loading: authLoading } = useAuth();
   const sessionReady = !authLoading;
-  const [selectedCampus, setSelectedCampus] = useState<CampusOption | null>(null);
   const [adminTapCount, setAdminTapCount] = useState(0);
   const [showAdminGate, setShowAdminGate] = useState(false);
   const [showHelp, setShowHelp] = useState(false);
@@ -184,11 +152,6 @@ export function LoginPage() {
   const [debugOtp, setDebugOtp] = useState<string | null>(null);
   const [showDebugOtp, setShowDebugOtp] = useState(false);
   const [recipientEmail, setRecipientEmail] = useState<string | null>(null);
-
-  const activeCampusName = useMemo(
-    () => selectedCampus?.title ?? "Campus",
-    [selectedCampus]
-  );
 
   function startResendCountdown() {
     setResendCountdown(60);
@@ -314,7 +277,7 @@ export function LoginPage() {
     event.preventDefault();
     setSubmitting(true);
     try {
-      await login(username.trim(), password, selectedCampus?.id ?? null);
+      await login(username.trim(), password);
       navigate("/");
     } catch (submissionError) {
       showToast(
@@ -594,44 +557,33 @@ export function LoginPage() {
                   </form>
                 )}
               </div>
-            ) : !selectedCampus ? (
-              <>
-                <div className="portal-login-selection-head">
-                  <h2>{t("selectCampus")}</h2>
-                  <p>{t("choosePrimaryLocation")}</p>
-                </div>
-
-                <div className="portal-login-campus-grid">
-                  {campuses.map((campus) => (
-                    <button
-                      key={campus.id}
-                      type="button"
-                      className={`portal-login-campus-card ${campus.accentClass}`}
-                      onClick={() => setSelectedCampus(campus)}
-                      disabled={!sessionReady}
-                    >
-                      <span className="portal-login-campus-label">{t(campus.labelKey)}</span>
-                      <strong>{campus.title}</strong>
-                      <p>{t(campus.descriptionKey)}</p>
-                    </button>
-                  ))}
-                </div>
-              </>
             ) : (
               <div className="portal-login-form-wrap">
                 <div className="portal-login-form-head">
-                  <button
-                    type="button"
-                    className="portal-login-back-button"
-                    onClick={() => setSelectedCampus(null)}
-                    aria-label="Back to campus selection"
-                  >
-                    <ArrowBackIcon />
-                  </button>
-                  <div>
-                    <h2>{activeCampusName} Login</h2>
-                    <p>Enter your university credentials to proceed.</p>
+                  <div className="flex items-center gap-3">
+                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[#001e40] text-white">
+                      <UGClearLogoIcon />
+                    </div>
+                    <div>
+                      <h2>University of Gondar</h2>
+                      <p>Enter your university credentials to access the portal.</p>
+                    </div>
                   </div>
+                </div>
+
+                {/* Campus pills — decorative, shows system covers all campuses */}
+                <div className="flex flex-wrap gap-1.5 mb-1">
+                  {[
+                    { label: "Atse Tewodros", code: "TEW" },
+                    { label: "Maraki", code: "MAR" },
+                    { label: "Atse Fasil", code: "FAS" },
+                  ].map((c) => (
+                    <span key={c.code} className="inline-flex items-center gap-1 rounded-full border border-slate-200 bg-slate-50 px-2.5 py-0.5 text-[10px] font-bold text-slate-500">
+                      <span className="h-1.5 w-1.5 rounded-full bg-[#001e40]/40" />
+                      {c.label}
+                    </span>
+                  ))}
+                  <span className="inline-flex items-center rounded-full bg-green-50 border border-green-200 px-2.5 py-0.5 text-[10px] font-bold text-green-700">All campuses supported</span>
                 </div>
 
                 <form onSubmit={handleSubmit} className="portal-login-form">

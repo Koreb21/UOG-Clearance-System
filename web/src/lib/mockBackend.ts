@@ -68,6 +68,7 @@ interface DbUser {
   campusId: string | null;
   departmentId: string | null;
   studentId: string | null;
+  staffId: string | null;
   active: boolean;
   mustChangePassword: boolean;
 }
@@ -323,7 +324,7 @@ function seed(db: Db): Db {
   const FASIL = "FASIL";
 
   const makeUser = (o: Partial<DbUser> & { id: string; username: string; password: string; role: string }): DbUser => ({
-    email: null, campusId: null, departmentId: null, studentId: null,
+    email: null, campusId: null, departmentId: null, studentId: null, staffId: null,
     active: true, mustChangePassword: false, ...o
   });
 
@@ -334,30 +335,30 @@ function seed(db: Db): Db {
   });
 
   db.users = [
-    makeUser({ id: "u-admin", username: "admin", password: "admin123", role: "SYSTEM_ADMIN", campusId: TEWODROS, email: "admin@uog.edu.et" }),
+    makeUser({ id: "u-admin", username: "admin", password: "admin123", role: "SYSTEM_ADMIN", campusId: TEWODROS, email: "admin@uog.edu.et", staffId: "UGR/ADM/001" }),
 
     makeUser({ id: "u-s1", username: "student1", password: "student123", role: "STUDENT", campusId: TEWODROS, studentId: "UGR/01234/15", email: "abel.tesfaye@uog.edu.et" }),
     makeUser({ id: "u-s2", username: "student2", password: "student123", role: "STUDENT", campusId: TEWODROS, studentId: "UGR/01235/15", email: "meron.haile@uog.edu.et" }),
     makeUser({ id: "u-s3", username: "student3", password: "student123", role: "STUDENT", campusId: MARAKI, studentId: "UGR/01236/15", email: "dawit.bekele@uog.edu.et" }),
 
-    makeUser({ id: "u-lib", username: "librarian", password: "staff123", role: "LIBRARIAN", campusId: TEWODROS, email: "librarian@uog.edu.et" }),
-    makeUser({ id: "u-pro", username: "proctor", password: "staff123", role: "PROCTOR", campusId: TEWODROS, email: "proctor@uog.edu.et" }),
-    makeUser({ id: "u-caf", username: "cafe", password: "staff123", role: "CAFE_STAFF", campusId: TEWODROS, email: "cafe@uog.edu.et" }),
-    makeUser({ id: "u-dep", username: "depthead", password: "staff123", role: "DEPARTMENT_HEAD", campusId: TEWODROS, email: "depthead@uog.edu.et" }),
-    makeUser({ id: "u-dea", username: "dean", password: "staff123", role: "STUDENT_DEAN", campusId: TEWODROS, email: "dean@uog.edu.et" }),
-    makeUser({ id: "u-fin", username: "finance", password: "finance123", role: "FINANCE_OFFICER", campusId: TEWODROS, email: "finance@uog.edu.et" }),
-    makeUser({ id: "u-reg", username: "registrar", password: "reg123", role: "MAIN_REGISTRAR", campusId: TEWODROS, email: "registrar@uog.edu.et" }),
+    makeUser({ id: "u-lib", username: "librarian", password: "staff123", role: "LIBRARIAN", campusId: TEWODROS, email: "librarian@uog.edu.et", staffId: "TEW/LIB/001" }),
+    makeUser({ id: "u-pro", username: "proctor", password: "staff123", role: "PROCTOR", campusId: TEWODROS, email: "proctor@uog.edu.et", staffId: "TEW/PRO/001" }),
+    makeUser({ id: "u-caf", username: "cafe", password: "staff123", role: "CAFE_STAFF", campusId: TEWODROS, email: "cafe@uog.edu.et", staffId: "TEW/CAF/001" }),
+    makeUser({ id: "u-dep", username: "depthead", password: "staff123", role: "DEPARTMENT_HEAD", campusId: TEWODROS, email: "depthead@uog.edu.et", staffId: "TEW/DPT/001" }),
+    makeUser({ id: "u-dea", username: "dean", password: "staff123", role: "STUDENT_DEAN", campusId: TEWODROS, email: "dean@uog.edu.et", staffId: "TEW/DEN/001" }),
+    makeUser({ id: "u-fin", username: "finance", password: "finance123", role: "FINANCE_OFFICER", campusId: TEWODROS, email: "finance@uog.edu.et", staffId: "TEW/FIN/001" }),
+    makeUser({ id: "u-reg", username: "registrar", password: "reg123", role: "MAIN_REGISTRAR", campusId: TEWODROS, email: "registrar@uog.edu.et", staffId: "TEW/REG/001" }),
 
-    makeUser({ id: "u-lib-m", username: "librarian_m", password: "staff123", role: "LIBRARIAN", campusId: MARAKI, email: "librarian.m@uog.edu.et" }),
-    makeUser({ id: "u-reg-m", username: "registrar_m", password: "reg123", role: "MAIN_REGISTRAR", campusId: MARAKI, email: "registrar.m@uog.edu.et" }),
-    makeUser({ id: "u-pro-m", username: "proctor_m", password: "staff123", role: "PROCTOR", campusId: MARAKI, email: "proctor.m@uog.edu.et" }),
-    makeUser({ id: "u-caf-m", username: "cafe_m", password: "staff123", role: "CAFE_STAFF", campusId: MARAKI, email: "cafe.m@uog.edu.et" }),
-    makeUser({ id: "u-dep-m", username: "depthead_m", password: "staff123", role: "DEPARTMENT_HEAD", campusId: MARAKI, email: "depthead.m@uog.edu.et" }),
-    makeUser({ id: "u-dea-m", username: "dean_m", password: "staff123", role: "STUDENT_DEAN", campusId: MARAKI, email: "dean.m@uog.edu.et" }),
-    makeUser({ id: "u-fin-m", username: "finance_m", password: "finance123", role: "FINANCE_OFFICER", campusId: MARAKI, email: "finance.m@uog.edu.et" }),
+    makeUser({ id: "u-lib-m", username: "librarian_m", password: "staff123", role: "LIBRARIAN", campusId: MARAKI, email: "librarian.m@uog.edu.et", staffId: "MAR/LIB/001" }),
+    makeUser({ id: "u-reg-m", username: "registrar_m", password: "reg123", role: "MAIN_REGISTRAR", campusId: MARAKI, email: "registrar.m@uog.edu.et", staffId: "MAR/REG/001" }),
+    makeUser({ id: "u-pro-m", username: "proctor_m", password: "staff123", role: "PROCTOR", campusId: MARAKI, email: "proctor.m@uog.edu.et", staffId: "MAR/PRO/001" }),
+    makeUser({ id: "u-caf-m", username: "cafe_m", password: "staff123", role: "CAFE_STAFF", campusId: MARAKI, email: "cafe.m@uog.edu.et", staffId: "MAR/CAF/001" }),
+    makeUser({ id: "u-dep-m", username: "depthead_m", password: "staff123", role: "DEPARTMENT_HEAD", campusId: MARAKI, email: "depthead.m@uog.edu.et", staffId: "MAR/DPT/001" }),
+    makeUser({ id: "u-dea-m", username: "dean_m", password: "staff123", role: "STUDENT_DEAN", campusId: MARAKI, email: "dean.m@uog.edu.et", staffId: "MAR/DEN/001" }),
+    makeUser({ id: "u-fin-m", username: "finance_m", password: "finance123", role: "FINANCE_OFFICER", campusId: MARAKI, email: "finance.m@uog.edu.et", staffId: "MAR/FIN/001" }),
 
-    makeUser({ id: "u-lib-f", username: "librarian_f", password: "staff123", role: "LIBRARIAN", campusId: FASIL, email: "librarian.f@uog.edu.et" }),
-    makeUser({ id: "u-reg-f", username: "registrar_f", password: "reg123", role: "MAIN_REGISTRAR", campusId: FASIL, email: "registrar.f@uog.edu.et" }),
+    makeUser({ id: "u-lib-f", username: "librarian_f", password: "staff123", role: "LIBRARIAN", campusId: FASIL, email: "librarian.f@uog.edu.et", staffId: "FAS/LIB/001" }),
+    makeUser({ id: "u-reg-f", username: "registrar_f", password: "reg123", role: "MAIN_REGISTRAR", campusId: FASIL, email: "registrar.f@uog.edu.et", staffId: "FAS/REG/001" }),
   ];
 
   db.students = [
@@ -524,7 +525,7 @@ function handleLogin(body: { username: string; password: string; expectedCampusI
 
 function handleGetMe(token: string | null, db: Db) {
   const user = requireAuth(token, db);
-  return { userId: user.id, username: user.username, email: user.email, role: user.role, campusId: user.campusId, departmentId: user.departmentId, studentId: user.studentId };
+  return { userId: user.id, username: user.username, email: user.email, role: user.role, campusId: user.campusId, departmentId: user.departmentId, studentId: user.studentId, staffId: user.staffId ?? null };
 }
 
 function handleUpdateProfile(token: string | null, body: { email?: string }, db: Db) {

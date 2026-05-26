@@ -17,6 +17,7 @@ export type AuthUser = {
   campusId: string | null;
   departmentId: string | null;
   studentId: string | null;
+  staffId: string | null;
 };
 
 export type LoginResponse = {
