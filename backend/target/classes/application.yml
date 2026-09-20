@@ -1,0 +1,57 @@
+spring:
+  application:
+    name: clearance-backend
+  data:
+    mongodb:
+      uri: ${MONGO_URI:mongodb://localhost:27017/clearance_system}
+      auto-index-creation: true
+  mail:
+    host: ${MAIL_HOST:smtp.gmail.com}
+    port: ${MAIL_PORT:587}
+    username: ${MAIL_USERNAME:}
+    password: ${MAIL_PASSWORD:}
+    properties:
+      mail:
+        smtp:
+          auth: true
+          starttls:
+            enable: true
+            required: true
+          connectiontimeout: 5000
+          timeout: 5000
+          writetimeout: 5000
+    from: ${MAIL_FROM:noreply@universityofgondar.edu.et}
+
+
+server:
+  port: ${SERVER_PORT:8080}
+
+app:
+  jwt:
+    secret: ${JWT_SECRET:change-this-secret-in-production-change-this-secret}
+    expiration-minutes: ${JWT_EXPIRATION_MINUTES:120}
+  bootstrap:
+    admin:
+      enabled: ${BOOTSTRAP_ADMIN_ENABLED:true}
+      username: ${BOOTSTRAP_ADMIN_USERNAME:admin}
+      password: ${BOOTSTRAP_ADMIN_PASSWORD:admin@123}
+  chapa:
+    public-key: ${CHAPA_PUBLIC_KEY:}
+    secret-key: ${CHAPA_SECRET_KEY:}
+    callback-token: ${CHAPA_CALLBACK_TOKEN:}
+    webhook-secret: ${CHAPA_WEBHOOK_SECRET:}
+    finance-receipt-secret: ${FINANCE_RECEIPT_SECRET:finance-receipt-secret}
+    callback-url: ${CHAPA_CALLBACK_URL:http://localhost:8080/api/v1/payments/chapa/callback}
+    return-url: ${CHAPA_RETURN_URL:http://localhost:3000/payments/complete}
+    checkout-base-url: ${CHAPA_CHECKOUT_BASE_URL:https://checkout.chapa.co/checkout/payment}
+    initialize-url: ${CHAPA_INITIALIZE_URL:https://api.chapa.co/v1/transaction/initialize}
+    verify-url: ${CHAPA_VERIFY_URL:https://api.chapa.co/v1/transaction/verify}
+  storage:
+    student-media-dir: ${STUDENT_MEDIA_DIR:storage/student-media}
+  qr:
+    signing-secret: ${QR_SIGNING_SECRET:change-this-qr-secret}
+
+logging:
+  level:
+    org.springframework.security: INFO
+    org.springframework.data.mongodb.core: WARN

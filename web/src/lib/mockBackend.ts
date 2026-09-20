@@ -262,6 +262,30 @@ function readDb(): Db {
       const parsed = JSON.parse(raw) as Db;
       if (!parsed.messages) parsed.messages = [];
       if (!parsed.passwordResetTokens) parsed.passwordResetTokens = [];
+
+      // Migration: ensure local mock admin password matches bootstrap password
+      try {
+        const desiredAdminPassword = (import.meta.env && (import.meta.env.VITE_BOOTSTRAP_ADMIN_PASSWORD as string)) || 'admin@123';
+        if (Array.isArray(parsed.users)) {
+          const admin = parsed.users.find((u) => u.username === 'admin');
+          let updated = false;
+          if (admin) {
+            if (admin.password !== desiredAdminPassword) {
+              admin.password = desiredAdminPassword;
+              updated = true;
+            }
+          } else {
+            parsed.users.unshift({ id: 'u-admin', username: 'admin', password: desiredAdminPassword, role: 'SYSTEM_ADMIN', campusId: 'TEWODROS', email: 'admin@uog.edu.et', staffId: 'UGR/ADM/001', active: true, mustChangePassword: false });
+            updated = true;
+          }
+          if (updated) {
+            writeDb(parsed);
+            console.info('[UGClear] local mock DB admin normalized to VITE_BOOTSTRAP_ADMIN_PASSWORD.');
+          }
+        }
+      } catch (e) {
+        // non-fatal
+      }
       return parsed;
     }
   } catch {/* */}
@@ -335,7 +359,7 @@ function seed(db: Db): Db {
   });
 
   db.users = [
-    makeUser({ id: "u-admin", username: "admin", password: "admin123", role: "SYSTEM_ADMIN", campusId: TEWODROS, email: "admin@uog.edu.et", staffId: "UGR/ADM/001" }),
+    makeUser({ id: "u-admin", username: "admin", password: "admin@123", role: "SYSTEM_ADMIN", campusId: TEWODROS, email: "admin@uog.edu.et", staffId: "UGR/ADM/001" }),
 
     makeUser({ id: "u-s1", username: "student1", password: "student123", role: "STUDENT", campusId: TEWODROS, studentId: "UGR/01234/15", email: "abel.tesfaye@uog.edu.et" }),
     makeUser({ id: "u-s2", username: "student2", password: "student123", role: "STUDENT", campusId: TEWODROS, studentId: "UGR/01235/15", email: "meron.haile@uog.edu.et" }),
@@ -1773,5 +1797,5 @@ export function installMockBackend() {
     return new Response(responseBody, { status, headers: { "Content-Type": "application/json" } });
   };
 
-  console.info("[UGClear] Mock backend active. Accounts — student1/student123 | librarian/staff123 | proctor/staff123 | cafe/staff123 | depthead/staff123 | dean/staff123 | finance/finance123 | registrar/reg123 | admin/admin123");
+  console.info("[UGClear] Mock backend active. Accounts — student1/student123 | librarian/staff123 | proctor/staff123 | cafe/staff123 | depthead/staff123 | dean/staff123 | finance/finance123 | registrar/reg123 | admin/admin@123");
 }

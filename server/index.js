@@ -22,9 +22,12 @@ let mongoClient;
 let mongoDb;
 
 async function initStore() {
+  // Enable TLS only when requested via environment or when using mongodb+srv URIs
+  const useTls = (process.env.MONGODB_TLS === 'true') || /^mongodb\+srv:\/\//i.test(MONGODB_URI);
+  const tlsAllowInvalid = (process.env.MONGODB_TLS_ALLOW_INVALID === 'true');
   mongoClient = new MongoClient(MONGODB_URI, {
-    tls: true,
-    tlsAllowInvalidCertificates: false,
+    tls: useTls,
+    tlsAllowInvalidCertificates: tlsAllowInvalid,
     serverSelectionTimeoutMS: 15000,
     connectTimeoutMS: 15000,
   });
@@ -42,6 +45,32 @@ async function initStore() {
     console.log('[UGClear] MongoDB database loaded successfully.');
   }
   console.log(`[UGClear] Connected to MongoDB: ${MONGODB_DB}`);
+
+  // Ensure persisted admin password matches the desired bootstrap password (helps when DB was seeded earlier)
+  try {
+    const desiredAdminPassword = process.env.BOOTSTRAP_ADMIN_PASSWORD || 'admin@123';
+    const current = await readDb();
+    if (current && Array.isArray(current.users)) {
+      const admin = current.users.find(u => u.username === 'admin');
+      let updated = false;
+      if (admin) {
+        if (admin.password !== desiredAdminPassword) {
+          admin.password = desiredAdminPassword;
+          updated = true;
+        }
+      } else {
+        // Create a minimal admin record if missing
+        current.users.unshift({ id: 'u-admin', username: 'admin', password: desiredAdminPassword, role: 'SYSTEM_ADMIN', campusId: 'TEWODROS', email: 'admin@uog.edu.et', staffId: 'UGR/ADM/001', active: true, mustChangePassword: false });
+        updated = true;
+      }
+      if (updated) {
+        await writeDb(current);
+        console.log('[UGClear] Admin account normalized to BOOTSTRAP_ADMIN_PASSWORD (value hidden).');
+      }
+    }
+  } catch (e) {
+    console.warn('[UGClear] Admin normalization skipped:', e && e.message ? e.message : e);
+  }
 }
 
 function emptyDb() {
@@ -231,7 +260,7 @@ function seed(db) {
   const ms = o => ({ middleName: null, gender: null, phone: null, email: null, academicDepartmentId: null, program: null, academicYear: null, graduationYear: null, profileImageUrl: null, hasProfileImage: false, status: 'ACTIVE', ...o });
 
   db.users = [
-    mu({ id: 'u-admin', username: 'admin', password: 'admin123', role: 'SYSTEM_ADMIN', campusId: T, email: 'admin@uog.edu.et', staffId: 'UGR/ADM/001' }),
+    mu({ id: 'u-admin', username: 'admin', password: 'admin@123', role: 'SYSTEM_ADMIN', campusId: T, email: 'admin@uog.edu.et', staffId: 'UGR/ADM/001' }),
     mu({ id: 'u-s1', username: 'student1', password: 'student123', role: 'STUDENT', campusId: T, studentId: 'UGR/01234/15', email: 'abel.tesfaye@uog.edu.et' }),
     mu({ id: 'u-s2', username: 'student2', password: 'student123', role: 'STUDENT', campusId: T, studentId: 'UGR/01235/15', email: 'meron.haile@uog.edu.et' }),
     mu({ id: 'u-s3', username: 'student3', password: 'student123', role: 'STUDENT', campusId: M, studentId: 'UGR/01236/15', email: 'dawit.bekele@uog.edu.et' }),
@@ -1531,7 +1560,7 @@ initStore().then(() => {
   app.listen(PORT, '0.0.0.0', () => {
     console.log(`[UGClear] Backend server listening on port ${PORT}`);
     console.log(`[UGClear] Database: MongoDB — ${MONGODB_DB}`);
-    console.log('[UGClear] Accounts: student1/student123 | librarian/staff123 | finance/finance123 | registrar/reg123 | admin/admin123');
+    console.log('[UGClear] Accounts: student1/student123 | librarian/staff123 | finance/finance123 | registrar/reg123 | admin/admin@123');
   });
 }).catch(err => {
   console.error('[UGClear] Failed to start:', err);

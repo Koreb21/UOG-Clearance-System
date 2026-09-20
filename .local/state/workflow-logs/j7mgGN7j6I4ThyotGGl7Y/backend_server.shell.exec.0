@@ -1,0 +1,42 @@
+[UGClear] Failed to start: MongoServerSelectionError: connect ECONNREFUSED 127.0.0.1:27017
+    at Topology.selectServer [90m(/home/runner/workspace/server/[39mnode_modules/[4mmongodb[24m/lib/sdam/topology.js:348:38[90m)[39m
+    at async Topology._connect [90m(/home/runner/workspace/server/[39mnode_modules/[4mmongodb[24m/lib/sdam/topology.js:220:28[90m)[39m
+    at async Topology.connect [90m(/home/runner/workspace/server/[39mnode_modules/[4mmongodb[24m/lib/sdam/topology.js:171:13[90m)[39m
+    at async topologyConnect [90m(/home/runner/workspace/server/[39mnode_modules/[4mmongodb[24m/lib/mongo_client.js:258:17[90m)[39m
+    at async MongoClient._connect [90m(/home/runner/workspace/server/[39mnode_modules/[4mmongodb[24m/lib/mongo_client.js:271:13[90m)[39m
+    at async MongoClient.connect [90m(/home/runner/workspace/server/[39mnode_modules/[4mmongodb[24m/lib/mongo_client.js:196:13[90m)[39m
+    at async initStore [90m(/home/runner/workspace/server/[39mindex.js:24:3[90m)[39m {
+  errorLabelSet: Set(0) {},
+  reason: TopologyDescription {
+    type: [32m'Unknown'[39m,
+    servers: Map(1) { [32m'localhost:27017'[39m => [36m[ServerDescription][39m },
+    stale: [33mfalse[39m,
+    compatible: [33mtrue[39m,
+    heartbeatFrequencyMS: [33m10000[39m,
+    localThresholdMS: [33m15[39m,
+    setName: [1mnull[22m,
+    maxElectionId: [1mnull[22m,
+    maxSetVersion: [1mnull[22m,
+    commonWireVersion: [33m0[39m,
+    logicalSessionTimeoutMinutes: [1mnull[22m
+  },
+  code: [90mundefined[39m,
+  [cause]: MongoNetworkError: connect ECONNREFUSED 127.0.0.1:27017
+      at Socket.<anonymous> [90m(/home/runner/workspace/server/[39mnode_modules/[4mmongodb[24m/lib/cmap/connect.js:314:44[90m)[39m
+  [90m    at Object.onceWrapper (node:events:634:26)[39m
+  [90m    at Socket.emit (node:events:519:28)[39m
+  [90m    at emitErrorNT (node:internal/streams/destroy:170:8)[39m
+  [90m    at emitErrorCloseNT (node:internal/streams/destroy:129:3)[39m
+  [90m    at process.processTicksAndRejections (node:internal/process/task_queues:90:21)[39m {
+    errorLabelSet: Set(3) { [32m'SystemOverloadedError'[39m, [32m'RetryableError'[39m, [32m'ResetPool'[39m },
+    beforeHandshake: [33mfalse[39m,
+    [cause]: Error: connect ECONNREFUSED 127.0.0.1:27017
+    [90m    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1637:16)[39m {
+      errno: [33m-111[39m,
+      code: [32m'ECONNREFUSED'[39m,
+      syscall: [32m'connect'[39m,
+      address: [32m'127.0.0.1'[39m,
+      port: [33m27017[39m
+    }
+  }
+}

@@ -1,0 +1,5 @@
+[UGClear] MongoDB database seeded with initial data.
+[UGClear] Connected to MongoDB: ugclear
+[UGClear] Backend server listening on port 3001
+[UGClear] Database: MongoDB — ugclear
+[UGClear] Accounts: student1/student123 | librarian/staff123 | finance/finance123 | registrar/reg123 | admin/admin123
